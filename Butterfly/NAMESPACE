@@ -1,0 +1,5 @@
+export(rmvnorm)
+export(within)
+export(simulate_data)
+export(run_analysis)
+
