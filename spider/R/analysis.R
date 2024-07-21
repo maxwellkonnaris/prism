@@ -119,7 +119,10 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
       stringsAsFactors = FALSE
     ))
   }
-  
+
+  # Remove row names
+  rownames(formatted_results) <- NULL
+                                         
   end_time <- Sys.time()
   elapsed_time <- end_time - start_time
   print(paste("Total time taken:", elapsed_time))
