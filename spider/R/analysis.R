@@ -6,14 +6,13 @@
 #' @param S Number of simulations
 #' @param num_cores Number of cores for parallel processing
 #' @return A matrix of lists containing confidence intervals and true values for all pairs of taxa
-#' @import progressr
-#' @import foreach
-#' @import doSNOW
+#' @import pbapply
 #' @import parallel
 #' @import MCMCpack
 run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000, num_cores = parallel::detectCores() - 1) {
-  library(progressr)
-  library(doSNOW)
+  library(pbapply)
+  library(parallel)
+  library(MCMCpack)
   
   N <- ncol(Y)
   D <- nrow(Y)
@@ -46,8 +45,9 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000, n
   }
   
   # Register the parallel backend
-  cl <- makeSOCKcluster(num_cores)
-  registerDoSNOW(cl)
+  cl <- makeCluster(num_cores)
+  clusterExport(cl, c("Y", "alpha", "rhobound", "S", "objective_function", "D", "N"))
+  clusterEvalQ(cl, library(MCMCpack))
   
   on.exit({
     stopCluster(cl)
@@ -58,12 +58,8 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000, n
   total_pairs <- D * (D + 1) / 2
   pair_indices <- combn(D, 2, simplify = FALSE)
   pair_indices <- c(pair_indices, lapply(1:D, function(x) c(x, x)))  # Add diagonal pairs
-
-  pb <- txtProgressBar(min = 1, max = length(pair_indices), style = 3)
-  progress <- function(n) setTxtProgressBar(pb, n)
-  opts <- list(progress = progress)
   
-  results_list <- foreach::foreach(pair = pair_indices, .combine = 'c', .packages = c('stats', 'MCMCpack'), .options.snow = opts) %dopar% {
+  results_list <- pblapply(pair_indices, function(pair) {
     d1 <- pair[1]
     d2 <- pair[2]
     
@@ -85,8 +81,7 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000, n
     finitesamplecovariance <- cov(Y[d1,], Y[d2,])
     
     list(cilower = cilower, ciupper = ciupper, finitesamplecovariance = finitesamplecovariance)
-  }
-  close(pb)
+  }, cl = cl)
   
   for (i in 1:length(pair_indices)) {
     pair <- pair_indices[[i]]
