@@ -4,7 +4,7 @@ export(simulate_data)
 export(run_analysis)
 import(foreach)
 import(doParallel)
-import(progress)
+import(progressr)
 import(parallel)
 
 
