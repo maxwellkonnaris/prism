@@ -55,10 +55,11 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
   start_time <- Sys.time()
   
   total_pairs <- D * (D + 1) / 2
-  pb <- progressr::progressor(along = 1:total_pairs)
   
   pair_indices <- combn(D, 2, simplify = FALSE)
   pair_indices <- c(pair_indices, lapply(1:D, function(x) c(x, x)))  # Add diagonal pairs
+
+  pb <- progress::progress_bar$new(total = total_pairs, format = "  running [:bar] :percent in :elapsed, eta: :eta", clear = FALSE, width = 60)
   
   results_list <- with_progress({
     foreach::foreach(pair = pair_indices, .combine = 'list', .packages = c('stats', 'progressr', 'MCMCpack')) %dopar% {
@@ -84,16 +85,9 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
       
       pb()
       
-      list(cilower = cilower, ciupper = ciupper, finitesamplecovariance = finitesamplecovariance)
+      results[[d1, d2]] <- list(cilower = cilower, ciupper = ciupper, finitesamplecovariance = finitesamplecovariance)
     }
   })
-  
-  for (i in 1:length(pair_indices)) {
-    pair <- pair_indices[[i]]
-    d1 <- pair[1]
-    d2 <- pair[2]
-    results[[d1, d2]] <- results_list[[i]]
-  }
   
   end_time <- Sys.time()
   elapsed_time <- end_time - start_time
