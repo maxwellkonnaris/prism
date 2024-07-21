@@ -1,5 +1,10 @@
 run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
   library(progressr)
+  library(doParallel)
+  library(foreach)
+  library(MCMCpack)
+  library(stats)
+  
   handlers(global = TRUE)
   N <- ncol(Y)
   D <- nrow(Y)
@@ -61,30 +66,37 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
 
   pb <- progress::progress_bar$new(total = total_pairs, format = "  running [:bar] :percent in :elapsed, eta: :eta", clear = FALSE, width = 60)
   
-  results_list <- foreach::foreach(pair = pair_indices, .combine = 'list', .packages = c('stats', 'progressr', 'MCMCpack')) %dopar% {
-      d1 <- pair[1]
-      d2 <- pair[2]
+  results_list <- foreach(pair = pair_indices, .combine = 'list', .packages = c('stats', 'progressr', 'MCMCpack')) %dopar% {
+    d1 <- pair[1]
+    d2 <- pair[2]
+    
+    minmaxsigma <- matrix(NA, S, 2)
+    for (s in 1:S) {
+      Yboot <- Y[, sample(1:N, replace = TRUE)]
       
-      minmaxsigma <- matrix(NA, S, 2)
-      for (s in 1:S) {
-        Yboot <- Y[, sample(1:N, replace = TRUE)]
-        
-        res <- optim(par = c(0, 0, 0.1), fn = objective_function, Yboot = Yboot, d1 = d1, d2 = d2, alpha = alpha, method = "L-BFGS-B", lower = c(-rhobound, -rhobound, 0.05), upper = c(rhobound, rhobound, 0.2))
-        
-        minmaxsigma[s, ] <- c(min(res$value), max(res$value))
-      }
+      res <- optim(par = c(0, 0, 0.1), fn = objective_function, Yboot = Yboot, d1 = d1, d2 = d2, alpha = alpha, method = "L-BFGS-B", lower = c(-rhobound, -rhobound, 0.05), upper = c(rhobound, rhobound, 0.2))
       
-      sortedmin <- sort(minmaxsigma[, 1])
-      sortedmax <- sort(minmaxsigma[, 2])
-      
-      cilower <- quantile(sortedmin, probs = 0.025)
-      ciupper <- quantile(sortedmax, probs = 0.975)
+      minmaxsigma[s, ] <- c(min(res$value), max(res$value))
+    }
+    
+    sortedmin <- sort(minmaxsigma[, 1])
+    sortedmax <- sort(minmaxsigma[, 2])
+    
+    cilower <- quantile(sortedmin, probs = 0.025)
+    ciupper <- quantile(sortedmax, probs = 0.975)
 
-      finitesamplecovariance <- stats::cov(Y[d1,], Y[d2,])
-      
-      pb$tick()
-      
-      results[[d1, d2]] <- list(cilower = cilower, ciupper = ciupper, finitesamplecovariance = finitesamplecovariance)
+    finitesamplecovariance <- stats::cov(Y[d1,], Y[d2,])
+    
+    pb$tick()
+    
+    return(list(cilower = cilower, ciupper = ciupper, finitesamplecovariance = finitesamplecovariance))
+  }
+  
+  # Fill the results matrix
+  for (i in seq_along(pair_indices)) {
+    d1 <- pair_indices[[i]][1]
+    d2 <- pair_indices[[i]][2]
+    results[[d1, d2]] <- results_list[[i]]
   }
   
   end_time <- Sys.time()
