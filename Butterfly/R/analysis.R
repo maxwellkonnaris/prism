@@ -1,19 +1,3 @@
-# Register the parallel backend
-num_cores <- parallel::detectCores() - 1
-cl <- parallel::makeCluster(num_cores)
-doParallel::registerDoParallel(cl)
-
-# Verify cluster registration
-if(!foreach::getDoParRegistered()) {
-  stop("Parallel backend is not registered.")
-} else {
-  cat("Parallel backend is registered.\n")
-}
-
-# Check the number of workers
-num_workers <- foreach::getDoParWorkers()
-cat("Number of workers: ", num_workers, "\n")
-
 #' Run Analysis on All Pairwise Taxa
 #'
 #' @param Y Data matrix
@@ -56,6 +40,22 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
     sigma <- a * b * c + a * x * rho1 + b * x * rho2 + x^2
     return(min(sigma))
   }
+
+  # Register the parallel backend
+  num_cores <- parallel::detectCores() - 1
+  cl <- parallel::makeCluster(num_cores)
+  doParallel::registerDoParallel(cl)
+  
+  # Verify cluster registration
+  if(!foreach::getDoParRegistered()) {
+    stop("Parallel backend is not registered.")
+  } else {
+    cat("Parallel backend is registered.\n")
+  }
+  
+  # Check the number of workers
+  num_workers <- foreach::getDoParWorkers()
+  cat("Number of workers: ", num_workers, "\n")
   
   start_time <- Sys.time()
   
