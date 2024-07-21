@@ -106,7 +106,7 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
   for (res in results_list) {
     d1 <- res$d1
     d2 <- res$d2
-    comparison <- paste(d1, ":", d2, sep = "")
+    comparison <- paste(rownames(Y)[d1], ":", rownames(Y)[d2], sep = "")
     cilower <- res$cilower
     ciupper <- res$ciupper
     finitesamplecovariance <- res$finitesamplecovariance
