@@ -60,7 +60,7 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000, x
       cilower <- quantile(sortedmin, probs = 0.025)
       ciupper <- quantile(sortedmax, probs = 0.975)
       
-      results[[d1, d2]] <- list(c(cilower, ciupper), minmaxsigma)
+      results[[d1, d2]] <- list(cilower = cilower, ciupper = ciupper, minmaxsigma = minmaxsigma)
       
       counter <- counter + 1
       pb$tick()
