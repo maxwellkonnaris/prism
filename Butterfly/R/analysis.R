@@ -1,7 +1,7 @@
 # Register the parallel backend
 num_cores <- parallel::detectCores() - 1
 cl <- parallel::makeCluster(num_cores)
-registerDoParallel(cl)
+doParallel::registerDoParallel(cl)
 
 #' Run Analysis on All Pairwise Taxa
 #'
