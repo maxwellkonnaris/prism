@@ -1,6 +1,6 @@
 run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
   library(progressr)
-  library(doParallel)
+  library(doSNOW)
   library(foreach)
   library(MCMCpack)
   library(stats)
@@ -39,11 +39,11 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
   # Register the parallel backend
   num_cores <- parallel::detectCores() - 1
   cl <- parallel::makeCluster(num_cores)
-  doParallel::registerDoParallel(cl)
+  doSNOW::registerDoSNOW(cl)
   
   on.exit({
     parallel::stopCluster(cl)
-    doParallel::stopImplicitCluster()
+    doSNOW::stopImplicitCluster()
   }, add = TRUE)
   
   # Verify cluster registration
@@ -64,9 +64,16 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
   pair_indices <- combn(D, 2, simplify = FALSE)
   pair_indices <- c(pair_indices, lapply(1:D, function(x) c(x, x)))  # Add diagonal pairs
 
-  pb <- progress::progress_bar$new(total = total_pairs, format = "  running [:bar] :percent in :elapsed, eta: :eta", clear = FALSE, width = 60)
+  pb <- progress::progress_bar$new(total = total_pairs, format = "  running [:bar] :percent in :elapsed | eta: :eta", clear = FALSE, width = 60)
+
+  # allowing progress bar to be used in foreach -----------------------------
+  progress <- function(n){
+    pb$tick()
+  } 
   
-  foreach(pair = pair_indices, .packages = c('stats', 'progressr', 'MCMCpack')) %dopar% {
+  opts <- list(progress = progress)
+                                         
+  foreach(pair = pair_indices, .packages = c('stats', 'progressr', 'MCMCpack'), .options.snow = opts) %dopar% {
     d1 <- pair[1]
     d2 <- pair[2]
     
@@ -85,9 +92,7 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
     cilower <- quantile(sortedmin, probs = 0.025)
     ciupper <- quantile(sortedmax, probs = 0.975)
 
-    finitesamplecovariance <- stats::cov(Y[d1,], Y[d2,])
-    
-    pb$tick()
+    finitesamplecovariance <- stats::cov(log(Y)[d1,], log(Y)[d2,])
     
     list(d1 = d1, d2 = d2, cilower = cilower, ciupper = ciupper, finitesamplecovariance = finitesamplecovariance)
   } -> results_list
