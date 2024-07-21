@@ -4,91 +4,112 @@
 #' @param alpha Alpha parameter
 #' @param rhobound Rho bound
 #' @param S Number of simulations
-#' @param num_cores Number of cores for parallel processing
 #' @return A matrix of lists containing confidence intervals and true values for all pairs of taxa
-#' @import pbapply
+#' @import progressr
+#' @import foreach
+#' @import doParallel
 #' @import parallel
 #' @import MCMCpack
-run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000, num_cores = parallel::detectCores() - 1) {
+run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
+  library(progressr)
+  handlers(global = TRUE)
   N <- ncol(Y)
   D <- nrow(Y)
   
   rho1 <- seq(-rhobound, rhobound, by = 0.05)
   rho2 <- seq(-rhobound, rhobound, by = 0.05)
   x <- seq(0.05, 0.2, by = 0.01)
-  pars <- base::expand.grid(rho1, rho2, x)
+  pars <- expand.grid(rho1, rho2, x)
   colnames(pars) <- c("rho1", "rho2", "x")
   
-  results <- base::matrix(list(), D, D)
+  results <- matrix(list(), D, D)
   
   objective_function <- function(params, Yboot, d1, d2, alpha) {
     rho1 <- params[1]
     rho2 <- params[2]
     x <- params[3]
     
-    rWpara <- base::matrix(NA, D, N)
+    rWpara <- matrix(NA, D, N)
     for (n in 1:N) {
       rWpara[, n] <- MCMCpack::rdirichlet(1, Yboot[, n] + alpha)
     }
-    rWpara <- base::log(rWpara)
+    rWpara <- log(rWpara)
     
-    a <- stats::var(rWpara[d1, ])
-    b <- stats::var(rWpara[d2, ])
-    c <- stats::cor(rWpara[d1, ], rWpara[d2, ])
+    a <- var(rWpara[d1, ])
+    b <- var(rWpara[d2, ])
+    c <- cor(rWpara[d1, ], rWpara[d2, ])
     
     sigma <- a * b * c + a * x * rho1 + b * x * rho2 + x^2
-    return(base::min(sigma))
+    return(min(sigma))
   }
-  
+
   # Register the parallel backend
+  num_cores <- parallel::detectCores() - 1
   cl <- parallel::makeCluster(num_cores)
-  parallel::clusterExport(cl, c("Y", "alpha", "rhobound", "S", "objective_function", "D", "N"))
-  parallel::clusterEvalQ(cl, library(MCMCpack))
+  doParallel::registerDoParallel(cl)
   
   on.exit({
     parallel::stopCluster(cl)
+    doParallel::stopImplicitCluster()
   }, add = TRUE)
   
-  start_time <- base::Sys.time()
+  # Verify cluster registration
+  if(!foreach::getDoParRegistered()) {
+    stop("Parallel backend is not registered.")
+  } else {
+    cat("Parallel backend is registered.\n")
+  }
+  
+  # Check the number of workers
+  num_workers <- foreach::getDoParWorkers()
+  cat("Number of workers: ", num_workers, "\n")
+  
+  start_time <- Sys.time()
   
   total_pairs <- D * (D + 1) / 2
-  pair_indices <- utils::combn(D, 2, simplify = FALSE)
-  pair_indices <- base::c(pair_indices, lapply(1:D, function(x) c(x, x)))  # Add diagonal pairs
+  pb <- progressr::progressor(along = 1:total_pairs)
   
-  results_list <- pbapply::pblapply(pair_indices, function(pair) {
-    d1 <- pair[1]
-    d2 <- pair[2]
-    
-    minmaxsigma <- base::matrix(NA, S, 2)
-    for (s in 1:S) {
-      Yboot <- Y[, base::sample(1:N, replace = TRUE)]
+  pair_indices <- combn(D, 2, simplify = FALSE)
+  pair_indices <- c(pair_indices, lapply(1:D, function(x) c(x, x)))  # Add diagonal pairs
+  
+  results_list <- with_progress({
+    foreach::foreach(pair = pair_indices, .combine = 'c', .packages = c('stats', 'progressr', 'MCMCpack')) %dopar% {
+      d1 <- pair[1]
+      d2 <- pair[2]
       
-      res <- stats::optim(par = c(0, 0, 0.1), fn = objective_function, Yboot = Yboot, d1 = d1, d2 = d2, alpha = alpha, method = "L-BFGS-B", lower = c(-rhobound, -rhobound, 0.05), upper = c(rhobound, rhobound, 0.2))
+      minmaxsigma <- matrix(NA, S, 2)
+      for (s in 1:S) {
+        Yboot <- Y[, sample(1:N, replace = TRUE)]
+        
+        res <- optim(par = c(0, 0, 0.1), fn = objective_function, Yboot = Yboot, d1 = d1, d2 = d2, alpha = alpha, method = "L-BFGS-B", lower = c(-rhobound, -rhobound, 0.05), upper = c(rhobound, rhobound, 0.2))
+        
+        minmaxsigma[s, ] <- c(min(res$value), max(res$value))
+      }
       
-      minmaxsigma[s, ] <- c(base::min(res$value), base::max(res$value))
+      sortedmin <- sort(minmaxsigma[, 1])
+      sortedmax <- sort(minmaxsigma[, 2])
+      
+      cilower <- quantile(sortedmin, probs = 0.025)
+      ciupper <- quantile(sortedmax, probs = 0.975)
+
+      finitesamplecovariance <- stats::cov(Y[d1,], Y[d2,])
+      
+      pb()
+      
+      list(cilower = cilower, ciupper = ciupper, finitesamplecovariance = finitesamplecovariance)
     }
-    
-    sortedmin <- base::sort(minmaxsigma[, 1])
-    sortedmax <- base::sort(minmaxsigma[, 2])
-    
-    cilower <- stats::quantile(sortedmin, probs = 0.025)
-    ciupper <- stats::quantile(sortedmax, probs = 0.975)
-    
-    finitesamplecovariance <- stats::cov(Y[d1,], Y[d2,])
-    
-    list(cilower = cilower, ciupper = ciupper, finitesamplecovariance = finitesamplecovariance)
-  }, cl = cl)
+  })
   
-  for (i in 1:base::length(pair_indices)) {
+  for (i in 1:length(pair_indices)) {
     pair <- pair_indices[[i]]
     d1 <- pair[1]
     d2 <- pair[2]
     results[[d1, d2]] <- results_list[[i]]
   }
   
-  end_time <- base::Sys.time()
+  end_time <- Sys.time()
   elapsed_time <- end_time - start_time
-  base::print(base::paste("Total time taken:", elapsed_time))
+  print(paste("Total time taken:", elapsed_time))
   
   return(results)
 }
