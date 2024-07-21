@@ -10,6 +10,7 @@
 #' @import doParallel
 #' @import parallel
 #' @import progress_bar
+#' @import MCMCpack
 run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
   
   N <- ncol(Y)
