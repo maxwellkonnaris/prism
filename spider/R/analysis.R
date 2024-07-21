@@ -85,8 +85,7 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
       pb$tick()
       
       results[[d1, d2]] <- list(cilower = cilower, ciupper = ciupper, finitesamplecovariance = finitesamplecovariance)
-    }
-  })
+  }
   
   end_time <- Sys.time()
   elapsed_time <- end_time - start_time
