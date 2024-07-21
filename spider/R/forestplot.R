@@ -31,17 +31,29 @@ forest_plot <- function(data) {
   
   # Create the forest plot with only confidence intervals
   plot <- ggplot(data, aes(x = comparison, ymin = cilower, ymax = ciupper)) +
-    geom_errorbar(width = 0.2) +
+    geom_errorbar(width = 0.3, size = 1) +
     coord_flip() +
-    theme_minimal() +
+    theme_minimal(base_size = 15) +
     labs(
       title = "Forest Plot of Confidence Intervals",
       x = "Taxa Comparison",
-      y = "Confidence Interval of True Covariance/Variance (Log Scale)"
+      y = "Confidence Interval"
     ) +
     theme(
-      axis.text.x = element_text(angle = 45, hjust = 1)
+      axis.text.x = element_text(angle = 45, hjust = 1),
+      plot.title = element_text(size = 20, face = "bold"),
+      axis.title = element_text(size = 18),
+      axis.text = element_text(size = 15)
     )
   
   return(plot)
 }
+
+# Example usage (uncomment and run when using actual data)
+# results <- data.frame(
+#   comparison = c("A:B", "A:C", "B:C"),
+#   cilower = c(0.1, 0.2, 0.3),
+#   ciupper = c(0.4, 0.5, 0.6)
+# )
+# plot <- forest_plot(results)
+# ggsave("forest_plot.png", plot, width = 12, height = 8, dpi = 300)
