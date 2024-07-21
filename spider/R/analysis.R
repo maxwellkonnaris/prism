@@ -13,7 +13,6 @@
 #' @import MCMCpack
 run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000, num_cores = parallel::detectCores() - 1) {
   library(progressr)
-  handlers(global = TRUE)
   
   N <- ncol(Y)
   D <- nrow(Y)
@@ -68,12 +67,13 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000, n
   start_time <- Sys.time()
   
   total_pairs <- D * (D + 1) / 2
-  pb <- progressr::progressor(along = 1:total_pairs)
-  
+
   pair_indices <- combn(D, 2, simplify = FALSE)
   pair_indices <- c(pair_indices, lapply(1:D, function(x) c(x, x)))  # Add diagonal pairs
+                                         
+  p <- progressr::progressor(along = 1:pair_indices)
   
-  results_list <- foreach::foreach(pair = pair_indices, .combine = 'c', .packages = c('stats', 'progressr', 'MCMCpack')) %dopar% {
+  with_progress(results_list <- foreach::foreach(pair = pair_indices, .combine = 'c', .packages = c('stats', 'progressr', 'MCMCpack')) %dopar% {
       d1 <- pair[1]
       d2 <- pair[2]
       
@@ -102,7 +102,7 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000, n
     d1 <- pair[1]
     d2 <- pair[2]
     results[[d1, d2]] <- results_list[[i]]
-  }
+  })
   
   end_time <- Sys.time()
   elapsed_time <- end_time - start_time
