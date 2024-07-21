@@ -1,15 +1,3 @@
-#' Run Analysis on All Pairwise Taxa
-#'
-#' @param Y Data matrix
-#' @param alpha Alpha parameter
-#' @param rhobound Rho bound
-#' @param S Number of simulations
-#' @return A matrix of lists containing confidence intervals and true values for all pairs of taxa
-#' @import progressr
-#' @import foreach
-#' @import doParallel
-#' @import parallel
-#' @import MCMCpack
 run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
   library(progressr)
   handlers(global = TRUE)
@@ -73,7 +61,7 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
   pair_indices <- c(pair_indices, lapply(1:D, function(x) c(x, x)))  # Add diagonal pairs
   
   results_list <- with_progress({
-    foreach::foreach(pair = pair_indices, .combine = 'c', .packages = c('stats', 'progressr', 'MCMCpack')) %dopar% {
+    foreach::foreach(pair = pair_indices, .combine = 'list', .packages = c('stats', 'progressr', 'MCMCpack')) %dopar% {
       d1 <- pair[1]
       d2 <- pair[2]
       
@@ -83,7 +71,7 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
         
         res <- optim(par = c(0, 0, 0.1), fn = objective_function, Yboot = Yboot, d1 = d1, d2 = d2, alpha = alpha, method = "L-BFGS-B", lower = c(-rhobound, -rhobound, 0.05), upper = c(rhobound, rhobound, 0.2))
         
-        minmaxsigma[s, ] <- c(res$value, res$value)
+        minmaxsigma[s, ] <- c(res$value, res.value)
       }
       
       sortedmin <- sort(minmaxsigma[, 1])
@@ -104,7 +92,7 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
     pair <- pair_indices[[i]]
     d1 <- pair[1]
     d2 <- pair[2]
-    results[[d1, d2]] <- results_list[i]
+    results[[d1, d2]] <- results_list[[i]]
   }
   
   end_time <- Sys.time()
