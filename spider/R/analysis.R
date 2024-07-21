@@ -1,9 +1,9 @@
 run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
-  library(progressr)
-  library(doSNOW)
-  library(foreach)
-  library(MCMCpack)
-  library(stats)
+  # library(progressr)
+  # library(doSNOW)
+  # library(foreach)
+  # library(MCMCpack)
+  # library(stats)
   
   handlers(global = TRUE)
   N <- ncol(Y)
