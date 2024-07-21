@@ -10,7 +10,7 @@ registerDoParallel(cl)
 #' @param rhobound Rho bound
 #' @param S Number of simulations
 #' @return A matrix of lists containing confidence intervals and true values for all pairs of taxa
-#' @importFrom progress progress_bar doParallel foreach makeCluster
+#' @importFrom progress progress_bar doParallel foreach parallel
 run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
   N <- ncol(Y)
   D <- nrow(Y)
