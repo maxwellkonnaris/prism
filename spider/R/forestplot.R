@@ -4,15 +4,6 @@
 #'
 #' @param data A data frame containing the comparison names, lower confidence intervals, and upper confidence intervals.
 #' @return A ggplot object representing the forest plot.
-#' @examples
-#' \dontrun{
-#'   results <- data.frame(
-#'     comparison = c("A:B", "A:C", "B:C"),
-#'     cilower = c(0.1, 0.2, 0.3),
-#'     ciupper = c(0.4, 0.5, 0.6)
-#'   )
-#'   forest_plot(results)
-#' }
 #' @import ggplot2
 #' @import dplyr
 #' @export
@@ -37,7 +28,7 @@ forest_plot <- function(data) {
     labs(
       title = "Forest Plot of Confidence Intervals",
       x = "Taxa Comparison",
-      y = "Confidence Interval"
+      y = "Confidence Interval of Estimated Covariance/Variance (log scale)"
     ) +
     theme(
       axis.text.x = element_text(angle = 45, hjust = 1),
