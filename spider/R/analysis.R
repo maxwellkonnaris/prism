@@ -39,7 +39,7 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
   # Register the parallel backend
   num_cores <- parallel::detectCores() - 1
   cl <- parallel::makeCluster(num_cores)
-  doParallel::registerDoParallel(cl)
+  doSNOW::registerDoSNOW(cl)
   
   on.exit({
     parallel::stopCluster(cl)
