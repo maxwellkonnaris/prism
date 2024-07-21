@@ -10,7 +10,7 @@
 #' @import doParallel
 #' @import parallel
 #' @import MCMCpack
-run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
+run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000, num_cores=parallel::detectCores() - 1) {
   library(progressr)
   handlers(global = TRUE)
   N <- ncol(Y)
@@ -44,7 +44,6 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
   }
 
   # Register the parallel backend
-  num_cores <- parallel::detectCores() - 1
   cl <- parallel::makeCluster(num_cores)
   doParallel::registerDoParallel(cl)
   
@@ -92,7 +91,7 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
       cilower <- quantile(sortedmin, probs = 0.025)
       ciupper <- quantile(sortedmax, probs = 0.975)
       
-      pb()
+      pb$tick()
       
       list(cilower = cilower, ciupper = ciupper, minmaxsigma = minmaxsigma)
     }
