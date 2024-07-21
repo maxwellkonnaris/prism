@@ -50,7 +50,7 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
   pair_indices <- combn(D, 2, simplify = FALSE)
   pair_indices <- c(pair_indices, lapply(1:D, function(x) c(x, x)))  # Add diagonal pairs
   
-  results_list <- foreach(pair = pair_indices, .combine = 'c', .packages = c('stats', 'progress')) %dopar% {
+  results_list <- foreach::foreach(pair = pair_indices, .combine = 'c', .packages = c('stats', 'progress')) %dopar% {
     d1 <- pair[1]
     d2 <- pair[2]
     
