@@ -6,8 +6,6 @@
 #' @param S Number of simulations
 #' @return A matrix of lists containing confidence intervals and true values for all pairs of taxa
 run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000, x=NULL) {
-  library(progress)
-  
   N <- ncol(Y)
   D <- nrow(Y)
   
@@ -40,13 +38,13 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000, x
   
   start_time <- Sys.time()
   
-  total_pairs <- (D-1) * D / 2
+  total_pairs <- D * (D + 1) / 2
   pb <- progress_bar$new(total = total_pairs, format = "  running [:bar] :percent in :elapsed, eta: :eta", clear = FALSE, width = 60)
   
   counter <- 0
   
-  for (d1 in 1:(D-1)) {
-    for (d2 in (d1+1):D) {
+  for (d1 in 1:D) {
+    for (d2 in d1:D) {
       minmaxsigma <- matrix(NA, S, 2)
       for (s in 1:S) {
         Yboot <- Y[, sample(1:N, replace = TRUE)]
