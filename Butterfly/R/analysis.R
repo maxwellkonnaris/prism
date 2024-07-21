@@ -8,15 +8,15 @@
 run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000, x=NULL) {
   N <- ncol(Y)
   D <- nrow(Y)
-
+  
   rho1 <- seq(-rhobound, rhobound, by = 0.05)
   rho2 <- seq(-rhobound, rhobound, by = 0.05)
   x <- seq(0.05, 0.2, by = 0.01)
   pars <- expand.grid(rho1, rho2, x)
   colnames(pars) <- c("rho1", "rho2", "x")
-
-  results <- list()
-
+  
+  results <- matrix(list(), D, D)
+  
   objective_function <- function(params, Yboot, d1, d2, alpha) {
     rho1 <- params[1]
     rho2 <- params[2]
@@ -35,7 +35,12 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000, x
     sigma <- a * b * c + a * x * rho1 + b * x * rho2 + x^2
     return(min(sigma))
   }
-
+  
+  start_time <- Sys.time()
+  
+  pb <- txtProgressBar(min = 0, max = (D-1) * D / 2, style = 3)
+  counter <- 0
+  
   for (d1 in 1:(D-1)) {
     for (d2 in (d1+1):D) {
       minmaxsigma <- matrix(NA, S, 2)
@@ -53,10 +58,19 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000, x
       cilower <- quantile(sortedmin, probs = 0.025)
       ciupper <- quantile(sortedmax, probs = 0.975)
       
-      results[[paste(d1, d2, sep = "-")]] <- list(cilower = cilower, ciupper = ciupper)
+      results[[d1, d2]] <- list(c(cilower, ciupper), minmaxsigma)
+      
+      counter <- counter + 1
+      setTxtProgressBar(pb, counter)
     }
   }
-
+  
+  close(pb)
+  end_time <- Sys.time()
+  elapsed_time <- end_time - start_time
+  print(paste("Total time taken:", elapsed_time))
+  
   return(results)
 }
+
 
