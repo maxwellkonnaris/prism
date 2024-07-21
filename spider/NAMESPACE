@@ -3,7 +3,7 @@ export(within)
 export(simulate_data)
 export(run_analysis)
 import(foreach)
-import(doParallel)
+import(doSNOW)
 import(progressr)
 import(parallel)
 
