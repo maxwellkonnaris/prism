@@ -97,7 +97,6 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
   
   formatted_results <- data.frame(
     comparison = character(),
-    comparisonnames = character(),
     cilower = numeric(),
     ciupper = numeric(),
     finitesamplecovariance = numeric(),
@@ -108,14 +107,12 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
     d1 <- res$d1
     d2 <- res$d2
     comparison <- paste(d1, ":", d2, sep = "")
-    comparisonnames <- comparison <- paste(rownames(Y)[d1], ":", rownames(Y)[d2], sep = "")
     cilower <- res$cilower
     ciupper <- res$ciupper
     finitesamplecovariance <- res$finitesamplecovariance
     
     formatted_results <- rbind(formatted_results, data.frame(
       comparison = comparison,
-      comparisonnames = comparisonnames,
       cilower = cilower,
       ciupper = ciupper,
       finitesamplecovariance = finitesamplecovariance,
