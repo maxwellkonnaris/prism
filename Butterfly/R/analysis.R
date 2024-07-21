@@ -89,4 +89,4 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
 }
 
 # Stop the parallel cluster after execution
-stopCluster(cl)
+parallel::stopCluster(cl)
