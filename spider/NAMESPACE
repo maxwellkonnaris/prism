@@ -12,5 +12,6 @@ import(tidyverse)
 import(dplyr)
 import(progressr)
 import(parallel)
+import(ggplot2)
 
 
