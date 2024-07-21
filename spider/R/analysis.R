@@ -83,7 +83,7 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
         
         res <- optim(par = c(0, 0, 0.1), fn = objective_function, Yboot = Yboot, d1 = d1, d2 = d2, alpha = alpha, method = "L-BFGS-B", lower = c(-rhobound, -rhobound, 0.05), upper = c(rhobound, rhobound, 0.2))
         
-        minmaxsigma[s, ] <- c(min(res$value), max(res$value))
+        minmaxsigma[s, ] <- c(res$value, res$value)
       }
       
       sortedmin <- sort(minmaxsigma[, 1])
