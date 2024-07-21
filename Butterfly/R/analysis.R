@@ -5,14 +5,14 @@
 #' @param rhobound Rho bound
 #' @param S Number of simulations
 #' @return A matrix of lists containing confidence intervals and true values for all pairs of taxa
-#' @import progress 
+#' @import progressr
 #' @import foreach
 #' @import doParallel
 #' @import parallel
-#' @import progress_bar
 #' @import MCMCpack
 run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
-  
+  library(progressr)
+  handlers(global = TRUE)
   N <- ncol(Y)
   D <- nrow(Y)
   
@@ -67,12 +67,12 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
   start_time <- Sys.time()
   
   total_pairs <- D * (D + 1) / 2
-  pb <- progress::progress_bar$new(total = total_pairs, format = "  running [:bar] :percent in :elapsed, eta: :eta", clear = FALSE, width = 60)
+  pb <- progressr::progressor(along = 1:total_pairs)
   
   pair_indices <- combn(D, 2, simplify = FALSE)
   pair_indices <- c(pair_indices, lapply(1:D, function(x) c(x, x)))  # Add diagonal pairs
   
-  results_list <- foreach::foreach(pair = pair_indices, .combine = 'c', .packages = c('stats', 'progress', 'MCMCpack')) %dopar% {
+  results_list <- foreach::foreach(pair = pair_indices, .combine = 'c', .packages = c('stats', 'progressr', 'MCMCpack')) %dopar% {
     d1 <- pair[1]
     d2 <- pair[2]
     
@@ -91,7 +91,7 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
     cilower <- quantile(sortedmin, probs = 0.025)
     ciupper <- quantile(sortedmax, probs = 0.975)
     
-    pb$tick()
+    pb()
     
     list(cilower = cilower, ciupper = ciupper, minmaxsigma = minmaxsigma)
   }
