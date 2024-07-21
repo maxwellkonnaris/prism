@@ -72,7 +72,8 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000, n
                                          
   p <- progressr::progressor(along = 1:total_pairs)
   
-  results_list <- foreach::foreach(pair = pair_indices, .combine = 'c', .packages = c('stats', 'progressr', 'MCMCpack')) %dopar% {
+  results_list <- with_progress({
+    foreach::foreach(pair = pair_indices, .combine = 'c', .packages = c('stats', 'progressr', 'MCMCpack')) %dopar% {
       d1 <- pair[1]
       d2 <- pair[2]
       
@@ -93,10 +94,11 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000, n
 
       finitesamplecovariance <- cov(Y[d1,], Y[d2,])
       
-      p(message = sprintf("Adding %g", total_pairs))
+      p(message = sprintf("Processing pair %d-%d", d1, d2))
       
       list(cilower = cilower, ciupper = ciupper, finitesamplecovariance = finitesamplecovariance)
-  }
+    }
+  })
   
   for (i in 1:length(pair_indices)) {
     pair <- pair_indices[[i]]
