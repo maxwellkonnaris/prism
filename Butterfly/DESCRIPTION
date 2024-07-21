@@ -6,5 +6,6 @@ Author: Maxwell Konnaris
 Maintainer: Maxwell Konnaris <Maxwellkonnaris@gmail.com>
 Description: A package for running simulations and robust correlation analysis on count data using a bootstrap scale estimation approach to solve partially identified systems.
 License: GPL-3
-Imports: tidyverse, driver, rBeta2009
+Imports: tidyverse, driver, rBeta2009, pbapply
+
 
