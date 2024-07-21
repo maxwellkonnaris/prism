@@ -1,6 +1,6 @@
 run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
   # library(progressr)
-  # library(doSNOW)
+  # library(doParallel)
   # library(foreach)
   # library(MCMCpack)
   # library(stats)
@@ -39,7 +39,7 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
   # Register the parallel backend
   num_cores <- parallel::detectCores() - 1
   cl <- parallel::makeCluster(num_cores)
-  doSNOW::registerDoSNOW(cl)
+  doParallel::registerDoParallel(cl)
   
   on.exit({
     parallel::stopCluster(cl)
@@ -65,14 +65,13 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
 
   pb <- progress::progress_bar$new(total = total_pairs, format = "  running [:bar] :percent in :elapsed | eta: :eta", clear = FALSE, width = 60)
 
-  # allowing progress bar to be used in foreach -----------------------------
-  progress <- function(n){
+  progress <- function(n) {
     pb$tick()
   } 
   
   opts <- list(progress = progress)
-                                         
-  foreach(pair = pair_indices, .packages = c('stats', 'progressr', 'MCMCpack'), .options.snow = opts) %dopar% {
+  
+  results_list <- foreach(pair = pair_indices, .packages = c('stats', 'progressr', 'MCMCpack'), .options.snow = opts) %dopar% {
     d1 <- pair[1]
     d2 <- pair[2]
     
@@ -94,18 +93,36 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
     finitesamplecovariance <- stats::cov(log(Y)[d1,], log(Y)[d2,])
     
     list(d1 = d1, d2 = d2, cilower = cilower, ciupper = ciupper, finitesamplecovariance = finitesamplecovariance)
-  } -> results_list
+  }
   
-  # Fill the results matrix
+  formatted_results <- data.frame(
+    comparison = character(),
+    cilower = numeric(),
+    ciupper = numeric(),
+    finitesamplecovariance = numeric(),
+    stringsAsFactors = FALSE
+  )
+  
   for (res in results_list) {
     d1 <- res$d1
     d2 <- res$d2
-    results[[d1, d2]] <- list(cilower = res$cilower, ciupper = res$ciupper, finitesamplecovariance = res$finitesamplecovariance)
+    comparison <- paste(d1, ":", d2, sep = "")
+    cilower <- res$cilower
+    ciupper <- res$ciupper
+    finitesamplecovariance <- res$finitesamplecovariance
+    
+    formatted_results <- rbind(formatted_results, data.frame(
+      comparison = comparison,
+      cilower = cilower,
+      ciupper = ciupper,
+      finitesamplecovariance = finitesamplecovariance,
+      stringsAsFactors = FALSE
+    ))
   }
   
   end_time <- Sys.time()
   elapsed_time <- end_time - start_time
   print(paste("Total time taken:", elapsed_time))
   
-  return(results)
+  return(formatted_results)
 }
