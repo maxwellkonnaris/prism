@@ -71,7 +71,7 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000, n
   pair_indices <- combn(D, 2, simplify = FALSE)
   pair_indices <- c(pair_indices, lapply(1:D, function(x) c(x, x)))  # Add diagonal pairs
                                          
-  p <- progressr::progressor(along = 1:pair_indices)
+  p <- progressr::progressor(along = 1:total_pairs)
   
   with_progress(results_list <- foreach::foreach(pair = pair_indices, .combine = 'c', .packages = c('stats', 'progressr', 'MCMCpack')) %dopar% {
       d1 <- pair[1]
@@ -93,6 +93,8 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000, n
       ciupper <- quantile(sortedmax, probs = 0.975)
 
       finitesamplecovariance = cov(Y[d1,],Y[d2,])
+
+      p(message = sprintf("Adding %g", ))
       
       list(cilower = cilower, ciupper = ciupper, finitesamplecovariance = finitesamplecovariance)
     }
