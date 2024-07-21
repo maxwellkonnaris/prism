@@ -54,7 +54,7 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000, n
   }, add = TRUE)
   
   # Verify cluster registration
-  if(!foreach::getDoParRegistered()) {
+  if (!foreach::getDoParRegistered()) {
     stop("Parallel backend is not registered.")
   } else {
     cat("Parallel backend is registered.\n")
@@ -67,13 +67,12 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000, n
   start_time <- Sys.time()
   
   total_pairs <- D * (D + 1) / 2
-
   pair_indices <- combn(D, 2, simplify = FALSE)
   pair_indices <- c(pair_indices, lapply(1:D, function(x) c(x, x)))  # Add diagonal pairs
                                          
   p <- progressr::progressor(along = 1:total_pairs)
   
-  with_progress(results_list <- foreach::foreach(pair = pair_indices, .combine = 'c', .packages = c('stats', 'progressr', 'MCMCpack')) %dopar% {
+  results_list <- foreach::foreach(pair = pair_indices, .combine = 'c', .packages = c('stats', 'progressr', 'MCMCpack')) %dopar% {
       d1 <- pair[1]
       d2 <- pair[2]
       
@@ -92,19 +91,19 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000, n
       cilower <- quantile(sortedmin, probs = 0.025)
       ciupper <- quantile(sortedmax, probs = 0.975)
 
-      finitesamplecovariance = cov(Y[d1,],Y[d2,])
-
-      p(message = sprintf("Adding %g", ))
+      finitesamplecovariance <- cov(Y[d1,], Y[d2,])
+      
+      p(message = sprintf("Adding %g", total_pairs))
       
       list(cilower = cilower, ciupper = ciupper, finitesamplecovariance = finitesamplecovariance)
-    }
+  }
   
   for (i in 1:length(pair_indices)) {
     pair <- pair_indices[[i]]
     d1 <- pair[1]
     d2 <- pair[2]
     results[[d1, d2]] <- results_list[[i]]
-  })
+  }
   
   end_time <- Sys.time()
   elapsed_time <- end_time - start_time
