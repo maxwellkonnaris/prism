@@ -68,7 +68,7 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
     
     pb$tick()
     
-    list(cilower = cilower, ciupper = ciupper, minmaxsigma = minmaxsigma)
+    list(cilower = cilower, ciupper = ciupper)
   }
   
   for (i in 1:length(pair_indices)) {
