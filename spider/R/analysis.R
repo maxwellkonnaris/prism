@@ -43,7 +43,6 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
   
   on.exit({
     parallel::stopCluster(cl)
-    doSNOW::stopImplicitCluster()
   }, add = TRUE)
   
   # Verify cluster registration
