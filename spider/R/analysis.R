@@ -66,7 +66,7 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
 
   pb <- progress::progress_bar$new(total = total_pairs, format = "  running [:bar] :percent in :elapsed, eta: :eta", clear = FALSE, width = 60)
   
-  results_list <- foreach(pair = pair_indices, .combine = 'list', .packages = c('stats', 'progressr', 'MCMCpack')) %dopar% {
+  foreach(pair = pair_indices, .packages = c('stats', 'progressr', 'MCMCpack')) %dopar% {
     d1 <- pair[1]
     d2 <- pair[2]
     
@@ -89,14 +89,14 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
     
     pb$tick()
     
-    return(list(cilower = cilower, ciupper = ciupper, finitesamplecovariance = finitesamplecovariance))
-  }
+    list(d1 = d1, d2 = d2, cilower = cilower, ciupper = ciupper, finitesamplecovariance = finitesamplecovariance)
+  } -> results_list
   
   # Fill the results matrix
-  for (i in seq_along(pair_indices)) {
-    d1 <- pair_indices[[i]][1]
-    d2 <- pair_indices[[i]][2]
-    results[[d1, d2]] <- results_list[[i]]
+  for (res in results_list) {
+    d1 <- res$d1
+    d2 <- res$d2
+    results[[d1, d2]] <- list(cilower = res$cilower, ciupper = res$ciupper, finitesamplecovariance = res$finitesamplecovariance)
   }
   
   end_time <- Sys.time()
