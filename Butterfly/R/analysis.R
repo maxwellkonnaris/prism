@@ -72,29 +72,31 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
   pair_indices <- combn(D, 2, simplify = FALSE)
   pair_indices <- c(pair_indices, lapply(1:D, function(x) c(x, x)))  # Add diagonal pairs
   
-  results_list <- foreach::foreach(pair = pair_indices, .combine = 'c', .packages = c('stats', 'progressr', 'MCMCpack')) %dopar% {
-    d1 <- pair[1]
-    d2 <- pair[2]
-    
-    minmaxsigma <- matrix(NA, S, 2)
-    for (s in 1:S) {
-      Yboot <- Y[, sample(1:N, replace = TRUE)]
+  results_list <- with_progress({
+    foreach::foreach(pair = pair_indices, .combine = 'c', .packages = c('stats', 'progressr', 'MCMCpack')) %dopar% {
+      d1 <- pair[1]
+      d2 <- pair[2]
       
-      res <- optim(par = c(0, 0, 0.1), fn = objective_function, Yboot = Yboot, d1 = d1, d2 = d2, alpha = alpha, method = "L-BFGS-B", lower = c(-rhobound, -rhobound, 0.05), upper = c(rhobound, rhobound, 0.2))
+      minmaxsigma <- matrix(NA, S, 2)
+      for (s in 1:S) {
+        Yboot <- Y[, sample(1:N, replace = TRUE)]
+        
+        res <- optim(par = c(0, 0, 0.1), fn = objective_function, Yboot = Yboot, d1 = d1, d2 = d2, alpha = alpha, method = "L-BFGS-B", lower = c(-rhobound, -rhobound, 0.05), upper = c(rhobound, rhobound, 0.2))
+        
+        minmaxsigma[s, ] <- c(res$value, res$value)
+      }
       
-      minmaxsigma[s, ] <- c(res$value, res$value)
+      sortedmin <- sort(minmaxsigma[, 1])
+      sortedmax <- sort(minmaxsigma[, 2])
+      
+      cilower <- quantile(sortedmin, probs = 0.025)
+      ciupper <- quantile(sortedmax, probs = 0.975)
+      
+      pb()
+      
+      list(cilower = cilower, ciupper = ciupper, minmaxsigma = minmaxsigma)
     }
-    
-    sortedmin <- sort(minmaxsigma[, 1])
-    sortedmax <- sort(minmaxsigma[, 2])
-    
-    cilower <- quantile(sortedmin, probs = 0.025)
-    ciupper <- quantile(sortedmax, probs = 0.975)
-    
-    pb()
-    
-    list(cilower = cilower, ciupper = ciupper, minmaxsigma = minmaxsigma)
-  }
+  })
   
   for (i in 1:length(pair_indices)) {
     pair <- pair_indices[[i]]
