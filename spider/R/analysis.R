@@ -4,15 +4,17 @@
 #' @param alpha Alpha parameter
 #' @param rhobound Rho bound
 #' @param S Number of simulations
+#' @param num_cores Number of cores for parallel processing
 #' @return A matrix of lists containing confidence intervals and true values for all pairs of taxa
 #' @import progressr
 #' @import foreach
 #' @import doParallel
 #' @import parallel
 #' @import MCMCpack
-run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000, num_cores=parallel::detectCores() - 1) {
+run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000, num_cores = parallel::detectCores() - 1) {
   library(progressr)
   handlers(global = TRUE)
+  
   N <- ncol(Y)
   D <- nrow(Y)
   
@@ -42,7 +44,7 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000, n
     sigma <- a * b * c + a * x * rho1 + b * x * rho2 + x^2
     return(min(sigma))
   }
-
+  
   # Register the parallel backend
   cl <- parallel::makeCluster(num_cores)
   doParallel::registerDoParallel(cl)
@@ -82,7 +84,7 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000, n
         
         res <- optim(par = c(0, 0, 0.1), fn = objective_function, Yboot = Yboot, d1 = d1, d2 = d2, alpha = alpha, method = "L-BFGS-B", lower = c(-rhobound, -rhobound, 0.05), upper = c(rhobound, rhobound, 0.2))
         
-        minmaxsigma[s, ] <- c(res$value, res$value)
+        minmaxsigma[s, ] <- c(res$value, res.value)
       }
       
       sortedmin <- sort(minmaxsigma[, 1])
@@ -91,7 +93,7 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000, n
       cilower <- quantile(sortedmin, probs = 0.025)
       ciupper <- quantile(sortedmax, probs = 0.975)
       
-      pb$tick()
+      pb(message = sprintf("Processing pair (%d, %d)", d1, d2))
       
       list(cilower = cilower, ciupper = ciupper, minmaxsigma = minmaxsigma)
     }
