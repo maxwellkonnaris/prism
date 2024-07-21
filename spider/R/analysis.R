@@ -92,11 +92,11 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
       cilower <- quantile(sortedmin, probs = 0.025)
       ciupper <- quantile(sortedmax, probs = 0.975)
 
-      #finitesamplecovariance <- stats::cov(Y[d1,], Y[d2,])
+      finitesamplecovariance <- stats::cov(Y[d1,], Y[d2,])
       
       pb()
       
-      list(cilower = cilower, ciupper = ciupper)#, finitesamplecovariance = finitesamplecovariance)
+      list(cilower = cilower, ciupper = ciupper, finitesamplecovariance = finitesamplecovariance)
     }
   })
   
@@ -104,7 +104,7 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
     pair <- pair_indices[[i]]
     d1 <- pair[1]
     d2 <- pair[2]
-    results[[d1, d2]] <- results_list[[i]]
+    results[[d1, d2]] <- results_list[i]
   }
   
   end_time <- Sys.time()
