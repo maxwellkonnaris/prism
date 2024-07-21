@@ -31,7 +31,7 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
     
     rWpara <- matrix(NA, D, N)
     for (n in 1:N) {
-      rWpara[, n] <- rdirichlet(1, Yboot[, n] + alpha)
+      rWpara[, n] <- MCMCpack::rdirichlet(1, Yboot[, n] + alpha)
     }
     rWpara <- log(rWpara)
     
