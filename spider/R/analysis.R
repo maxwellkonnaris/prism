@@ -1,10 +1,18 @@
 #' Run Analysis on All Pairwise Taxa
 #'
-#' @param Y Data matrix
-#' @param alpha Alpha parameter
-#' @param rhobound Rho bound
-#' @param S Number of simulations
-#' @return A matrix of lists containing confidence intervals and true values for all pairs of taxa
+#' This function runs a bootstrapped analysis on the input data matrix \code{Y}.
+#'
+#' @param Y A matrix of data with observations in columns and variables in rows.
+#' @param alpha A numeric vector of priors for the Dirichlet distribution. Defaults to a vector of zeros.
+#' @param rhobound A numeric value specifying the bound for the \code{rho1} and \code{rho2} parameters. Defaults to 0.8.
+#' @param S An integer specifying the number of bootstrap samples. Defaults to 1000.
+#' @return A data frame containing the results of the analysis including estimated 95% confidence intervals, minimum and maximum values for estimated covariance, and finite sample covariances.
+#' @examples
+#' # Example usage (You could also use the simulation function provided to generate sample data):
+#' set.seed(123)
+#' Y <- matrix(rnorm(1000), nrow = 10)
+#' results <- run_analysis(Y)
+#' @export
 #' @import progress
 #' @import foreach
 #' @import doSNOW
