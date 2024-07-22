@@ -14,5 +14,6 @@ import(dplyr)
 import(progressr)
 import(parallel)
 import(ggplot2)
+improt(profvis)
 
 
