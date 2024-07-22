@@ -157,6 +157,7 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
 
   # Precompute bootstrap samples
   bootstrap_samples <- replicate(S, sample(1:N, replace = TRUE), simplify = FALSE)
+  pb$tick()
   
   # Run the analysis with profiling
   #profiling_result <- profvis::profvis({
@@ -205,6 +206,7 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
   
   # Combine results
   final_results <- do.call(rbind, results_list)
+  pb$tick()
   
   # Create a data frame to store formatted results
   formatted_results <- data.frame(
@@ -216,7 +218,8 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
     finitesamplecovariance = numeric(),
     stringsAsFactors = FALSE
   )
-  
+  pb$tick()
+                                         
   # Format results into a data frame
   for (res in final_results) {
     d1 <- res$d1
@@ -238,9 +241,10 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
       stringsAsFactors = FALSE
     ))
   }
-
+                                         
   # Remove row names
   rownames(formatted_results) <- NULL
+  pb$tick()
                                          
   # Calculate and print the total elapsed time
   end_time <- Sys.time()
