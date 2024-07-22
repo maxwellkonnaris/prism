@@ -22,7 +22,7 @@
 #' plot <- forest_plot(results, save = "jpg")
 #' plot <- forest_plot(results, save = "svg")
 #' plot <- forest_plot(results, save = "pdf")
-forest_plot <- function(data, bg = "transparent", save = NULL) {
+forest_plot <- function(data, bg = "white", save = NULL) {
   # Ensure the data has the necessary columns
   if (!all(c("comparison", "cilower", "ciupper") %in% colnames(data))) {
     stop("Data must contain 'comparison', 'cilower', and 'ciupper' columns")
