@@ -4,6 +4,7 @@
 #'
 #' @param data A data frame containing the comparison names, lower confidence intervals, upper confidence intervals, and optionally minsigma and maxsigma columns.
 #' @param bg A character string indicating the background color of the plot. Options are "transparent" (default) or "white".
+#' @param save A character string indicating the file format to save the plot. Options are "png", "jpg", "svg", "pdf". Default is NULL, which means the plot is not saved.
 #' @return A ggplot object representing the forest plot.
 #' @import ggplot2
 #' @import dplyr
@@ -17,16 +18,18 @@
 #'   minsigma = c(0.05, 0.15, 0.25),
 #'   maxsigma = c(0.45, 0.55, 0.65)
 #' )
-#' plot <- forest_plot(results)
-#' ggsave("forest_plot.png", plot, width = 12, height = 8, dpi = 300)
-forest_plot <- function(data, bg = "transparent") {
+#' plot <- forest_plot(results, save = "png")
+#' plot <- forest_plot(results, save = "jpg")
+#' plot <- forest_plot(results, save = "svg")
+#' plot <- forest_plot(results, save = "pdf")
+forest_plot <- function(data, bg = "transparent", save = NULL) {
   # Ensure the data has the necessary columns
   if (!all(c("comparison", "cilower", "ciupper") %in% colnames(data))) {
     stop("Data must contain 'comparison', 'cilower', and 'ciupper' columns")
   }
   
   # Check if the data has minsigma and maxsigma columns
-  has_sigma <- all(c() %in% colnames(data))
+  has_sigma <- all(c("minsigma", "maxsigma") %in% colnames(data))
   
   # Calculate the range of the confidence intervals
   data <- data %>%
@@ -43,7 +46,7 @@ forest_plot <- function(data, bg = "transparent") {
     labs(
       title = "Forest Plot of Confidence Intervals",
       x = "Taxa Comparison",
-      y = "95% Confidence Interval of Estimated Covariance/Variance (log scale)",
+      y = "Confidence Interval of Estimated Covariance/Variance (log scale)",
       color = "Legend"
     ) +
     theme(
@@ -52,7 +55,7 @@ forest_plot <- function(data, bg = "transparent") {
       axis.title = element_text(size = 18),
       axis.text = element_text(size = 15)
     ) +
-    scale_color_manual(values = c("95% CI" = "#0072B2", "Sigma Range" = "#D55E00"))
+    scale_color_manual(values = c("Confidence Interval" = "#0072B2", "Sigma Range" = "#D55E00"))
   
   # Add sigma ranges if available
   if (has_sigma) {
@@ -75,6 +78,12 @@ forest_plot <- function(data, bg = "transparent") {
       )
   } else {
     stop("bg parameter must be 'transparent' or 'white'")
+  }
+  
+  # Save the plot if save is not NULL
+  if (!is.null(save)) {
+    file_name <- paste0("forest_plot.", save)
+    ggsave(file_name, plot, width = 12, height = 15, dpi = 300, device = save)
   }
   
   return(plot)
