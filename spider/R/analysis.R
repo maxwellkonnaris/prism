@@ -36,6 +36,33 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
     return(min(sigma))
   }
 
+  # Function to format elapsed time
+  format_elapsed_time <- function(elapsed_time) {
+    total_seconds <- as.numeric(elapsed_time, units = "secs")
+    
+    seconds <- total_seconds %% 60
+    minutes <- (total_seconds %/% 60) %% 60
+    hours <- (total_seconds %/% 3600) %% 24
+    days <- total_seconds %/% 86400
+    
+    result <- c()
+    
+    if (days > 0) {
+      result <- c(result, paste(days, "days"))
+    }
+    if (hours > 0) {
+      result <- c(result, paste(hours, "hours"))
+    }
+    if (minutes > 0) {
+      result <- c(result, paste(minutes, "minutes"))
+    }
+    if (seconds > 0 || length(result) == 0) {
+      result <- c(result, paste(round(seconds, 2), "seconds"))
+    }
+    
+    return(paste(result, collapse = ", "))
+  }
+
   # Register the parallel backend
   num_cores <- parallel::detectCores() - 1
   cl <- parallel::makeCluster(num_cores)
