@@ -25,13 +25,6 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
 
   # Record the start time for profiling
   start_time <- Sys.time()
-  
-  # Load necessary libraries
-  library(progress)
-  library(doSNOW)
-  library(foreach)
-  library(MCMCpack)
-  library(stats)
 
   # Function to format elapsed time in a user-friendly format
   format_elapsed_time <- function(elapsed_time) {
@@ -62,6 +55,11 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
 
   # Define global handlers for progress bars
   handlers(global = TRUE)
+
+  # Check if Y is a matrix and has appropriate dimensions
+  if (!is.matrix(Y) || nrow(Y) < 2 || ncol(Y) < 2) {
+    stop("Y must be a matrix with at least 2 rows and 2 columns.")
+  }
 
   # Get the number of columns (N) and rows (D) in the input matrix Y
   N <- ncol(Y)
