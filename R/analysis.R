@@ -162,6 +162,8 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
   # Generate all pairs of indices and add diagonal pairs
   pair_indices <- combn(D, 2, simplify = FALSE)
   pair_indices <- c(pair_indices, lapply(1:D, function(x) c(x, x)))  # Add diagonal pairs
+
+  cat("Running sigma estimation")
   
   # Run the analysis
   results_list <- foreach(pair = pair_indices, .packages = c('stats', 'MCMCpack'), .combine = 'rbind', .options.snow = opts) %dopar% {
