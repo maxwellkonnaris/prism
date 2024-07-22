@@ -211,7 +211,7 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
   
   # Format results into a data frame
   formatted_results <- data.frame(
-    comparison = apply(final_results, 1, function(row) paste(rownames(Y)[row["d1"]], ":", row["d2"], sep = "")),
+    comparison = apply(final_results, 1, function(row) paste(rownames(Y)[row["d1"]], ":", rownames(Y)[row["d2"]], sep = "")),
     cilower = final_results$cilower,
     ciupper = final_results$ciupper,
     minsigma = final_results$minsigma,
