@@ -32,7 +32,6 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
   library(foreach)
   library(MCMCpack)
   library(stats)
-  library(profvis)  
 
   # Define global handlers for progress bars
   handlers(global = TRUE)
@@ -52,22 +51,14 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
   
   # Print priors
   cat("Priors used for the analysis:\n")
-  cat("Alpha:\n")
   print(alpha)
   cat("Rho bounds:\n")
   print(rhobound)
   cat("Bootstrap sample size (S):\n")
   print(S)
-  # Print the head of the data frame
-  cat("Head of the parameter grid:\n")
-  print(head(pars))
   
-  # Print the tail of the data frame
-  cat("Tail of the parameter grid:\n")
-  print(tail(pars))
-  
-  # Initialize a results matrix to store the results for each pair
-  results <- matrix(list(), D, D)
+  # Initialize a results list to store the results for each pair
+  results <- vector("list", length = D * (D + 1) / 2)
   
   # Define the objective function used in the optimization
   objective_function <- function(params, Yboot, d1, d2, alpha) {
@@ -89,78 +80,50 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
     return(sigma)
   }
 
-  # Function to format elapsed time in a user-friendly format
-  format_elapsed_time <- function(elapsed_time) {
-    total_seconds <- as.numeric(elapsed_time, units = "secs")
-    
-    seconds <- total_seconds %% 60
-    minutes <- (total_seconds %/% 60) %% 60
-    hours <- (total_seconds %/% 3600) %% 24
-    days <- total_seconds %/% 86400
-    
-    result <- c()
-    
-    if (days > 0) {
-      result <- c(result, paste(days, "days"))
-    }
-    if (hours > 0) {
-      result <- c(result, paste(hours, "hours"))
-    }
-    if (minutes > 0) {
-      result <- c(result, paste(minutes, "minutes"))
-    }
-    if (seconds > 0 || length(result) == 0) {
-      result <- c(result, paste(round(seconds, 2), "seconds"))
-    }
-    
-    return(paste(result, collapse = ", "))
-  }
-
   # Register the parallel backend
   num_cores <- parallel::detectCores() - 1
   cl <- parallel::makeCluster(num_cores)
   doSNOW::registerDoSNOW(cl)
   
   # Ensure the cluster is stopped after the function exits
-  on.exit({
-    parallel::stopCluster(cl)
-  }, add = TRUE)
+  on.exit(parallel::stopCluster(cl), add = TRUE)
   
   # Verify cluster registration
-  if(!foreach::getDoParRegistered()) {
+  if (!foreach::getDoParRegistered()) {
     stop("Parallel backend is not registered.")
-  } else {
-    cat("Parallel backend is registered.\n")
   }
   
-  # Check the number of workers
-  num_workers <- foreach::getDoParWorkers()
-  cat("Number of workers: ", num_workers, "\n")
-  
-  # Total number of pairs to process
+  # Initialize progress bars
   total_pairs <- D * (D + 1) / 2
+  pb_precomp <- progress::progress_bar$new(total = S, format = "  Precomputing bootstrap samples [:bar] :percent in :elapsed | eta: :eta", clear = FALSE, width = 100)
+  pb <- progress::progress_bar$new(total = total_pairs, format = " Generating Sigmas [:bar] :percent in :elapsed | eta: :eta", clear = FALSE, width = 100)
+  
+  # Function to update progress bar
+  progress_precomp <- function(n) {
+    pb_precomp$tick()
+  }
+  
+  progress <- function(n) {
+    pb$tick()
+  }
+  
+  # Options for foreach to include progress updates
+  opts_precomp <- list(progress = progress_precomp)
+  opts <- list(progress = progress)
+
+  # Parallelize bootstrap precomputation
+  bootstrap_samples <- foreach(s = 1:S, .combine = 'c', .options.snow = opts_precomp) %dopar% {
+    sample(1:N, replace = TRUE)
+  }
+  
+  # Reshape bootstrap_samples into a list of vectors
+  bootstrap_samples <- split(bootstrap_samples, rep(1:S, each = N))
   
   # Generate all pairs of indices and add diagonal pairs
   pair_indices <- combn(D, 2, simplify = FALSE)
   pair_indices <- c(pair_indices, lapply(1:D, function(x) c(x, x)))  # Add diagonal pairs
-
-  # Initialize progress bar
-  pb <- progress::progress_bar$new(total = total_pairs+1, format = "  running [:bar] :percent in :elapsed | eta: :eta", clear = FALSE, width = 100)
-
-  # Function to update progress bar
-  progress <- function(n) {
-    pb$tick()
-  } 
   
-  # Options for foreach to include progress updates
-  opts <- list(progress = progress)
-
-  # Precompute bootstrap samples
-  bootstrap_samples <- replicate(S, sample(1:N, replace = TRUE), simplify = FALSE)
-  pb$tick()
-  
-  # Run the analysis with profiling
-  #profiling_result <- profvis::profvis({
+  # Run the analysis
   results_list <- foreach(pair = pair_indices, .packages = c('stats', 'MCMCpack'), .combine = 'rbind', .options.snow = opts) %dopar% {
     d1 <- pair[1]
     d2 <- pair[2]
@@ -202,7 +165,6 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
     
     list(d1 = d1, d2 = d2, cilower = cilower, ciupper = ciupper, minsigma = minsigma, maxsigma = maxsigma, finitesamplecovariance = finitesamplecovariance)
   }
-  #})
   
   # Combine results
   final_results <- do.call(rbind, results_list)
@@ -249,6 +211,6 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
   formatted_time <- format_elapsed_time(elapsed_time)
   print(paste("Total time taken:", formatted_time))
 
-  return(formatted_results)                                       
-  #return(list(results = formatted_results, profiling = profiling_result))
+  return(formatted_results)
 }
+
