@@ -7,7 +7,7 @@
 #' @import ggplot2
 #' @import dplyr
 #' @export
-forest_plot <- function(data) {
+forest_plot <- function(data, bg=transparent) {
   # Ensure the data has the necessary columns
   if (!all(c("comparison", "cilower", "ciupper") %in% colnames(data))) {
     stop("Data must contain 'comparison', 'cilower', and 'ciupper' columns")
@@ -36,6 +36,24 @@ forest_plot <- function(data) {
       axis.title = element_text(size = 18),
       axis.text = element_text(size = 15)
     )
+
+  # Customize the background based on the bg parameter
+  if (bg == "transparent") {
+    # Do nothing as the default is already minimal with transparent background
+  } else if (bg == "white") {
+    plot <- plot + 
+      theme(
+        plot.background = element_rect(fill = "white", color = NA),
+        panel.background = element_rect(fill = "white", color = NA),
+        panel.grid.major = element_line(color = "gray90"),
+        panel.grid.minor = element_line(color = "gray95"),
+        axis.text = element_text(size = 12),
+        axis.title = element_text(size = 14, face = "bold"),
+        plot.title = element_text(size = 16, face = "bold", hjust = 0.5)
+      )
+  } else {
+    stop("bg parameter must be 'transparent' or 'white'")
+  }
   
   return(plot)
 }
