@@ -1,3 +1,17 @@
+#' Run Analysis on All Pairwise Taxa
+#'
+#' @param Y Data matrix
+#' @param alpha Alpha parameter
+#' @param rhobound Rho bound
+#' @param S Number of simulations
+#' @return A matrix of lists containing confidence intervals and true values for all pairs of taxa
+#' @import progress
+#' @import foreach
+#' @import doSNOW
+#' @import parallel
+#' @import MCMCpack
+#' @import stats
+#' @import profvis
 run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
   # Load necessary libraries
   library(progress)
