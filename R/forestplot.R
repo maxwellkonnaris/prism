@@ -55,7 +55,7 @@ forest_plot <- function(data, bg = "white", save = NULL) {
       axis.title = element_text(size = 18),
       axis.text = element_text(size = 15)
     ) +
-    scale_color_manual(values = c("Confidence Interval" = "#0072B2", "Sigma Range" = "#D55E00"))
+    scale_color_manual(values = c("Confidence Interval" = "#FF00FF", "Sigma Range" = "#000000"))
   
   # Add sigma ranges if available
   if (has_sigma) {
