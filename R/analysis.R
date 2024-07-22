@@ -22,6 +22,10 @@
 #' @export
 
 run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
+
+  # Record the start time for profiling
+  start_time <- Sys.time()
+  
   # Load necessary libraries
   library(progress)
   library(doSNOW)
@@ -132,9 +136,6 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
   # Check the number of workers
   num_workers <- foreach::getDoParWorkers()
   cat("Number of workers: ", num_workers, "\n")
-  
-  # Record the start time for profiling
-  start_time <- Sys.time()
   
   # Total number of pairs to process
   total_pairs <- D * (D + 1) / 2
