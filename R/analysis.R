@@ -22,10 +22,10 @@
 #' @export
 
 run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
-  
+
   # Record the start time for profiling
   start_time <- Sys.time()
-  
+
   # Function to format elapsed time in a user-friendly format
   format_elapsed_time <- function(elapsed_time) {
     total_seconds <- as.numeric(elapsed_time, units = "secs")
@@ -52,19 +52,19 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
     
     return(paste(result, collapse = ", "))
   }
-  
+
   # Define global handlers for progress bars
   handlers(global = TRUE)
-  
+
   # Check if Y is a matrix and has appropriate dimensions
   if (!is.matrix(Y) || nrow(Y) < 2 || ncol(Y) < 2) {
     stop("Y must be a matrix with at least 2 rows and 2 columns.")
   }
-  
+
   # Get the number of columns (N) and rows (D) in the input matrix Y
   N <- ncol(Y)
   D <- nrow(Y)
-  
+
   # Create a sequence for rho1, rho2, and x based on the given bounds
   rho1 <- seq(-rhobound, rhobound, by = 0.05)
   rho2 <- seq(-rhobound, rhobound, by = 0.05)
@@ -113,7 +113,7 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
     sigma <- a * b * c + a * x * rho1 + b * x * rho2 + x^2
     return(sigma)
   }
-  
+
   # Register the parallel backend
   num_cores <- parallel::detectCores() - 1
   cl <- parallel::makeCluster(num_cores)
@@ -147,7 +147,7 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
   # Options for foreach to include progress updates
   opts_precomp <- list(progress = progress_precomp)
   opts <- list(progress = progress)
-  
+
   # Parallelize bootstrap precomputation
   bootstrap_samples <- foreach(s = 1:S, .combine = 'c', .options.snow = opts_precomp) %dopar% {
     sample(1:N, replace = TRUE)
@@ -159,25 +159,25 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
   # Generate all pairs of indices and add diagonal pairs
   pair_indices <- combn(D, 2, simplify = FALSE)
   pair_indices <- c(pair_indices, lapply(1:D, function(x) c(x, x)))  # Add diagonal pairs
-  
+
   cat("Running sigma estimation")
   
   # Run the analysis
   results_list <- foreach(pair = pair_indices, .packages = c('stats', 'MCMCpack'), .combine = 'list', .options.snow = opts) %dopar% {
     d1 <- pair[1]
     d2 <- pair[2]
-    
+  
     minsigma_values <- numeric(S)
     maxsigma_values <- numeric(S)
     
     # Use parallel foreach for the inner loop
     results_inner <- foreach(s = 1:S, .combine = 'rbind', .packages = c('stats', 'MCMCpack'), .options.snow = opts) %dopar% {
       Yboot <- Y[, bootstrap_samples[[s]]]
-      
+  
       # Find the minimum sigma
       res_min <- optim(par = c(0, 0, 0.1), fn = objective_function, Yboot = Yboot, d1 = d1, d2 = d2, alpha = alpha, 
                        method = "L-BFGS-B", lower = c(-rhobound, -rhobound, 0.05), upper = c(rhobound, rhobound, 0.2))
-      
+  
       # Find the maximum sigma by negating the objective function
       res_max <- optim(par = c(0, 0, 0.1), fn = function(params, Yboot, d1, d2, alpha) {
         -objective_function(params, Yboot, d1, d2, alpha)
@@ -185,10 +185,10 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
       
       c(minsigma = res_min$value, maxsigma = -res_max$value)
     }
-    
+  
     minsigma_values <- results_inner[, "minsigma"]
     maxsigma_values <- results_inner[, "maxsigma"]
-    
+  
     # Sort the results
     sortedmin <- sort(minsigma_values)
     sortedmax <- sort(maxsigma_values)
@@ -198,48 +198,27 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
     maxsigma <- max(sortedmax)
     cilower <- quantile(sortedmin, probs = 0.025)
     ciupper <- quantile(sortedmax, probs = 0.975)
-    
+  
     # Compute finite sample covariance
     finitesamplecovariance <- stats::cov(log(Y)[d1,], log(Y)[d2,])
     
     list(d1 = d1, d2 = d2, cilower = cilower, ciupper = ciupper, minsigma = minsigma, maxsigma = maxsigma, finitesamplecovariance = finitesamplecovariance)
   }
   
-  # Combine results into a list of lists
-  final_results <- do.call(rbind, lapply(results_list, function(x) do.call(rbind, x)))
-  
-  # Create a data frame to store formatted results
-  formatted_results <- data.frame(
-    comparison = character(),
-    cilower = numeric(),
-    ciupper = numeric(),
-    minsigma = numeric(),
-    maxsigma = numeric(),
-    finitesamplecovariance = numeric(),
-    stringsAsFactors = FALSE
-  )
+  # Convert list of lists into a data frame
+  final_results <- do.call(rbind, lapply(results_list, function(x) data.frame(matrix(unlist(x), ncol = 7, byrow = TRUE))))
+  colnames(final_results) <- c("d1", "d2", "cilower", "ciupper", "minsigma", "maxsigma", "finitesamplecovariance")
   
   # Format results into a data frame
-  for (res in final_results) {
-    d1 <- res$d1
-    d2 <- res$d2
-    comparison <- paste(rownames(Y)[d1], ":", rownames(Y)[d2], sep = "")
-    cilower <- res$cilower
-    ciupper <- res$ciupper
-    minsigma <- res$minsigma
-    maxsigma <- res$maxsigma
-    finitesamplecovariance <- res$finitesamplecovariance
-    
-    formatted_results <- rbind(formatted_results, data.frame(
-      comparison = comparison,
-      cilower = cilower,
-      ciupper = ciupper,
-      minsigma = minsigma,
-      maxsigma = maxsigma,
-      finitesamplecovariance = finitesamplecovariance,
-      stringsAsFactors = FALSE
-    ))
-  }
+  formatted_results <- data.frame(
+    comparison = apply(final_results, 1, function(row) paste(rownames(Y)[row["d1"]], ":", row["d2"], sep = "")),
+    cilower = final_results$cilower,
+    ciupper = final_results$ciupper,
+    minsigma = final_results$minsigma,
+    maxsigma = final_results$maxsigma,
+    finitesamplecovariance = final_results$finitesamplecovariance,
+    stringsAsFactors = FALSE
+  )
   
   # Remove row names
   rownames(formatted_results) <- NULL
