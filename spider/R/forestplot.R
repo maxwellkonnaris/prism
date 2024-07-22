@@ -3,11 +3,21 @@
 #' This function creates a forest plot of confidence intervals ordered by the largest range.
 #'
 #' @param data A data frame containing the comparison names, lower confidence intervals, and upper confidence intervals.
+#' @param bg A character string indicating the background color of the plot. Options are "transparent" (default) or "white".
 #' @return A ggplot object representing the forest plot.
 #' @import ggplot2
 #' @import dplyr
 #' @export
-forest_plot <- function(data, bg=transparent) {
+#' @examples
+#' # Example usage:
+#' results <- data.frame(
+#'   comparison = c("A:B", "A:C", "B:C"),
+#'   cilower = c(0.1, 0.2, 0.3),
+#'   ciupper = c(0.4, 0.5, 0.6)
+#' )
+#' plot <- forest_plot(results)
+#' ggsave("forest_plot.png", plot, width = 12, height = 8, dpi = 300)
+forest_plot <- function(data, bg = "transparent") {
   # Ensure the data has the necessary columns
   if (!all(c("comparison", "cilower", "ciupper") %in% colnames(data))) {
     stop("Data must contain 'comparison', 'cilower', and 'ciupper' columns")
@@ -57,12 +67,3 @@ forest_plot <- function(data, bg=transparent) {
   
   return(plot)
 }
-
-# Example usage (uncomment and run when using actual data)
-# results <- data.frame(
-#   comparison = c("A:B", "A:C", "B:C"),
-#   cilower = c(0.1, 0.2, 0.3),
-#   ciupper = c(0.4, 0.5, 0.6)
-# )
-# plot <- forest_plot(results)
-# ggsave("forest_plot.png", plot, width = 12, height = 8, dpi = 300)
