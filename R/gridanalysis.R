@@ -20,7 +20,7 @@
 #' Y <- matrix(rnorm(1000), nrow = 10)
 #' results <- run_analysis(Y)
 #' @export
-run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
+run_gridanalysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
   start_time <- Sys.time()
 
   format_elapsed_time <- function(elapsed_time) {
