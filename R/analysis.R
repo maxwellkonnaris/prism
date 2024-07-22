@@ -88,6 +88,8 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
   # Print the tail of the data frame
   cat("Tail of the parameter grid:\n")
   print(tail(pars))
+  cat("Dimensions of supplied matrix:\n")
+  print(dim(Y))
   cat("Bootstrap sample size (S):\n")
   print(S)
   
