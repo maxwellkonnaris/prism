@@ -158,7 +158,7 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
   bootstrap_samples <- replicate(S, sample(1:N, replace = TRUE), simplify = FALSE)
   
   # Run the analysis with profiling
-  profvis({
+  profvis::profvis({
     results_list <- foreach(pair = pair_indices, .packages = c('stats', 'MCMCpack'), .combine = 'rbind', .options.snow = opts) %dopar% {
       d1 <- pair[1]
       d2 <- pair[2]
