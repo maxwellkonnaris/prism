@@ -76,7 +76,7 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
   
   # Print priors
   cat("Priors used for the analysis:\n")
-  cat{"Alpha:\n")
+  cat("Alpha:\n")
   print(alpha)
   cat("Rho bounds:\n")
   print(paste0(-rhobound,rhobound))
