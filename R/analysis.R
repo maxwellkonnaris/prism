@@ -145,7 +145,7 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
   pair_indices <- c(pair_indices, lapply(1:D, function(x) c(x, x)))  # Add diagonal pairs
 
   # Initialize progress bar
-  pb <- progress::progress_bar$new(total = total_pairs, format = "  running [:bar] :percent in :elapsed | eta: :eta", clear = FALSE, width = 60)
+  pb <- progress::progress_bar$new(total = total_pairs+1, format = "  running [:bar] :percent in :elapsed | eta: :eta", clear = FALSE, width = 100)
 
   # Function to update progress bar
   progress <- function(n) {
@@ -206,7 +206,6 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
   
   # Combine results
   final_results <- do.call(rbind, results_list)
-  pb$tick()
   
   # Create a data frame to store formatted results
   formatted_results <- data.frame(
@@ -218,7 +217,6 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
     finitesamplecovariance = numeric(),
     stringsAsFactors = FALSE
   )
-  pb$tick()
                                          
   # Format results into a data frame
   for (res in final_results) {
@@ -244,7 +242,6 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
                                          
   # Remove row names
   rownames(formatted_results) <- NULL
-  pb$tick()
                                          
   # Calculate and print the total elapsed time
   end_time <- Sys.time()
