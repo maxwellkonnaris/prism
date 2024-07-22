@@ -7,12 +7,6 @@
 #' @param rhobound A numeric value specifying the bound for the \code{rho1} and \code{rho2} parameters. Defaults to 0.8.
 #' @param S An integer specifying the number of bootstrap samples. Defaults to 1000.
 #' @return A data frame containing the results of the analysis including estimated 95% confidence intervals, minimum and maximum values for estimated covariance, and finite sample covariances.
-#' @examples
-#' # Example usage (You could also use the simulation function provided to generate sample data):
-#' set.seed(123)
-#' Y <- matrix(rnorm(1000), nrow = 10)
-#' results <- run_analysis(Y)
-#' @export
 #' @import progress
 #' @import foreach
 #' @import doSNOW
@@ -20,6 +14,13 @@
 #' @import MCMCpack
 #' @import stats
 #' @import profvis
+#' @examples
+#' # Example usage (You could also use the simulation function provided to generate sample data):
+#' set.seed(123)
+#' Y <- matrix(rnorm(1000), nrow = 10)
+#' results <- run_analysis(Y)
+#' @export
+
 run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
   # Load necessary libraries
   library(progress)
