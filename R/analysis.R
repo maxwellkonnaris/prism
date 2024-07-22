@@ -33,6 +33,33 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
   library(MCMCpack)
   library(stats)
 
+  # Function to format elapsed time in a user-friendly format
+  format_elapsed_time <- function(elapsed_time) {
+    total_seconds <- as.numeric(elapsed_time, units = "secs")
+    
+    seconds <- total_seconds %% 60
+    minutes <- (total_seconds %/% 60) %% 60
+    hours <- (total_seconds %/% 3600) %% 24
+    days <- total_seconds %/% 86400
+    
+    result <- c()
+    
+    if (days > 0) {
+      result <- c(result, paste(days, "days"))
+    }
+    if (hours > 0) {
+      result <- c(result, paste(hours, "hours"))
+    }
+    if (minutes > 0) {
+      result <- c(result, paste(minutes, "minutes"))
+    }
+    if (seconds > 0 || length(result) == 0) {
+      result <- c(result, paste(round(seconds, 2), "seconds"))
+    }
+    
+    return(paste(result, collapse = ", "))
+  }
+
   # Define global handlers for progress bars
   handlers(global = TRUE)
 
@@ -51,11 +78,19 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
   
   # Print priors
   cat("Priors used for the analysis:\n")
+  cat{"Alpha:\n")
   print(alpha)
   cat("Rho bounds:\n")
   print(rhobound)
+  # Print the head of the data frame
+  cat("Head of the parameter grid:\n")
+  print(head(pars))
+  # Print the tail of the data frame
+  cat("Tail of the parameter grid:\n")
+  print(tail(pars))
   cat("Bootstrap sample size (S):\n")
   print(S)
+  
   
   # Initialize a results list to store the results for each pair
   results <- vector("list", length = D * (D + 1) / 2)
@@ -91,6 +126,9 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
   # Verify cluster registration
   if (!foreach::getDoParRegistered()) {
     stop("Parallel backend is not registered.")
+  } else {
+    # Check the number of workers
+    cat("Number of workers/cpus: ", foreach::getDoParWorkers(), "\n")
   }
   
   # Initialize progress bars
