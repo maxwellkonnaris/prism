@@ -158,49 +158,49 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
   bootstrap_samples <- replicate(S, sample(1:N, replace = TRUE), simplify = FALSE)
   
   # Run the analysis with profiling
-  profiling_result <- profvis::profvis({
-    results_list <- foreach(pair = pair_indices, .packages = c('stats', 'MCMCpack'), .combine = 'rbind', .options.snow = opts) %dopar% {
-      d1 <- pair[1]
-      d2 <- pair[2]
+  #profiling_result <- profvis::profvis({
+  results_list <- foreach(pair = pair_indices, .packages = c('stats', 'MCMCpack'), .combine = 'rbind', .options.snow = opts) %dopar% {
+    d1 <- pair[1]
+    d2 <- pair[2]
+  
+    minsigma_values <- numeric(S)
+    maxsigma_values <- numeric(S)
     
-      minsigma_values <- numeric(S)
-      maxsigma_values <- numeric(S)
+    # Use parallel foreach for the inner loop
+    results <- foreach(s = 1:S, .combine = 'rbind', .packages = c('stats', 'MCMCpack')) %dopar% {
+      Yboot <- Y[, bootstrap_samples[[s]]]
+  
+      # Find the minimum sigma
+      res_min <- optim(par = c(0, 0, 0.1), fn = objective_function, Yboot = Yboot, d1 = d1, d2 = d2, alpha = alpha, 
+                       method = "L-BFGS-B", lower = c(-rhobound, -rhobound, 0.05), upper = c(rhobound, rhobound, 0.2))
+  
+      # Find the maximum sigma by negating the objective function
+      res_max <- optim(par = c(0, 0, 0.1), fn = function(params, Yboot, d1, d2, alpha) {
+        -objective_function(params, Yboot, d1, d2, alpha)
+      }, Yboot = Yboot, d1 = d1, d2 = d2, alpha = alpha, method = "L-BFGS-B", lower = c(-rhobound, -rhobound, 0.05), upper = c(rhobound, rhobound, 0.2))
       
-      # Use parallel foreach for the inner loop
-      results <- foreach(s = 1:S, .combine = 'rbind', .packages = c('stats', 'MCMCpack')) %dopar% {
-        Yboot <- Y[, bootstrap_samples[[s]]]
-    
-        # Find the minimum sigma
-        res_min <- optim(par = c(0, 0, 0.1), fn = objective_function, Yboot = Yboot, d1 = d1, d2 = d2, alpha = alpha, 
-                         method = "L-BFGS-B", lower = c(-rhobound, -rhobound, 0.05), upper = c(rhobound, rhobound, 0.2))
-    
-        # Find the maximum sigma by negating the objective function
-        res_max <- optim(par = c(0, 0, 0.1), fn = function(params, Yboot, d1, d2, alpha) {
-          -objective_function(params, Yboot, d1, d2, alpha)
-        }, Yboot = Yboot, d1 = d1, d2 = d2, alpha = alpha, method = "L-BFGS-B", lower = c(-rhobound, -rhobound, 0.05), upper = c(rhobound, rhobound, 0.2))
-        
-        c(minsigma = res_min$value, maxsigma = -res_max$value)
-      }
-    
-      minsigma_values <- results[, "minsigma"]
-      maxsigma_values <- results[, "maxsigma"]
-    
-      # Sort the results
-      sortedmin <- sort(minsigma_values)
-      sortedmax <- sort(maxsigma_values)
-      
-      # Compute the minimum, maximum, and confidence intervals
-      minsigma <- min(sortedmin)
-      maxsigma <- max(sortedmax)
-      cilower <- quantile(sortedmin, probs = 0.025)
-      ciupper <- quantile(sortedmax, probs = 0.975)
-    
-      # Compute finite sample covariance
-      finitesamplecovariance <- stats::cov(log(Y)[d1,], log(Y)[d2,])
-      
-      list(d1 = d1, d2 = d2, cilower = cilower, ciupper = ciupper, minsigma = minsigma, maxsigma = maxsigma, finitesamplecovariance = finitesamplecovariance)
+      c(minsigma = res_min$value, maxsigma = -res_max$value)
     }
-  })
+  
+    minsigma_values <- results[, "minsigma"]
+    maxsigma_values <- results[, "maxsigma"]
+  
+    # Sort the results
+    sortedmin <- sort(minsigma_values)
+    sortedmax <- sort(maxsigma_values)
+    
+    # Compute the minimum, maximum, and confidence intervals
+    minsigma <- min(sortedmin)
+    maxsigma <- max(sortedmax)
+    cilower <- quantile(sortedmin, probs = 0.025)
+    ciupper <- quantile(sortedmax, probs = 0.975)
+  
+    # Compute finite sample covariance
+    finitesamplecovariance <- stats::cov(log(Y)[d1,], log(Y)[d2,])
+    
+    list(d1 = d1, d2 = d2, cilower = cilower, ciupper = ciupper, minsigma = minsigma, maxsigma = maxsigma, finitesamplecovariance = finitesamplecovariance)
+  }
+  #})
   
   # Combine results
   final_results <- do.call(rbind, results_list)
@@ -246,6 +246,7 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
   elapsed_time <- end_time - start_time
   formatted_time <- format_elapsed_time(elapsed_time)
   print(paste("Total time taken:", formatted_time))
-  
-  return(list(results = formatted_results, profiling = profiling_result))
+
+  return(formatted_results)                                       
+  #return(list(results = formatted_results, profiling = profiling_result))
 }
