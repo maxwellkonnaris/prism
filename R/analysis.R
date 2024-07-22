@@ -54,8 +54,13 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
   print(rhobound)
   cat("Bootstrap sample size (S):\n")
   print(S)
-  cat("Parameter grid (rho1, rho2, x):\n")
-  print(pars)
+  # Print the head of the data frame
+  cat("Head of the parameter grid:\n")
+  print(head(pars))
+  
+  # Print the tail of the data frame
+  cat("Tail of the parameter grid:\n")
+  print(tail(pars))
   
   # Initialize a results matrix to store the results for each pair
   results <- matrix(list(), D, D)
