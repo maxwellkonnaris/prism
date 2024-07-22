@@ -2,7 +2,7 @@
 #'
 #' This function creates a forest plot of confidence intervals ordered by the largest range.
 #'
-#' @param data A data frame containing the comparison names, lower confidence intervals, and upper confidence intervals.
+#' @param data A data frame containing the comparison names, lower confidence intervals, upper confidence intervals, and optionally minsigma and maxsigma columns.
 #' @param bg A character string indicating the background color of the plot. Options are "transparent" (default) or "white".
 #' @return A ggplot object representing the forest plot.
 #' @import ggplot2
@@ -13,7 +13,9 @@
 #' results <- data.frame(
 #'   comparison = c("A:B", "A:C", "B:C"),
 #'   cilower = c(0.1, 0.2, 0.3),
-#'   ciupper = c(0.4, 0.5, 0.6)
+#'   ciupper = c(0.4, 0.5, 0.6),
+#'   minsigma = c(0.05, 0.15, 0.25),
+#'   maxsigma = c(0.45, 0.55, 0.65)
 #' )
 #' plot <- forest_plot(results)
 #' ggsave("forest_plot.png", plot, width = 12, height = 8, dpi = 300)
@@ -23,6 +25,9 @@ forest_plot <- function(data, bg = "transparent") {
     stop("Data must contain 'comparison', 'cilower', and 'ciupper' columns")
   }
   
+  # Check if the data has minsigma and maxsigma columns
+  has_sigma <- all(c() %in% colnames(data))
+  
   # Calculate the range of the confidence intervals
   data <- data %>%
     mutate(range = ciupper - cilower)
@@ -30,22 +35,29 @@ forest_plot <- function(data, bg = "transparent") {
   # Reorder the comparison names by the range
   data$comparison <- factor(data$comparison, levels = data$comparison[order(data$range, decreasing = TRUE)])
   
-  # Create the forest plot with only confidence intervals
-  plot <- ggplot(data, aes(x = comparison, ymin = cilower, ymax = ciupper)) +
-    geom_errorbar(width = 0.3, size = 1) +
+  # Create the forest plot with confidence intervals and sigma ranges
+  plot <- ggplot(data, aes(x = comparison)) +
+    geom_errorbar(aes(ymin = cilower, ymax = ciupper, color = "Confidence Interval"), width = 0.3, size = 1) +
     coord_flip() +
     theme_minimal(base_size = 15) +
     labs(
       title = "Forest Plot of Confidence Intervals",
       x = "Taxa Comparison",
-      y = "Confidence Interval of Estimated Covariance/Variance (log scale)"
+      y = "95% Confidence Interval of Estimated Covariance/Variance (log scale)",
+      color = "Legend"
     ) +
     theme(
       axis.text.x = element_text(angle = 45, hjust = 1),
       plot.title = element_text(size = 20, face = "bold"),
       axis.title = element_text(size = 18),
       axis.text = element_text(size = 15)
-    )
+    ) +
+    scale_color_manual(values = c("95% CI" = "#0072B2", "Sigma Range" = "#D55E00"))
+  
+  # Add sigma ranges if available
+  if (has_sigma) {
+    plot <- plot + geom_errorbar(aes(ymin = minsigma, ymax = maxsigma, color = "Sigma Range"), width = 0.3, size = 1)
+  }
 
   # Customize the background based on the bg parameter
   if (bg == "transparent") {
