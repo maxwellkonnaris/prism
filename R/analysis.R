@@ -168,7 +168,7 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
     maxsigma_values <- numeric(S)
     
     # Use parallel foreach for the inner loop
-    results <- foreach(s = 1:S, .combine = 'rbind', .packages = c('stats', 'MCMCpack')) %dopar% {
+    results <- foreach(s = 1:S, .combine = 'rbind', .packages = c('stats', 'MCMCpack'), .options.snow = opts) %dopar% {
       Yboot <- Y[, bootstrap_samples[[s]]]
   
       # Find the minimum sigma
