@@ -158,7 +158,7 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
   bootstrap_samples <- replicate(S, sample(1:N, replace = TRUE), simplify = FALSE)
   
   # Run the analysis with profiling
-  profvis::profvis({
+  profiling_result <- profvis::profvis({
     results_list <- foreach(pair = pair_indices, .packages = c('stats', 'MCMCpack'), .combine = 'rbind', .options.snow = opts) %dopar% {
       d1 <- pair[1]
       d2 <- pair[2]
@@ -247,5 +247,5 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
   formatted_time <- format_elapsed_time(elapsed_time)
   print(paste("Total time taken:", formatted_time))
   
-  return(formatted_results)
+  return(list(results = formatted_results, profiling = profiling_result))
 }
