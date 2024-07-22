@@ -163,7 +163,7 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
   cat("Running sigma estimation")
   
   # Run the analysis
-  results_list <- foreach(pair = pair_indices, .packages = c('stats', 'MCMCpack'), .combine = 'c', .options.snow = opts) %dopar% {
+  results_list <- foreach(pair = pair_indices, .packages = c('stats', 'MCMCpack'), .combine = 'list', .options.snow = opts) %dopar% {
     d1 <- pair[1]
     d2 <- pair[2]
     
