@@ -79,8 +79,7 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
   cat{"Alpha:\n")
   print(alpha)
   cat("Rho bounds:\n")
-  print(-rhobound)
-  print(rhobound)
+  print(paste0(-rhobound,rhobound))
   # Print the head of the data frame
   cat("Head of the parameter grid:\n")
   print(head(pars))
