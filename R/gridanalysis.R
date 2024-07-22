@@ -154,45 +154,29 @@ run_gridanalysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 100
     list(d1 = d1, d2 = d2, cilower = cilower, ciupper = ciupper, minsigma = minsigma, maxsigma = maxsigma, finitesamplecovariance = finitesamplecovariance)
   }
   
-  final_results <- do.call(rbind, results_list)
+  # Convert list of lists into a data frame
+  final_results <- do.call(rbind, lapply(results_list, function(x) data.frame(matrix(unlist(x), ncol = 7, byrow = TRUE))))
+  colnames(final_results) <- c("d1", "d2", "cilower", "ciupper", "minsigma", "maxsigma", "finitesamplecovariance")
   
+  # Format results into a data frame
   formatted_results <- data.frame(
-    comparison = character(),
-    cilower = numeric(),
-    ciupper = numeric(),
-    minsigma = numeric(),
-    maxsigma = numeric(),
-    finitesamplecovariance = numeric(),
+    comparison = apply(final_results, 1, function(row) paste(rownames(Y)[row["d1"]], ":", rownames(Y)[row["d2"]], sep = "")),
+    cilower = final_results$cilower,
+    ciupper = final_results$ciupper,
+    minsigma = final_results$minsigma,
+    maxsigma = final_results$maxsigma,
+    finitesamplecovariance = final_results$finitesamplecovariance,
     stringsAsFactors = FALSE
   )
-                                         
-  for (res in final_results) {
-    d1 <- res$d1
-    d2 <- res$d2
-    comparison <- paste(rownames(Y)[d1], ":", rownames(Y)[d2], sep = "")
-    cilower <- res$cilower
-    ciupper <- res$ciupper
-    minsigma <- res$minsigma
-    maxsigma <- res$maxsigma
-    finitesamplecovariance <- res$finitesamplecovariance
-    
-    formatted_results <- rbind(formatted_results, data.frame(
-      comparison = comparison,
-      cilower = cilower,
-      ciupper = ciupper,
-      minsigma = minsigma,
-      maxsigma = maxsigma,
-      finitesamplecovariance = finitesamplecovariance,
-      stringsAsFactors = FALSE
-    ))
-  }
-                                         
+  
+  # Remove row names
   rownames(formatted_results) <- NULL
-                                         
+  
+  # Calculate and print the total elapsed time
   end_time <- Sys.time()
   elapsed_time <- end_time - start_time
   formatted_time <- format_elapsed_time(elapsed_time)
   print(paste("Total time taken:", formatted_time))
-
+  
   return(formatted_results)
 }
