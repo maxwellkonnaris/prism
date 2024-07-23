@@ -79,7 +79,7 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 1.0, S = 1000) {
   cat("Alpha:\n")
   print(alpha)
   cat("Rho bounds:\n")
-  print(paste0(-rhobound,":",rhobound))
+  print(paste0(-rhobound, ":", rhobound))
   # Print the head of the data frame
   cat("Head of the parameter grid:\n")
   print(head(pars))
@@ -93,7 +93,6 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 1.0, S = 1000) {
   
   # Initialize a results matrix to store the results for each pair
   results <- matrix(list(), D, D)
-  sigma_values <- list()
   
   # Define the objective function used in the optimization
   objective_function <- function(params, Yboot, d1, d2, alpha) {
@@ -170,6 +169,7 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 1.0, S = 1000) {
   
     minsigma_values <- numeric(S)
     maxsigma_values <- numeric(S)
+    sigma_values_local <- list()
     
     # Use parallel foreach for the inner loop
     results_inner <- foreach(s = 1:S, .combine = 'rbind', .packages = c('stats', 'MCMCpack'), .options.snow = opts) %dopar% {
@@ -187,34 +187,42 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 1.0, S = 1000) {
       min_name <- paste("min_d1", d1, "d2", d2, "s", s, sep = "_")
       max_name <- paste("max_d1", d1, "d2", d2, "s", s, sep = "_")
       
-      sigma_values[[min_name]] <- data.frame(Yboot = Yboot, d1 = d1, d2 = d2, rho1 = res_min$par[1], rho2 = res_min$par[2], x = res_min$par[3], sigma = res_min$value, stringsAsFactors = FALSE)
-      sigma_values[[max_name]] <- data.frame(Yboot = Yboot, d1 = d1, d2 = d2, rho1 = res_max$par[1], rho2 = res_max$par[2], x = res_max$par[3], sigma = -res_max$value, stringsAsFactors = FALSE)
+      sigma_values_local[[min_name]] <- data.frame(Yboot = Yboot, d1 = d1, d2 = d2, rho1 = res_min$par[1], rho2 = res_min$par[2], x = res_min$par[3], sigma = res_min$value, stringsAsFactors = FALSE)
+      sigma_values_local[[max_name]] <- data.frame(Yboot = Yboot, d1 = d1, d2 = d2, rho1 = res_max$par[1], rho2 = res_max$par[2], x = res_max$par[3], sigma = -res_max$value, stringsAsFactors = FALSE)
       
       c(minsigma = res_min$value, maxsigma = -res_max$value)
     }
   
     minsigma_values <- results_inner[, "minsigma"]
     maxsigma_values <- results_inner[, "maxsigma"]
+    
+    # Combine local sigma_values into the main sigma_values list
+    list(minsigma_values = minsigma_values, maxsigma_values = maxsigma_values, sigma_values_local = sigma_values_local)
+  }
   
-    # Sort the results
+  # Aggregate sigma_values from each task
+  sigma_values <- list()
+  for (res in results_list) {
+    sigma_values <- c(sigma_values, res$sigma_values_local)
+  }
+  
+  # Process the results
+  final_results <- do.call(rbind, lapply(results_list, function(x) {
+    minsigma_values <- x$minsigma_values
+    maxsigma_values <- x$maxsigma_values
+    
     sortedmin <- sort(minsigma_values)
     sortedmax <- sort(maxsigma_values)
     
-    # Compute the minimum, maximum, and confidence intervals
     minsigma <- min(sortedmin)
     maxsigma <- max(sortedmax)
     cilower <- quantile(sortedmin, probs = 0.025)
     ciupper <- quantile(sortedmax, probs = 0.975)
-  
-    # Compute finite sample covariance
-    finitesamplecovariance <- stats::cov(log(Y)[d1,], log(Y)[d2,])
     
-    list(d1 = d1, d2 = d2, cilower = cilower, ciupper = ciupper, minsigma = minsigma, maxsigma = maxsigma, finitesamplecovariance = finitesamplecovariance)
-  }
-  
-  # Convert list of lists into a data frame
-  final_results <- do.call(rbind, lapply(results_list, function(x) data.frame(matrix(unlist(x), ncol = 7, byrow = TRUE))))
-  colnames(final_results) <- c("d1", "d2", "cilower", "ciupper", "minsigma", "maxsigma", "finitesamplecovariance")
+    finitesamplecovariance <- stats::cov(log(Y)[pair[1],], log(Y)[pair[2],])
+    
+    c(d1 = pair[1], d2 = pair[2], cilower = cilower, ciupper = ciupper, minsigma = minsigma, maxsigma = maxsigma, finitesamplecovariance = finitesamplecovariance)
+  }))
   
   # Format results into a data frame
   formatted_results <- data.frame(
