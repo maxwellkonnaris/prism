@@ -21,7 +21,7 @@
 #' results <- run_analysis(Y)
 #' @export
 
-run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 1.0, S = 1000) {
+run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
 
   # Record the start time for profiling
   start_time <- Sys.time()
@@ -68,7 +68,7 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 1.0, S = 1000) {
   # Create a sequence for rho1, rho2, and x based on the given bounds
   rho1 <- seq(-rhobound, rhobound, by = 0.05)
   rho2 <- seq(-rhobound, rhobound, by = 0.05)
-  x <- seq(0.05, 1.0, by = 0.01) 
+  x <- seq(0.05, 0.2, by = 0.01)
   
   # Generate all combinations of rho1, rho2, and x
   pars <- expand.grid(rho1, rho2, x)
@@ -79,7 +79,7 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 1.0, S = 1000) {
   cat("Alpha:\n")
   print(alpha)
   cat("Rho bounds:\n")
-  print(paste0(-rhobound, ":", rhobound))
+  print(paste0(-rhobound,":",rhobound))
   # Print the head of the data frame
   cat("Head of the parameter grid:\n")
   print(head(pars))
@@ -158,7 +158,7 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 1.0, S = 1000) {
   
   # Generate all pairs of indices and add diagonal pairs
   pair_indices <- combn(D, 2, simplify = FALSE)
-  #pair_indices <- c(pair_indices, lapply(1:D, function(x) c(x, x)))  # Add diagonal pairs
+  pair_indices <- c(pair_indices, lapply(1:D, function(x) c(x, x)))  # Add diagonal pairs
 
   cat("Running sigma estimation")
   
@@ -169,7 +169,6 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 1.0, S = 1000) {
   
     minsigma_values <- numeric(S)
     maxsigma_values <- numeric(S)
-    sigma_values_local <- list()
     
     # Use parallel foreach for the inner loop
     results_inner <- foreach(s = 1:S, .combine = 'rbind', .packages = c('stats', 'MCMCpack'), .options.snow = opts) %dopar% {
@@ -177,71 +176,58 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 1.0, S = 1000) {
   
       # Find the minimum sigma
       res_min <- optim(par = c(0, 0, 0.1), fn = objective_function, Yboot = Yboot, d1 = d1, d2 = d2, alpha = alpha, 
-                       method = "L-BFGS-B", lower = c(-rhobound, -rhobound, 0.05), upper = c(rhobound, rhobound, 1.0))
+                       method = "L-BFGS-B", lower = c(-rhobound, -rhobound, 0.05), upper = c(rhobound, rhobound, 0.2))
   
       # Find the maximum sigma by negating the objective function
       res_max <- optim(par = c(0, 0, 0.1), fn = function(params, Yboot, d1, d2, alpha) {
         -objective_function(params, Yboot, d1, d2, alpha)
-      }, Yboot = Yboot, d1 = d1, d2 = d2, alpha = alpha, method = "L-BFGS-B", lower = c(-rhobound, -rhobound, 0.05), upper = c(rhobound, rhobound, 1.0))
-            
-      comparison <- paste(rownames(Y)[d1], rownames(Y)[d2], sep = ":")
-      min_name <- paste("min", comparison, "s", s, sep = "_")
-      max_name <- paste("max", comparison, "s", s, sep = "_")
+      }, Yboot = Yboot, d1 = d1, d2 = d2, alpha = alpha, method = "L-BFGS-B", lower = c(-rhobound, -rhobound, 0.05), upper = c(rhobound, rhobound, 0.2))
       
-      sigma_values_local[[min_name]] <- data.frame(comparison = comparison, Yboot = Yboot, d1 = d1, d2 = d2, rho1 = res_min$par[1], rho2 = res_min$par[2], x = res_min$par[3], sigma = res_min$value, stringsAsFactors = FALSE)
-      sigma_values_local[[max_name]] <- data.frame(comparison = comparison, Yboot = Yboot, d1 = d1, d2 = d2, rho1 = res_max$par[1], rho2 = res_max$par[2], x = res_max$par[3], sigma = -res_max$value, stringsAsFactors = FALSE)
-      
-      c(minsigma = res_min$value, maxsigma = -res_max$value)
+      c(d1 = d1, d2 = d2, s = s, Yboot = Yboot, minsigma = res_min$value, maxsigma = -res_max$value, min_rho1 = res_min$par[1], min_rho2 = res_min$par[2], min_x = res_min$par[3], max_rho1 = res_max$par[1], max_rho2 = res_max$par[2], max_x = res_max$par[3])
     }
   
     minsigma_values <- results_inner[, "minsigma"]
     maxsigma_values <- results_inner[, "maxsigma"]
-    
-    # Combine local sigma_values into the main sigma_values list
-    list(minsigma_values = minsigma_values, maxsigma_values = maxsigma_values, sigma_values_local = sigma_values_local)
-  }
   
-  # Aggregate sigma_values from each task
-  sigma_values <- list()
-  for (res in results_list) {
-    sigma_values <- c(sigma_values, res$sigma_values_local)
-  }
-  
-  # Convert sigma_values to a data frame for easier manipulation
-  sigma_values_df <- do.call(rbind, sigma_values)
-
-  
-  # Process the results
-  final_results <- do.call(rbind, lapply(results_list, function(x) {
-    minsigma_values <- x$minsigma_values
-    maxsigma_values <- x$maxsigma_values
-    
+    # Sort the results
     sortedmin <- sort(minsigma_values)
     sortedmax <- sort(maxsigma_values)
     
+    # Compute the minimum, maximum, and confidence intervals
     minsigma <- min(sortedmin)
     maxsigma <- max(sortedmax)
     cilower <- quantile(sortedmin, probs = 0.025)
     ciupper <- quantile(sortedmax, probs = 0.975)
-    
-    finitesamplecovariance <- stats::cov(log(Y)[pair[1],], log(Y)[pair[2],])
-    
-    c(d1 = pair[1], d2 = pair[2], cilower = cilower, ciupper = ciupper, minsigma = minsigma, maxsigma = maxsigma, finitesamplecovariance = finitesamplecovariance)
-  }))
   
-  # Format results into a data frame
-  formatted_results <- data.frame(
-    comparison = apply(final_results, 1, function(row) paste(rownames(Y)[row["d1"]], ":", rownames(Y)[row["d2"]], sep = "")),
-    cilower = final_results$cilower,
-    ciupper = final_results$ciupper,
-    minsigma = final_results$minsigma,
-    maxsigma = final_results$maxsigma,
-    finitesamplecovariance = final_results$finitesamplecovariance,
+    # Compute finite sample covariance
+    finitesamplecovariance <- stats::cov(log(Y)[d1,], log(Y)[d2,])
+    
+    list(d1 = d1, d2 = d2, cilower = cilower, ciupper = ciupper, minsigma = minsigma, maxsigma = maxsigma, resultsinner = results_inner, finitesamplecovariance = finitesamplecovariance)
+  }
+
+  # Process overall results
+  final_results <- do.call(rbind, lapply(results_list, function(x) data.frame(
+    d1 = rownames(Y)[x$d1],
+    d2 = rownames(Y)[x$d2],
+    cilower = x$cilower,
+    ciupper = x$ciupper,
+    minsigma = x$minsigma,
+    maxsigma = x$maxsigma,
+    finitesamplecovariance = x$finitesamplecovariance,
     stringsAsFactors = FALSE
-  )
+  )))
   
   # Remove row names
-  rownames(formatted_results) <- NULL
+  rownames(final_results) <- NULL
+  
+  # Combine results_inner
+  combined_results_inner <- do.call(rbind, lapply(results_list, function(x) {
+    results_inner_df <- as.data.frame(x$resultsinner)
+    colnames(results_inner_df) <- c("minsigma", "maxsigma", "min_rho1", "min_rho2", "min_x", "max_rho1", "max_rho2", "max_x")
+    results_inner_df$d1 <- rownames(Y)[x$d1]
+    results_inner_df$d2 <- rownames(Y)[x$d2]
+    results_inner_df
+  }))
   
   # Calculate and print the total elapsed time
   end_time <- Sys.time()
@@ -249,5 +235,5 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 1.0, S = 1000) {
   formatted_time <- format_elapsed_time(elapsed_time)
   print(paste("Total time taken:", formatted_time))
   
-  return(list(formatted_results = formatted_results, sigma_values = sigma_values_df))
+  return(list(overall_results = final_results, results_inner = combined_results_inner))
 }
