@@ -38,37 +38,46 @@ run_gridanalysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 100
     return(paste(result, collapse = ", "))
   }
 
+    # Define global handlers for progress bars
   handlers(global = TRUE)
 
+  # Check if Y is a matrix and has appropriate dimensions
   if (!is.matrix(Y) || nrow(Y) < 2 || ncol(Y) < 2) {
     stop("Y must be a matrix with at least 2 rows and 2 columns.")
   }
 
+  # Get the number of columns (N) and rows (D) in the input matrix Y
   N <- ncol(Y)
   D <- nrow(Y)
 
+  # Create a sequence for rho1, rho2, and x based on the given bounds
   rho1 <- seq(-rhobound, rhobound, by = 0.05)
   rho2 <- seq(-rhobound, rhobound, by = 0.05)
   x <- seq(0.05, 0.2, by = 0.01)
   
+  # Generate all combinations of rho1, rho2, and x
   pars <- expand.grid(rho1, rho2, x)
   colnames(pars) <- c("rho1", "rho2", "x")
   
+  # Print priors
   cat("Priors used for the analysis:\n")
   cat("Alpha:\n")
   print(alpha)
   cat("Rho bounds:\n")
-  print(paste0(-rhobound, ":", rhobound))
+  print(paste0(-rhobound,":",rhobound))
+  # Print the head of the data frame
   cat("Head of the parameter grid:\n")
   print(head(pars))
+  # Print the tail of the data frame
   cat("Tail of the parameter grid:\n")
   print(tail(pars))
   cat("Dimensions of supplied matrix:\n")
   print(dim(Y))
   cat("Bootstrap sample size (S):\n")
   print(S)
-
-  results <- vector("list", length = D * (D + 1) / 2)
+  
+  # Initialize a results matrix to store the results for each pair
+  results <- matrix(list(), D, D)
 
   objective_function <- function(params, Yboot, d1, d2, alpha) {
     rho1 <- params[1]
