@@ -40,7 +40,6 @@ forest_plot <- function(data, bg = "white", save = NULL) {
   
   # Create the forest plot with confidence intervals and sigma ranges
   plot <- ggplot(data, aes(x = comparison)) +
-    geom_errorbar(aes(ymin = cilower, ymax = ciupper, color = "Confidence Interval"), width = 0.3, size = 1) +
     coord_flip() +
     theme_minimal(base_size = 15) +
     labs(
@@ -55,13 +54,16 @@ forest_plot <- function(data, bg = "white", save = NULL) {
       axis.title = element_text(size = 18),
       axis.text = element_text(size = 15)
     ) +
-    scale_color_manual(values = c("Confidence Interval" = "#FF00FF", "Sigma Range" = "#000000"))
+    scale_color_manual(values = c("95% CI" = "#FF00FF", "Sigma Range" = "#000000"))
   
   # Add sigma ranges if available
   if (has_sigma) {
     plot <- plot + geom_errorbar(aes(ymin = minsigma, ymax = maxsigma, color = "Sigma Range"), width = 0.3, size = 1)
   }
-
+  
+  # Add the 95% confidence intervals on top
+  plot <- plot + geom_errorbar(aes(ymin = cilower, ymax = ciupper, color = "95% CI"), width = 0.3, size = 1)
+  
   # Customize the background based on the bg parameter
   if (bg == "transparent") {
     # Do nothing as the default is already minimal with transparent background
