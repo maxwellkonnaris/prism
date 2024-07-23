@@ -161,6 +161,11 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000, v
   if (variance) {
     pair_indices <- c(pair_indices, lapply(1:D, function(x) c(x, x)))  # Add diagonal pairs
   }
+
+  # Check if pair_indices is populated correctly
+  if (length(pair_indices) == 0) {
+    stop("Error: pair_indices is not populated correctly. Aborting analysis.")
+  }
                                           
   # Run the analysis
   cat("Running sigma estimation")
