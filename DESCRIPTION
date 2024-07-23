@@ -8,3 +8,5 @@ Description: A package for running simulations and robust covariance analysis on
 License: GPL-3
 Imports: tidyverse, driver, rBeta2009, pbapply, progressr, foreach, doSNOW, parallel, stats, MCMCpack, ggplot2, profvis
 RoxygenNote: 7.3.2
+Encoding: UTF-8
+LazyData: true
