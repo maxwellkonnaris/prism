@@ -40,7 +40,7 @@ forest_plot <- function(data, bg = "white", save = NULL) {
   
   # Highlight intervals that do not cover 0
   data <- data %>%
-    mutate(highlight = ifelse((cilower > 0 & ciupper > 0) | (cilower < 0 & ciupper < 0), "highlight", "normal"))
+    mutate(highlight = ifelse((cilower > 0 & ciupper > 0) | (cilower < 0 & ciupper < 0), "95% CI Doesnt Cover Zero", "95% CI Covers Zero"))
   
   # Create the forest plot with confidence intervals and sigma ranges
   plot <- ggplot(data, aes(x = comparison)) +
@@ -58,7 +58,7 @@ forest_plot <- function(data, bg = "white", save = NULL) {
       axis.title = element_text(size = 18),
       axis.text = element_text(size = 15)
     ) +
-    scale_color_manual(values = c("normal" = "#FF00FF", "highlight" = "green", "Sigma Range" = "#000000"))
+    scale_color_manual(values = c("95% CI Covers Zero" = "#FF00FF", "95% CI Doesnt Cover Zero" = "green", "Sigma Range" = "#000000"))
   
   # Add sigma ranges if available
   if (has_sigma) {
