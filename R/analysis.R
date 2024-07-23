@@ -198,13 +198,55 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
     maxsigma <- max(sortedmax)
     cilower <- quantile(sortedmin, probs = 0.025)
     ciupper <- quantile(sortedmax, probs = 0.975)
-  
+
+   # Obtain parameters for the minimum and maximum sigma values
+    min_index <- which.min(minsigma_values)
+    max_index <- which.max(maxsigma_values)
+    ci_lower_index <- which(sortedmin == cilower)[1]
+    ci_upper_index <- which(sortedmax == ciupper)[1]
+    
+    min_rho1 <- results_inner[min_index, "min_rho1"]
+    min_rho2 <- results_inner[min_index, "min_rho2"]
+    min_x <- results_inner[min_index, "min_x"]
+    
+    max_rho1 <- results_inner[max_index, "max_rho1"]
+    max_rho2 <- results_inner[max_index, "max_rho2"]
+    max_x <- results_inner[max_index, "max_x"]
+    
+    ci_lower_rho1 <- results_inner[ci_lower_index, "min_rho1"]
+    ci_lower_rho2 <- results_inner[ci_lower_index, "min_rho2"]
+    ci_lower_x <- results_inner[ci_lower_index, "min_x"]
+    
+    ci_upper_rho1 <- results_inner[ci_upper_index, "max_rho1"]
+    ci_upper_rho2 <- results_inner[ci_upper_index, "max_rho2"]
+    ci_upper_x <- results_inner[ci_upper_index, "max_x"]
+    
     # Compute finite sample covariance
     finitesamplecovariance <- stats::cov(log(Y)[d1,], log(Y)[d2,])
     
-    list(d1 = d1, d2 = d2, cilower = cilower, ciupper = ciupper, minsigma = minsigma, maxsigma = maxsigma, resultsinner = results_inner, finitesamplecovariance = finitesamplecovariance)
+    list(
+      d1 = d1,
+      d2 = d2,
+      cilower = cilower,
+      ciupper = ciupper,
+      minsigma = minsigma,
+      maxsigma = maxsigma,
+      min_rho1 = min_rho1,
+      min_rho2 = min_rho2,
+      min_x = min_x,
+      max_rho1 = max_rho1,
+      max_rho2 = max_rho2,
+      max_x = max_x,
+      ci_lower_rho1 = ci_lower_rho1,
+      ci_lower_rho2 = ci_lower_rho2,
+      ci_lower_x = ci_lower_x,
+      ci_upper_rho1 = ci_upper_rho1,
+      ci_upper_rho2 = ci_upper_rho2,
+      ci_upper_x = ci_upper_x,
+      finitesamplecovariance = finitesamplecovariance
+    )
   }
-
+  
   # Process overall results
   final_results <- do.call(rbind, lapply(results_list, function(x) data.frame(
     d1 = rownames(Y)[x$d1],
@@ -214,26 +256,29 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
     minsigma = x$minsigma,
     maxsigma = x$maxsigma,
     finitesamplecovariance = x$finitesamplecovariance,
+    min_rho1 = x$min_rho1,
+    min_rho2 = x$min_rho2,
+    min_x = x$min_x,
+    max_rho1 = x$max_rho1,
+    max_rho2 = x$max_rho2,
+    max_x = x$max_x,
+    ci_lower_rho1 = x$ci_lower_rho1,
+    ci_lower_rho2 = x$ci_lower_rho2,
+    ci_lower_x = x$ci_lower_x,
+    ci_upper_rho1 = x$ci_upper_rho1,
+    ci_upper_rho2 = x$ci_upper_rho2,
+    ci_upper_x = x$ci_upper_x,
     stringsAsFactors = FALSE
   )))
   
   # Remove row names
   rownames(final_results) <- NULL
-  
-  # Combine results_inner
-  combined_results_inner <- do.call(rbind, lapply(results_list, function(x) {
-    results_inner_df <- as.data.frame(x$resultsinner)
-    colnames(results_inner_df) <- c("d1","d2","s","Yboot", "minsigma", "maxsigma", "min_rho1", "min_rho2", "min_x", "max_rho1", "max_rho2", "max_x")
-    results_inner_df$d1name <- rownames(Y)[x$d1]
-    results_inner_df$d2name <- rownames(Y)[x$d2]
-    results_inner_df
-  }))
-  
+
   # Calculate and print the total elapsed time
   end_time <- Sys.time()
   elapsed_time <- end_time - start_time
   formatted_time <- format_elapsed_time(elapsed_time)
   print(paste("Total time taken:", formatted_time))
   
-  return(list(overall_results = final_results, results_inner = combined_results_inner))
+  return(final_results)
 }
