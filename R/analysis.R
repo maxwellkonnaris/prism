@@ -68,7 +68,7 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000, v
   # Create a sequence for rho1, rho2, and x based on the given bounds
   rho1 <- seq(-rhobound, rhobound, by = 0.05)
   rho2 <- seq(-rhobound, rhobound, by = 0.05)
-  x <- seq(0.05, 1.0 by = 0.01)
+  x <- seq(0.05, 1.0, by = 0.01)
   
   # Generate all combinations of rho1, rho2, and x
   pars <- expand.grid(rho1, rho2, x)
