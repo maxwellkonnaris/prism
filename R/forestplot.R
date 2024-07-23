@@ -59,7 +59,6 @@ forest_plot <- function(data, bg = "white", save = NULL) {
       axis.text = element_text(size = 15)
     ) +
     scale_color_manual(values = c("95% CI" = "#FF00FF", "Sigma Range" = "#000000")) +
-    scale_fill_manual(values = c("highlight" = "red", "normal" = "black")) +
     geom_hline(yintercept = 0, linetype = "dashed", color = "gray")
   
   # Add sigma ranges if available
@@ -67,8 +66,9 @@ forest_plot <- function(data, bg = "white", save = NULL) {
     plot <- plot + geom_errorbar(aes(ymin = minsigma, ymax = maxsigma, color = "Sigma Range"), width = 0.3, size = 1)
   }
   
-  # Add the 95% confidence intervals on top and highlight those not covering 0
-  plot <- plot + geom_errorbar(aes(ymin = cilower, ymax = ciupper, color = "95% CI", fill = highlight), width = 0.3, size = 1)
+  # Add the 95% confidence intervals and highlight those not covering 0
+  plot <- plot + geom_segment(aes(y = cilower, yend = ciupper, x = comparison, xend = comparison, color = "95% CI", linetype = highlight), size = 1) +
+    scale_linetype_manual(values = c("highlight" = "solid", "normal" = "dotted"))
   
   # Customize the background based on the bg parameter
   if (bg == "transparent") {
