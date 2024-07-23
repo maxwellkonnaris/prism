@@ -21,7 +21,7 @@
 #' results <- run_analysis(Y)
 #' @export
 
-run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
+run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000, variance=FALSE) {
 
   # Record the start time for profiling
   start_time <- Sys.time()
