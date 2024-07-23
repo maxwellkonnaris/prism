@@ -93,6 +93,7 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
   
   # Initialize a results matrix to store the results for each pair
   results <- matrix(list(), D, D)
+  sigma_values <- list()
   
   # Define the objective function used in the optimization
   objective_function <- function(params, Yboot, d1, d2, alpha) {
@@ -182,6 +183,9 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
       res_max <- optim(par = c(0, 0, 0.1), fn = function(params, Yboot, d1, d2, alpha) {
         -objective_function(params, Yboot, d1, d2, alpha)
       }, Yboot = Yboot, d1 = d1, d2 = d2, alpha = alpha, method = "L-BFGS-B", lower = c(-rhobound, -rhobound, 0.05), upper = c(rhobound, rhobound, 0.2))
+            
+      sigma_values <<- rbind(sigma_values, data.frame(d1 = d1, d2 = d2, rho1 = res_min$par[1], rho2 = res_min$par[2], x = res_min$par[3], sigma = res_min$value, stringsAsFactors = FALSE))
+      sigma_values <<- rbind(sigma_values, data.frame(d1 = d1, d2 = d2, rho1 = res_max$par[1], rho2 = res_max$par[2], x = res_max$par[3], sigma = -res_max$value, stringsAsFactors = FALSE))
       
       c(minsigma = res_min$value, maxsigma = -res_max$value)
     }
@@ -229,5 +233,5 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
   formatted_time <- format_elapsed_time(elapsed_time)
   print(paste("Total time taken:", formatted_time))
   
-  return(formatted_results)
+  return(list(formatted_results = formatted_results, sigma_values = sigma_values))
 }
