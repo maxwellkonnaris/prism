@@ -38,6 +38,10 @@ forest_plot <- function(data, bg = "white", save = NULL) {
   # Reorder the comparison names by the range
   data$comparison <- factor(data$comparison, levels = data$comparison[order(data$range, decreasing = TRUE)])
   
+  # Highlight intervals that do not cover 0
+  data <- data %>%
+    mutate(highlight = ifelse((cilower > 0 & ciupper > 0) | (cilower < 0 & ciupper < 0), "highlight", "normal"))
+  
   # Create the forest plot with confidence intervals and sigma ranges
   plot <- ggplot(data, aes(x = comparison)) +
     coord_flip() +
@@ -54,15 +58,17 @@ forest_plot <- function(data, bg = "white", save = NULL) {
       axis.title = element_text(size = 18),
       axis.text = element_text(size = 15)
     ) +
-    scale_color_manual(values = c("95% CI" = "#FF00FF", "Sigma Range" = "#000000"))
+    scale_color_manual(values = c("95% CI" = "#FF00FF", "Sigma Range" = "#000000")) +
+    scale_fill_manual(values = c("highlight" = "red", "normal" = "black")) +
+    geom_hline(yintercept = 0, linetype = "dashed", color = "gray")
   
   # Add sigma ranges if available
   if (has_sigma) {
     plot <- plot + geom_errorbar(aes(ymin = minsigma, ymax = maxsigma, color = "Sigma Range"), width = 0.3, size = 1)
   }
   
-  # Add the 95% confidence intervals on top
-  plot <- plot + geom_errorbar(aes(ymin = cilower, ymax = ciupper, color = "95% CI"), width = 0.3, size = 1)
+  # Add the 95% confidence intervals on top and highlight those not covering 0
+  plot <- plot + geom_errorbar(aes(ymin = cilower, ymax = ciupper, color = "95% CI", fill = highlight), width = 0.3, size = 1)
   
   # Customize the background based on the bg parameter
   if (bg == "transparent") {
@@ -81,6 +87,9 @@ forest_plot <- function(data, bg = "white", save = NULL) {
   } else {
     stop("bg parameter must be 'transparent' or 'white'")
   }
+  
+  # Ensure there is a minimum tick mark
+  plot <- plot + scale_y_continuous(breaks = scales::pretty_breaks(n = 10))
   
   # Save the plot if save is not NULL
   if (!is.null(save)) {
