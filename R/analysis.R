@@ -184,8 +184,11 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 1.0, S = 1000) {
         -objective_function(params, Yboot, d1, d2, alpha)
       }, Yboot = Yboot, d1 = d1, d2 = d2, alpha = alpha, method = "L-BFGS-B", lower = c(-rhobound, -rhobound, 0.05), upper = c(rhobound, rhobound, 1.0))
             
-      sigma_values <<- rbind(sigma_values, data.frame(Yboot = Yboot, d1 = d1, d2 = d2, rho1 = res_min$par[1], rho2 = res_min$par[2], x = res_min$par[3], sigma = res_min$value, stringsAsFactors = FALSE))
-      sigma_values <<- rbind(sigma_values, data.frame(Yboot = Yboot, d1 = d1, d2 = d2, rho1 = res_max$par[1], rho2 = res_max$par[2], x = res_max$par[3], sigma = -res_max$value, stringsAsFactors = FALSE))
+      min_name <- paste("min_d1", d1, "d2", d2, "s", s, sep = "_")
+      max_name <- paste("max_d1", d1, "d2", d2, "s", s, sep = "_")
+      
+      sigma_values[[min_name]] <- data.frame(Yboot = Yboot, d1 = d1, d2 = d2, rho1 = res_min$par[1], rho2 = res_min$par[2], x = res_min$par[3], sigma = res_min$value, stringsAsFactors = FALSE)
+      sigma_values[[max_name]] <- data.frame(Yboot = Yboot, d1 = d1, d2 = d2, rho1 = res_max$par[1], rho2 = res_max$par[2], x = res_max$par[3], sigma = -res_max$value, stringsAsFactors = FALSE)
       
       c(minsigma = res_min$value, maxsigma = -res_max$value)
     }
