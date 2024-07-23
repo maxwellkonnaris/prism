@@ -223,9 +223,9 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
   # Combine results_inner
   combined_results_inner <- do.call(rbind, lapply(results_list, function(x) {
     results_inner_df <- as.data.frame(x$resultsinner)
-    colnames(results_inner_df) <- c("minsigma", "maxsigma", "min_rho1", "min_rho2", "min_x", "max_rho1", "max_rho2", "max_x")
-    results_inner_df$d1 <- rownames(Y)[x$d1]
-    results_inner_df$d2 <- rownames(Y)[x$d2]
+    colnames(results_inner_df) <- c("d1","d2","s","Yboot", "minsigma", "maxsigma", "min_rho1", "min_rho2", "min_x", "max_rho1", "max_rho2", "max_x")
+    results_inner_df$d1name <- rownames(Y)[x$d1]
+    results_inner_df$d2name <- rownames(Y)[x$d2]
     results_inner_df
   }))
   
