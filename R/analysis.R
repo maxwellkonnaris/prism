@@ -158,11 +158,12 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
   
   # Generate all pairs of indices and add diagonal pairs
   pair_indices <- combn(D, 2, simplify = FALSE)
-  pair_indices <- c(pair_indices, lapply(1:D, function(x) c(x, x)))  # Add diagonal pairs
-
-  cat("Running sigma estimation")
-  
+  if variance==TRUE{
+    pair_indices <- c(pair_indices, lapply(1:D, function(x) c(x, x)))  # Add diagonal pairs
+  }
+                                          
   # Run the analysis
+  cat("Running sigma estimation")
   results_list <- foreach(pair = pair_indices, .packages = c('stats', 'MCMCpack'), .combine = 'list', .options.snow = opts) %dopar% {
     d1 <- pair[1]
     d2 <- pair[2]
@@ -249,6 +250,7 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000) {
   
   # Process overall results
   final_results <- do.call(rbind, lapply(results_list, function(x) data.frame(
+    comparison = paste(rownames(Y)[x$d1],rownames(Y)[x$d2],sep=":"),
     d1 = rownames(Y)[x$d1],
     d2 = rownames(Y)[x$d2],
     cilower = x$cilower,
