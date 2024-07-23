@@ -184,11 +184,12 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 1.0, S = 1000) {
         -objective_function(params, Yboot, d1, d2, alpha)
       }, Yboot = Yboot, d1 = d1, d2 = d2, alpha = alpha, method = "L-BFGS-B", lower = c(-rhobound, -rhobound, 0.05), upper = c(rhobound, rhobound, 1.0))
             
-      min_name <- paste("min_d1", d1, "d2", d2, "s", s, sep = "_")
-      max_name <- paste("max_d1", d1, "d2", d2, "s", s, sep = "_")
+      comparison <- paste(rownames(Y)[d1], rownames(Y)[d2], sep = ":")
+      min_name <- paste("min", comparison, "s", s, sep = "_")
+      max_name <- paste("max", comparison, "s", s, sep = "_")
       
-      sigma_values_local[[min_name]] <- data.frame(Yboot = Yboot, d1 = d1, d2 = d2, rho1 = res_min$par[1], rho2 = res_min$par[2], x = res_min$par[3], sigma = res_min$value, stringsAsFactors = FALSE)
-      sigma_values_local[[max_name]] <- data.frame(Yboot = Yboot, d1 = d1, d2 = d2, rho1 = res_max$par[1], rho2 = res_max$par[2], x = res_max$par[3], sigma = -res_max$value, stringsAsFactors = FALSE)
+      sigma_values_local[[min_name]] <- data.frame(comparison = comparison, Yboot = Yboot, d1 = d1, d2 = d2, rho1 = res_min$par[1], rho2 = res_min$par[2], x = res_min$par[3], sigma = res_min$value, stringsAsFactors = FALSE)
+      sigma_values_local[[max_name]] <- data.frame(comparison = comparison, Yboot = Yboot, d1 = d1, d2 = d2, rho1 = res_max$par[1], rho2 = res_max$par[2], x = res_max$par[3], sigma = -res_max$value, stringsAsFactors = FALSE)
       
       c(minsigma = res_min$value, maxsigma = -res_max$value)
     }
@@ -205,6 +206,10 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 1.0, S = 1000) {
   for (res in results_list) {
     sigma_values <- c(sigma_values, res$sigma_values_local)
   }
+  
+  # Convert sigma_values to a data frame for easier manipulation
+  sigma_values_df <- do.call(rbind, sigma_values)
+
   
   # Process the results
   final_results <- do.call(rbind, lapply(results_list, function(x) {
@@ -244,5 +249,5 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 1.0, S = 1000) {
   formatted_time <- format_elapsed_time(elapsed_time)
   print(paste("Total time taken:", formatted_time))
   
-  return(list(formatted_results = formatted_results, sigma_values = sigma_values))
+  return(list(formatted_results = formatted_results, sigma_values = sigma_values_df))
 }
