@@ -20,45 +20,45 @@
 sigmaplot <- function(all_inner_results, save_format = NULL) {
   
   # Convert character columns to numeric
-  all_results_df$s <- as.numeric(all_results_df$s)
-  all_results_df$minsigma <- as.numeric(all_results_df$minsigma)
-  all_results_df$maxsigma <- as.numeric(all_results_df$maxsigma)
-  all_results_df$min_rho1 <- as.numeric(all_results_df$min_rho1)
-  all_results_df$min_rho2 <- as.numeric(all_results_df$min_rho2)
-  all_results_df$min_x <- as.numeric(all_results_df$min_x)
-  all_results_df$max_rho1 <- as.numeric(all_results_df$max_rho1)
-  all_results_df$max_rho2 <- as.numeric(all_results_df$max_rho2)
-  all_results_df$max_x <- as.numeric(all_results_df$max_x)
+  all_inner_results$s <- as.numeric(all_inner_results$s)
+  all_inner_results$minsigma <- as.numeric(all_inner_results$minsigma)
+  all_inner_results$maxsigma <- as.numeric(all_inner_results$maxsigma)
+  all_inner_results$min_rho1 <- as.numeric(all_inner_results$min_rho1)
+  all_inner_results$min_rho2 <- as.numeric(all_inner_results$min_rho2)
+  all_inner_results$min_x <- as.numeric(all_inner_results$min_x)
+  all_inner_results$max_rho1 <- as.numeric(all_inner_results$max_rho1)
+  all_inner_results$max_rho2 <- as.numeric(all_inner_results$max_rho2)
+  all_inner_results$max_x <- as.numeric(all_inner_results$max_x)
   
   # Min and Max Sigma vs rho1
-  p1_min <- ggplot(all_results_df, aes(x = min_rho1, y = minsigma, color = comparison)) +
+  p1_min <- ggplot(all_inner_results, aes(x = min_rho1, y = minsigma, color = comparison)) +
     geom_point() +
     labs(title = "Min Sigma vs rho1", x = "rho1", y = "Min Sigma") +
     theme_minimal()
   
-  p1_max <- ggplot(all_results_df, aes(x = max_rho1, y = maxsigma, color = comparison)) +
+  p1_max <- ggplot(all_inner_results, aes(x = max_rho1, y = maxsigma, color = comparison)) +
     geom_point() +
     labs(title = "Max Sigma vs rho1", x = "rho1", y = "Max Sigma") +
     theme_minimal()
   
   # Min and Max Sigma vs rho2
-  p2_min <- ggplot(all_results_df, aes(x = min_rho2, y = minsigma, color = comparison)) +
+  p2_min <- ggplot(all_inner_results, aes(x = min_rho2, y = minsigma, color = comparison)) +
     geom_point() +
     labs(title = "Min Sigma vs rho2", x = "rho2", y = "Min Sigma") +
     theme_minimal()
   
-  p2_max <- ggplot(all_results_df, aes(x = max_rho2, y = maxsigma, color = comparison)) +
+  p2_max <- ggplot(all_inner_results, aes(x = max_rho2, y = maxsigma, color = comparison)) +
     geom_point() +
     labs(title = "Max Sigma vs rho2", x = "rho2", y = "Max Sigma") +
     theme_minimal()
   
   # Min and Max Sigma vs x
-  p3_min <- ggplot(all_results_df, aes(x = min_x, y = minsigma, color = comparison)) +
+  p3_min <- ggplot(all_inner_results, aes(x = min_x, y = minsigma, color = comparison)) +
     geom_point() +
     labs(title = "Min Sigma vs x", x = "x", y = "Min Sigma") +
     theme_minimal()
   
-  p3_max <- ggplot(all_results_df, aes(x = max_x, y = maxsigma, color = comparison)) +
+  p3_max <- ggplot(all_inner_results, aes(x = max_x, y = maxsigma, color = comparison)) +
     geom_point() +
     labs(title = "Max Sigma vs x", x = "x", y = "Max Sigma") +
     theme_minimal()
