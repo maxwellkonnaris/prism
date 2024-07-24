@@ -41,14 +41,14 @@ sigmaplot <- function(all_inner_results, filename = NULL, save = NULL, plot_type
           axis.text = element_text(size = 10))
   
   # Function to create plots
-  create_plot <- function(xvar, yvar, title) {
+  create_plot <- function(xvar, yvar, comparison, title) {
     if (plot_type == "line") {
-      p <- ggplot(all_inner_results, aes(x = xvar, y = yvar, color = "comparison")) +
+      p <- ggplot(all_inner_results, aes(x = xvar, y = yvar, color = comparison)) +
         geom_smooth(method = "lm", se = TRUE) +  
         labs(title = title, x = xvar, y = yvar) +
         custom_theme
     } else {
-      p <- ggplot(all_inner_results, aes_string(x = xvar, y = yvar, color = "comparison")) +
+      p <- ggplot(all_inner_results, aes(x = xvar, y = yvar, color = comparison)) +
         geom_point(shape = 16) +  # Use circle shape for points
         labs(title = title, x = xvar, y = yvar) +
         custom_theme
@@ -57,16 +57,16 @@ sigmaplot <- function(all_inner_results, filename = NULL, save = NULL, plot_type
   }
   
   # Min and Max Sigma vs rho1
-  p1_min <- create_plot("min_rho1", "minsigma", "Min Sigma vs rho1")
-  p1_max <- create_plot("max_rho1", "maxsigma", "Max Sigma vs rho1")
+  p1_min <- create_plot("min_rho1", "minsigma", "comparison", "Min Sigma vs rho1")
+  p1_max <- create_plot("max_rho1", "maxsigma", "comparison", "Max Sigma vs rho1")
   
   # Min and Max Sigma vs rho2
-  p2_min <- create_plot("min_rho2", "minsigma", "Min Sigma vs rho2")
-  p2_max <- create_plot("max_rho2", "maxsigma", "Max Sigma vs rho2")
+  p2_min <- create_plot("min_rho2", "minsigma", "comparison", "Min Sigma vs rho2")
+  p2_max <- create_plot("max_rho2", "maxsigma", "comparison", "Max Sigma vs rho2")
   
   # Min and Max Sigma vs x
-  p3_min <- create_plot("min_x", "minsigma", "Min Sigma vs x")
-  p3_max <- create_plot("max_x", "maxsigma", "Max Sigma vs x")
+  p3_min <- create_plot("min_x", "minsigma", "comparison", "Min Sigma vs x")
+  p3_max <- create_plot("max_x", "maxsigma", "comparison", "Max Sigma vs x")
   
   # # Combined
   # combined_plot <- gridExtra::grid.arrange(p1_min, p1_max, p2_min, p2_max, p3_min, p3_max, ncol = 2)
