@@ -18,10 +18,10 @@
 #' # Example usage (You could also use the simulation function provided to generate sample data):
 #' set.seed(123)
 #' Y <- matrix(rnorm(1000), nrow = 10)
-#' results <- run_analysis(Y)
+#' results <- estimate_covariance(Y)
 #' @export
 
-run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.9, S = 1000, variance=FALSE) {
+estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.9, S = 1000, variance=FALSE) {
 
   # Record the start time for profiling
   start_time <- Sys.time()
