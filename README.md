@@ -48,7 +48,7 @@ See Scale Reliant Inference for more information:
 ```r
 results = estimate_covariance(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000, variance = FALSE, upperx = 1.0)
 forest_plot(results$final_results, save="png", filename="example_dataset")
-sigmaplot(results$#all_inner_results, save="png", filename="example_dataset")
+sigmaplot(results$all_inner_results, save="png", filename="example_dataset")
 ```
 
 ## Parameters
