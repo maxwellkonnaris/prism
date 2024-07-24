@@ -176,6 +176,7 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.9, S = 1000, v
   results_list <- foreach(pair = pair_indices, .combine = 'rbind', .packages = c('stats', 'MCMCpack'), .options.snow = opts) %dopar% {
     d1 <- pair[1]
     d2 <- pair[2]
+    comparison <- paste(rownames(Y)[d1], rownames(Y)[d2], sep = ":")
   
     minsigma_values <- numeric(S)
     maxsigma_values <- numeric(S)
@@ -197,7 +198,7 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.9, S = 1000, v
     }
     
     # Store the inner results for this pair
-    all_inner_results[[paste(d1, d2, sep = ":")]] <- results_inner
+    all_inner_results[[comparison]] <- results_inner
 
     # Gather the min and max optimized sigmas
     minsigma_values <- results_inner[, "minsigma"]
@@ -230,7 +231,7 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.9, S = 1000, v
 
     # Store as dataframe
     data.frame(
-      comparison = paste(rownames(Y)[d1], rownames(Y)[d2], sep=":"),
+      comparison = comparison,
       d1 = rownames(Y)[d1],
       d2 = rownames(Y)[d2],
       cilower = cilower,
