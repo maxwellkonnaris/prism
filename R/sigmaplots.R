@@ -8,6 +8,7 @@
 #' @param save_format A character string specifying the format to save the plots (\code{NULL}, \code{"jpg"}, \code{"png"}, \code{"svg"}). Defaults to \code{NULL}.
 #' @return Plots visualizing the impact of the parameters on sigma.
 #' @import ggplot2
+#' @import gridExtra
 #' @examples
 #' # Example usage:
 #' # Assuming 'results' is the output from run_analysis function
@@ -17,9 +18,6 @@
 #' # sigmaplot(all_inner_results, save_format = "png")  # Save as PNG
 #' @export
 sigmaplot <- function(all_inner_results, save_format = NULL) {
-  
-  # Combine all inner results into a single data frame
-  all_results_df <- as.data.frame(all_inner_results)
   
   # Convert character columns to numeric
   all_results_df$s <- as.numeric(all_results_df$s)
