@@ -93,7 +93,7 @@ forest_plot <- function(data, bg = "white", save = NULL, filename = NULL) {
   if (!is.null(save)) {
     file_name <- paste0("forest_plot.", save)
     if (!is.null(filename)) {
-      file_name <- paste0(filename, ".", save  
+      file_name <- paste0(filename, ".", save)
     }
     ggsave(file_name, plot, width = 12, height = 15, dpi = 300, device = save)
   }
