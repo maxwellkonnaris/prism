@@ -21,7 +21,7 @@
 #' results <- estimate_covariance(Y)
 #' @export
 
-estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000, variance=FALSE) {
+estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000, variance=FALSE, upperx = 1) {
 
   # Record the start time for profiling
   start_time <- Sys.time()
@@ -68,7 +68,7 @@ estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 
   # Create a sequence for rho1, rho2, and x based on the given bounds
   rho1 <- seq(-rhobound, rhobound, by = 0.05)
   rho2 <- seq(-rhobound, rhobound, by = 0.05)
-  x <- seq(0.05, 1.0, by = 0.01)
+  x <- seq(0.05, upperx, by = 0.01)
   
   # Generate all combinations of rho1, rho2, and x
   pars <- expand.grid(rho1, rho2, x)
@@ -187,12 +187,12 @@ estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 
           
           # Find the minimum sigma
           res_min <- optim(par = c(0, 0, 0.1), fn = objective_function, Yboot = Yboot, d1 = d1, d2 = d2, alpha = alpha, 
-                           method = "L-BFGS-B", lower = c(-rhobound, -rhobound, 0.05), upper = c(rhobound, rhobound, 1.0))
+                           method = "L-BFGS-B", lower = c(-rhobound, -rhobound, 0.05), upper = c(rhobound, rhobound, upperx))
           
           # Find the maximum sigma by negating the objective function
           res_max <- optim(par = c(0, 0, 0.1), fn = function(params, Yboot, d1, d2, alpha) {
             -objective_function(params, Yboot, d1, d2, alpha)
-          }, Yboot = Yboot, d1 = d1, d2 = d2, alpha = alpha, method = "L-BFGS-B", lower = c(-rhobound, -rhobound, 0.05), upper = c(rhobound, rhobound, 1.0))
+          }, Yboot = Yboot, d1 = d1, d2 = d2, alpha = alpha, method = "L-BFGS-B", lower = c(-rhobound, -rhobound, 0.05), upper = c(rhobound, rhobound, upperx))
           
           data.frame(
             d1 = d1,
