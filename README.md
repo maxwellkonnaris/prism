@@ -6,7 +6,7 @@
 
 **Author:** Maxwell Konnaris
 
-**Maintainer:** Maxwell Konnaris <Maxwellkonnaris@gmail.com>
+**Maintainer:** Maxwell Konnaris <Maxwellkonnaris @ gmail . com>
 
 ## Description
 
