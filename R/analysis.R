@@ -279,6 +279,8 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.9, S = 1000, v
                                          
   # Combine all inner loop results
   all_inner_results <- do.call(rbind, lapply(results_list, function(x) x$resultsinner))
+  all_inner_results <- as.data.frame(all_inner_results)
+  all_inner_results$comparison <- paste(rownames(Y)[all_inner_results$d1],rownames(Y)[all_inner_results$d2],sep=":")
   
   # Calculate and print the total elapsed time
   end_time <- Sys.time()
