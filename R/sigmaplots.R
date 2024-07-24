@@ -4,7 +4,7 @@
 #' It identifies and highlights the parameter points that minimize and maximize sigma for each comparison.
 #' Optionally, it can save the plots in \code{jpg}, \code{png}, or \code{svg} format with 300 dpi resolution.
 #'
-#' @param sigma_values A data frame containing sigma values and corresponding parameters.
+#' @param all_inner_results A data frame containing sigma values and corresponding parameters.
 #' @param save_format A character string specifying the format to save the plots (\code{NULL}, \code{"jpg"}, \code{"png"}, \code{"svg"}). Defaults to \code{NULL}.
 #' @return Plots visualizing the impact of the parameters on sigma.
 #' @import ggplot2
@@ -12,9 +12,9 @@
 #' # Example usage:
 #' # Assuming 'results' is the output from run_analysis function
 #' # results <- run_analysis(Y)
-#' # sigma_values <- results$sigma_values
-#' # sigmaplot(sigma_values)  # Without saving
-#' # sigmaplot(sigma_values, save_format = "png")  # Save as PNG
+#' # all_inner_results <- results$all_inner_results
+#' # sigmaplot(all_inner_results)  # Without saving
+#' # sigmaplot(all_inner_results, save_format = "png")  # Save as PNG
 #' @export
 sigmaplot <- function(all_inner_results, save_format = NULL) {
   
