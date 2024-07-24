@@ -31,8 +31,14 @@ sigmaplot <- function(all_inner_results, save_format = NULL, plot_type = "point"
   all_inner_results$max_rho2 <- as.numeric(all_inner_results$max_rho2)
   all_inner_results$max_x <- as.numeric(all_inner_results$max_x)
   
-  # Custom theme to adjust legend position
-  custom_theme <- theme_minimal() + theme(legend.position = "right")
+  # Custom theme to adjust legend position and size
+  custom_theme <- theme_minimal() + 
+    theme(legend.position = "right", 
+          legend.key.size = unit(0.5, "lines"), 
+          legend.text = element_text(size = 8),
+          plot.title = element_text(size = 14, face = "bold"),
+          axis.title = element_text(size = 12),
+          axis.text = element_text(size = 10))
   
   # Function to create plots
   create_plot <- function(xvar, yvar, title) {
