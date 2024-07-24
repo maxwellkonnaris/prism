@@ -43,12 +43,12 @@ sigmaplot <- function(all_inner_results, filename = NULL, save = NULL, plot_type
   # Function to create plots
   create_plot <- function(xvar, yvar, comparison, title) {
     if (plot_type == "line") {
-      p <- ggplot(all_inner_results, aes(x = xvar, y = yvar, color = comparison)) +
+      p <- ggplot(all_inner_results, aes_string(x = xvar, y = yvar, color = comparison)) +
         geom_smooth(method = "lm", se = TRUE) +  
         labs(title = title, x = xvar, y = yvar) +
         custom_theme
     } else {
-      p <- ggplot(all_inner_results, aes(x = xvar, y = yvar, color = comparison)) +
+      p <- ggplot(all_inner_results, aes_string(x = xvar, y = yvar, color = comparison)) +
         geom_point(shape = 16) +  # Use circle shape for points
         labs(title = title, x = xvar, y = yvar) +
         custom_theme
