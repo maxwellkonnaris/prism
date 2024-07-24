@@ -92,6 +92,6 @@ sigmaplot <- function(all_inner_results, filename = NULL, save_format = NULL, pl
     ggsave(filename = paste0(filename,"Max_Sigma_vs_rho2_", plot_type, ".", save_format), plot = p2_max, width = 10, height = 10, dpi = 300)
     ggsave(filename = paste0(filename,"Min_Sigma_vs_x_", plot_type, ".", save_format), plot = p3_min, width = 10, height = 10, dpi = 300)
     ggsave(filename = paste0(filename,"Max_Sigma_vs_x_", plot_type, ".", save_format), plot = p3_max, width = 10, height = 10, dpi = 300)
-    ggsave(filename = paste0(filename, "Combined_", plot_type, ".", save_format), plot = combined_plot, width = 15, height = 30, dpi = 300)
+    #ggsave(filename = paste0(filename, "Combined_", plot_type, ".", save_format), plot = combined_plot, width = 15, height = 30, dpi = 300)
   }
 }
