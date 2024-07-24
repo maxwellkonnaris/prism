@@ -225,7 +225,7 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.9, S = 1000, v
     finitesamplecovariance <- stats::cov(log(Y)[d1,], log(Y)[d2,])
 
     list(
-      resultsinner = as.data.frame(results_inner),
+      resultsinner = results_inner,
       results = data.frame(
         comparison = comparison,
         d1 = rownames(Y)[d1],
