@@ -249,8 +249,9 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.9, S = 1000, v
     )
   }
   
-  # Combine the results into a data frame
-  final_results <- do.call(rbind, results_list)
+  # Combine the results into a data frame and transpose it
+  final_results <- do.call(rbind, lapply(results_list, t))
+  final_results <- as.data.frame(final_results, stringsAsFactors = FALSE)
   
   # Remove row names
   rownames(final_results) <- NULL
