@@ -18,7 +18,7 @@
 #' # sigmaplot(all_inner_results)  # Without saving
 #' # sigmaplot(all_inner_results, save_format = "png", plot_type = "line")  # Save as PNG with best fit lines
 #' @export
-sigmaplot <- function(all_inner_results, save_format = NULL, plot_type = "point") {
+sigmaplot <- function(all_inner_results, save_format = NULL, plot_type = "line") {
   
   # Convert character columns to numeric
   all_inner_results$s <- as.numeric(all_inner_results$s)
@@ -44,8 +44,7 @@ sigmaplot <- function(all_inner_results, save_format = NULL, plot_type = "point"
   create_plot <- function(xvar, yvar, title) {
     if (plot_type == "line") {
       p <- ggplot(all_inner_results, aes_string(x = xvar, y = yvar, color = "comparison")) +
-        geom_point(shape = 16) +  # Use circle shape for points
-        geom_smooth(method = "lm", se = TRUE) +  # Add line of best fit
+        geom_smooth(method = "lm", se = FALSE) +  # Add line of best fit without points
         labs(title = title, x = xvar, y = yvar) +
         custom_theme
     } else {
