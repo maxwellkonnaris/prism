@@ -67,21 +67,21 @@ sigmaplot <- function(all_inner_results, filename = NULL, save = NULL, plot_type
   p3_min <- create_plot("min_x", "minsigma", "comparison", "Min Sigma vs x")
   p3_max <- create_plot("max_x", "maxsigma", "comparison", "Max Sigma vs x")
   
-  # # Combined
-  # combined_plot <- gridExtra::grid.arrange(p1_min, p1_max, p2_min, p2_max, p3_min, p3_max, ncol = 2)
+  # Combined
+  combined_plot <- gridExtra::grid.arrange(p1_min, p1_max, p2_min, p2_max, p3_min, p3_max, ncol = 2)
   
-  # # Display the plots with combined legend at the bottom
-  # gridExtra::grid.arrange(p1_min + theme(legend.position="none"), 
-  #                         p1_max + theme(legend.position="none"), 
-  #                         p2_min + theme(legend.position="none"), 
-  #                         p2_max + theme(legend.position="none"), 
-  #                         p3_min + theme(legend.position="none"), 
-  #                         p3_max + theme(legend.position="none"), 
-  #                         ncol = 2,
-  #                         top = ggplot2::textGrob("Sigma Plots", gp = grid::gpar(fontsize = 16, fontface = "bold")),
-  #                         bottom = ggplot2::textGrob("Combined Legend",
-  #                                                    gp = grid::gpar(fontsize = 10, fontface = "bold"),
-  #                                                    vp = grid::viewport(y = unit(1, "npc"))))
+  # Display the plots with combined legend at the bottom
+  gridExtra::grid.arrange(p1_min + theme(legend.position="none"), 
+                          p1_max + theme(legend.position="none"), 
+                          p2_min + theme(legend.position="none"), 
+                          p2_max + theme(legend.position="none"), 
+                          p3_min + theme(legend.position="none"), 
+                          p3_max + theme(legend.position="none"), 
+                          ncol = 2,
+                          top = grid::textGrob("Sigma Plots", gp = grid::gpar(fontsize = 16, fontface = "bold")),
+                          bottom = grid::textGrob("Combined Legend",
+                                                     gp = grid::gpar(fontsize = 10, fontface = "bold"),
+                                                     vp = grid::viewport(y = unit(1, "npc"))))
   
   # Save plots to files if save_format is specified
   if (!is.null(save)) {
@@ -91,6 +91,6 @@ sigmaplot <- function(all_inner_results, filename = NULL, save = NULL, plot_type
     ggsave(filename = paste0(filename,"Max_Sigma_vs_rho2_", plot_type, ".", save), plot = p2_max, width = 10, height = 10, dpi = 300)
     ggsave(filename = paste0(filename,"Min_Sigma_vs_x_", plot_type, ".", save), plot = p3_min, width = 10, height = 10, dpi = 300)
     ggsave(filename = paste0(filename,"Max_Sigma_vs_x_", plot_type, ".", save), plot = p3_max, width = 10, height = 10, dpi = 300)
-    #ggsave(filename = paste0(filename, "Combined_", plot_type, ".", save), plot = combined_plot, width = 15, height = 30, dpi = 300)
+    ggsave(filename = paste0(filename, "Combined_", plot_type, ".", save), plot = combined_plot, width = 15, height = 30, dpi = 300)
   }
 }
