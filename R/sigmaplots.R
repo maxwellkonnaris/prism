@@ -33,7 +33,7 @@ sigmaplot <- function(all_inner_results, save_format = NULL, plot_type = "point"
   
   # Custom theme to adjust legend position and size
   custom_theme <- theme_minimal() + 
-    theme(legend.position = "right", 
+    theme(legend.position = "bottom", 
           legend.key.size = unit(0.5, "lines"), 
           legend.text = element_text(size = 8),
           plot.title = element_text(size = 14, face = "bold"),
@@ -56,7 +56,7 @@ sigmaplot <- function(all_inner_results, save_format = NULL, plot_type = "point"
         custom_theme
     } else {
       p <- ggplot(all_inner_results, aes_string(x = xvar, y = yvar, color = "comparison")) +
-        geom_point(shape = 16) +
+        geom_point(shape = 16) +  # Use circle shape for points
         labs(title = title, x = xvar, y = yvar) +
         custom_theme
     }
@@ -78,8 +78,17 @@ sigmaplot <- function(all_inner_results, save_format = NULL, plot_type = "point"
   # Combined
   combined_plot <- gridExtra::grid.arrange(p1_min, p1_max, p2_min, p2_max, p3_min, p3_max, ncol = 2)
   
-  # Display the plots
-  gridExtra::grid.arrange(p1_min, p1_max, p2_min, p2_max, p3_min, p3_max, ncol = 2)
+  # Display the plots with combined legend at the bottom
+  gridExtra::grid.arrange(p1_min + theme(legend.position="none"), 
+                          p1_max + theme(legend.position="none"), 
+                          p2_min + theme(legend.position="none"), 
+                          p2_max + theme(legend.position="none"), 
+                          p3_min + theme(legend.position="none"), 
+                          p3_max + theme(legend.position="none"), 
+                          ncol = 2,
+                          top = gridExtra::textGrob("Sigma Plots", gp = gpar(fontsize = 16, fontface = "bold")),
+                          bottom = gridExtra::textGrob(gtable::gtable_show_layout(ggplotGrob(p1_min), vp=viewport()), 
+                                                       just = "centre"))
   
   # Save plots to files if save_format is specified
   if (!is.null(save_format)) {
