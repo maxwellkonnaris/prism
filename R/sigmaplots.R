@@ -80,19 +80,19 @@ sigmaplot <- function(all_inner_results, save_format = NULL, plot_type = "line")
                           p3_min + theme(legend.position="none"), 
                           p3_max + theme(legend.position="none"), 
                           ncol = 2,
-                          top = gridExtra::textGrob("Sigma Plots", gp = gpar(fontsize = 16, fontface = "bold")),
-                          bottom = gridExtra::textGrob("Combined Legend",
-                                                       gp = gpar(fontsize = 10, fontface = "bold"),
-                                                       vp = viewport(y = unit(1, "npc"))))
+                          top = ggplot2::textGrob("Sigma Plots", gp = grid::gpar(fontsize = 16, fontface = "bold")),
+                          bottom = ggplot2::textGrob("Combined Legend",
+                                                     gp = grid::gpar(fontsize = 10, fontface = "bold"),
+                                                     vp = grid::viewport(y = unit(1, "npc"))))
   
   # Save plots to files if save_format is specified
   if (!is.null(save_format)) {
-    ggsave(filename = paste0("Min_Sigma_vs_rho1",plot_type,".", save_format), plot = p1_min, width = 10, height = 10, dpi = 300)
-    ggsave(filename = paste0("Max_Sigma_vs_rho1",plot_type,".", save_format), plot = p1_max, width = 10, height = 10, dpi = 300)
-    ggsave(filename = paste0("Min_Sigma_vs_rho2",plot_type,".", save_format), plot = p2_min, width = 10, height = 10, dpi = 300)
-    ggsave(filename = paste0("Max_Sigma_vs_rho2",plot_type,".", save_format), plot = p2_max, width = 10, height = 10, dpi = 300)
-    ggsave(filename = paste0("Min_Sigma_vs_x",plot_type,".", save_format), plot = p3_min, width = 10, height = 10, dpi = 300)
-    ggsave(filename = paste0("Max_Sigma_vs_x",plot_type,".", save_format), plot = p3_max, width = 10, height = 10, dpi = 300)
-    ggsave(filename = paste0("Combined",plot_type,".", save_format), plot = combined_plot, width = 15, height = 30, dpi = 300)
+    ggsave(filename = paste0("Min_Sigma_vs_rho1_", plot_type, ".", save_format), plot = p1_min, width = 10, height = 10, dpi = 300)
+    ggsave(filename = paste0("Max_Sigma_vs_rho1_", plot_type, ".", save_format), plot = p1_max, width = 10, height = 10, dpi = 300)
+    ggsave(filename = paste0("Min_Sigma_vs_rho2_", plot_type, ".", save_format), plot = p2_min, width = 10, height = 10, dpi = 300)
+    ggsave(filename = paste0("Max_Sigma_vs_rho2_", plot_type, ".", save_format), plot = p2_max, width = 10, height = 10, dpi = 300)
+    ggsave(filename = paste0("Min_Sigma_vs_x_", plot_type, ".", save_format), plot = p3_min, width = 10, height = 10, dpi = 300)
+    ggsave(filename = paste0("Max_Sigma_vs_x_", plot_type, ".", save_format), plot = p3_max, width = 10, height = 10, dpi = 300)
+    ggsave(filename = paste0("Combined_", plot_type, ".", save_format), plot = combined_plot, width = 15, height = 30, dpi = 300)
   }
 }
