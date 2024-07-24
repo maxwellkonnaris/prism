@@ -87,8 +87,9 @@ sigmaplot <- function(all_inner_results, save_format = NULL, plot_type = "point"
                           p3_max + theme(legend.position="none"), 
                           ncol = 2,
                           top = gridExtra::textGrob("Sigma Plots", gp = gpar(fontsize = 16, fontface = "bold")),
-                          bottom = gridExtra::textGrob(gtable::gtable_show_layout(ggplotGrob(p1_min), vp=viewport()), 
-                                                       just = "centre"))
+                          bottom = gridExtra::textGrob("Combined Legend",
+                                                       gp = gpar(fontsize = 10, fontface = "bold"),
+                                                       vp = viewport(y = unit(0.5, "npc"))))
   
   # Save plots to files if save_format is specified
   if (!is.null(save_format)) {
