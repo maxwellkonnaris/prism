@@ -20,21 +20,15 @@
 #' @export
 sigmaplot <- function(all_inner_results, filename = NULL, save = NULL, plot_type = "line") {
   
-  # Convert character columns to numeric
-  all_inner_results$s <- as.numeric(all_inner_results$s)
-  all_inner_results$minsigma <- as.numeric(all_inner_results$minsigma)
-  all_inner_results$maxsigma <- as.numeric(all_inner_results$maxsigma)
-  all_inner_results$min_rho1 <- as.numeric(all_inner_results$min_rho1)
-  all_inner_results$min_rho2 <- as.numeric(all_inner_results$min_rho2)
-  all_inner_results$min_x <- as.numeric(all_inner_results$min_x)
-  all_inner_results$max_rho1 <- as.numeric(all_inner_results$max_rho1)
-  all_inner_results$max_rho2 <- as.numeric(all_inner_results$max_rho2)
-  all_inner_results$max_x <- as.numeric(all_inner_results$max_x)
+  # Convert relevant columns to numeric
+  all_inner_results <- all_inner_results %>%
+    mutate(across(c(s, minsigma, maxsigma, min_rho1, min_rho2, min_x, max_rho1, max_rho2, max_x), as.numeric))
 
     # Ensure 'comparison' column exists
   if (!"comparison" %in% colnames(all_inner_results)) {
     all_inner_results$comparison <- "default"  # Add a default value if the column doesn't exist
   }
+  all_inner_results$comparison <- as.factor(all_inner_results$comparison)
   
   # Custom theme to adjust legend position and size
   custom_theme <- theme_minimal() + 
