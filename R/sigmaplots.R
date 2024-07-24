@@ -37,9 +37,15 @@ sigmaplot <- function(all_inner_results, save_format = NULL, plot_type = "point"
   # Function to create plots
   create_plot <- function(xvar, yvar, title) {
     if (plot_type == "average") {
-      p <- ggplot(all_inner_results, aes_string(x = xvar, y = yvar, color = "comparison")) +
-        stat_summary(aes_string(group = "comparison"), fun = mean, geom = "line", size = 1) +
-        geom_point(shape = 16) +
+      p <- ggplot(all_inner_results, aes_string(x = xvar, y = yvar, color = "comparison", fill = "comparison")) +
+        stat_summary(aes_string(group = "comparison"), 
+                     fun.data = mean_se, 
+                     geom = "ribbon", 
+                     alpha = 0.2) +  # Error zone
+        stat_summary(aes_string(group = "comparison"), 
+                     fun = mean, 
+                     geom = "line", 
+                     size = 1.5) +  # Thicker line
         labs(title = title, x = xvar, y = yvar) +
         custom_theme
     } else {
