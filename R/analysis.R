@@ -259,9 +259,8 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.9, S = 1000, v
   print(str(results_list))
   
   # Combine the results into a data frame, transpose it, remove row names
-  final_results <- do.call(rbind, lapply(results_list, function(x) t(x$results)))
+  final_results <- do.call(rbind, lapply(results_list, function(x) x$results))
   final_results <- as.data.frame(final_results, stringsAsFactors = FALSE)
-  rownames(final_results) <- NULL
 
   # Combine all inner loop results
   all_inner_results <- lapply(results_list, function(x) x$resultsinner)
