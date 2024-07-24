@@ -169,7 +169,11 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.9, S = 1000, v
                                           
   # Run the analysis
   cat("Running sigma estimation")
-  results_list <- foreach(pair = pair_indices, .packages = c('stats', 'MCMCpack'), .combine = 'list', .options.snow = opts) %dopar% {
+  
+  # List to store all inner results
+  all_inner_results <- list()
+                                           
+  results_list <- foreach(pair = pair_indices, .combine = 'rbind', .packages = c('stats', 'MCMCpack'), .options.snow = opts) %dopar% {
     d1 <- pair[1]
     d2 <- pair[2]
   
@@ -191,7 +195,11 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.9, S = 1000, v
       
       c(d1 = d1, d2 = d2, s = s, Yboot = Yboot, minsigma = res_min$value, maxsigma = -res_max$value, min_rho1 = res_min$par[1], min_rho2 = res_min$par[2], min_x = res_min$par[3], max_rho1 = res_max$par[1], max_rho2 = res_max$par[2], max_x = res_max$par[3])
     }
-  
+    
+    # Store the inner results for this pair
+    all_inner_results[[paste(d1, d2, sep = ":")]] <- results_inner
+
+    # Gather the min and max optimized sigmas
     minsigma_values <- results_inner[, "minsigma"]
     maxsigma_values <- results_inner[, "maxsigma"]
   
@@ -219,10 +227,12 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.9, S = 1000, v
         
     # Compute finite sample covariance
     finitesamplecovariance <- stats::cov(log(Y)[d1,], log(Y)[d2,])
-    
-    list(
-      d1 = d1,
-      d2 = d2,
+
+    # Store as dataframe
+    data.frame(
+      comparison = paste(rownames(Y)[d1], rownames(Y)[d2], sep=":"),
+      d1 = rownames(Y)[d1],
+      d2 = rownames(Y)[d2],
       cilower = cilower,
       ciupper = ciupper,
       minsigma = minsigma,
@@ -233,42 +243,13 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.9, S = 1000, v
       max_rho1 = max_rho1,
       max_rho2 = max_rho2,
       max_x = max_x,
-      ci_lower_rho1 = ci_lower_rho1,
-      ci_lower_rho2 = ci_lower_rho2,
-      ci_lower_x = ci_lower_x,
-      ci_upper_rho1 = ci_upper_rho1,
-      ci_upper_rho2 = ci_upper_rho2,
-      ci_upper_x = ci_upper_x,
-      finitesamplecovariance = finitesamplecovariance
+      finitesamplecovariance = finitesamplecovariance,
+      stringsAsFactors = FALSE
     )
   }
   
   # Combine the results into a data frame
-  final_results <- do.call(rbind, lapply(results_list, function(x) {
-    data.frame(
-      comparison = paste(rownames(Y)[x$d1], rownames(Y)[x$d2], sep=":"),
-      d1 = rownames(Y)[x$d1],
-      d2 = rownames(Y)[x$d2],
-      cilower = x$cilower,
-      ciupper = x$ciupper,
-      minsigma = x$minsigma,
-      maxsigma = x$maxsigma,
-      finitesamplecovariance = x$finitesamplecovariance,
-      min_rho1 = x$min_rho1,
-      min_rho2 = x$min_rho2,
-      min_x = x$min_x,
-      max_rho1 = x$max_rho1,
-      max_rho2 = x$max_rho2,
-      max_x = x$max_x,
-      ci_lower_rho1 = x$ci_lower_rho1,
-      ci_lower_rho2 = x$ci_lower_rho2,
-      ci_lower_x = x$ci_lower_x,
-      ci_upper_rho1 = x$ci_upper_rho1,
-      ci_upper_rho2 = x$ci_upper_rho2,
-      ci_upper_x = x$ci_upper_x,
-      stringsAsFactors = FALSE
-    )
-  }))
+  final_results <- do.call(rbind, results_list)
   
   # Remove row names
   rownames(final_results) <- NULL
@@ -279,5 +260,5 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.9, S = 1000, v
   formatted_time <- format_elapsed_time(elapsed_time)
   print(paste("Total time taken:", formatted_time))
   
-  return(final_results)
+  return(list(final_results = final_results, all_inner_results = all_inner_results))
 }
