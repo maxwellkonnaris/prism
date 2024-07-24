@@ -184,48 +184,64 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.9, S = 1000, v
       results_inner <- foreach(s = 1:S, .combine = 'rbind', .packages = c('stats', 'MCMCpack'), .options.snow = opts) %dopar% {
         tryCatch({
           Yboot <- Y[, bootstrap_samples[[s]]]
-      
+          
           # Find the minimum sigma
           res_min <- optim(par = c(0, 0, 0.1), fn = objective_function, Yboot = Yboot, d1 = d1, d2 = d2, alpha = alpha, 
                            method = "L-BFGS-B", lower = c(-rhobound, -rhobound, 0.05), upper = c(rhobound, rhobound, 1.0))
-      
+          
           # Find the maximum sigma by negating the objective function
           res_max <- optim(par = c(0, 0, 0.1), fn = function(params, Yboot, d1, d2, alpha) {
             -objective_function(params, Yboot, d1, d2, alpha)
           }, Yboot = Yboot, d1 = d1, d2 = d2, alpha = alpha, method = "L-BFGS-B", lower = c(-rhobound, -rhobound, 0.05), upper = c(rhobound, rhobound, 1.0))
           
-          c(d1 = d1, d2 = d2, s = s, minsigma = res_min$value, maxsigma = -res_max$value, min_rho1 = res_min$par[1], min_rho2 = res_min$par[2], min_x = res_min$par[3], max_rho1 = res_max$par[1], max_rho2 = res_max$par[2], max_x = res_max$par[3])
+          data.frame(
+            d1 = d1,
+            d2 = d2,
+            s = s,
+            minsigma = res_min$value,
+            maxsigma = -res_max$value,
+            min_rho1 = res_min$par[1],
+            min_rho2 = res_min$par[2],
+            min_x = res_min$par[3],
+            max_rho1 = res_max$par[1],
+            max_rho2 = res_max$par[2],
+            max_x = res_max$par[3]
+          )
         }, error = function(e) {
-        message("Error in inner loop: ", e$message)
+          message("Error in inner loop: ", e$message)
+          return(data.frame(d1 = d1, d2 = d2, s = s, minsigma = NA, maxsigma = NA, min_rho1 = NA, min_rho2 = NA, min_x = NA, max_rho1 = NA, max_rho2 = NA, max_x = NA))
+        })
+      }
+      
+      if (is.null(results_inner) || all(is.na(results_inner))) {
         return(NULL)
-        })     
       }
   
       # Gather the min and max optimized sigmas
-      minsigma_values <- results_inner[, "minsigma"]
-      maxsigma_values <- results_inner[, "maxsigma"]
-    
+      minsigma_values <- results_inner$minsigma
+      maxsigma_values <- results_inner$maxsigma
+      
       # Sort the results
       sortedmin <- sort(minsigma_values)
       sortedmax <- sort(maxsigma_values)
       
       # Compute the minimum, maximum, and confidence intervals
-      minsigma <- min(sortedmin)
-      maxsigma <- max(sortedmax)
-      cilower <- quantile(sortedmin, probs = 0.025)
-      ciupper <- quantile(sortedmax, probs = 0.975)
-  
-     # Obtain parameters for the minimum and maximum sigma values
+      minsigma <- min(sortedmin, na.rm = TRUE)
+      maxsigma <- max(sortedmax, na.rm = TRUE)
+      cilower <- quantile(sortedmin, probs = 0.025, na.rm = TRUE)
+      ciupper <- quantile(sortedmax, probs = 0.975, na.rm = TRUE)
+      
+      # Obtain parameters for the minimum and maximum sigma values
       min_index <- which.min(minsigma_values)
       max_index <- which.max(maxsigma_values)
       
-      min_rho1 <- results_inner[min_index, "min_rho1"]
-      min_rho2 <- results_inner[min_index, "min_rho2"]
-      min_x <- results_inner[min_index, "min_x"]
+      min_rho1 <- results_inner$min_rho1[min_index]
+      min_rho2 <- results_inner$min_rho2[min_index]
+      min_x <- results_inner$min_x[min_index]
       
-      max_rho1 <- results_inner[max_index, "max_rho1"]
-      max_rho2 <- results_inner[max_index, "max_rho2"]
-      max_x <- results_inner[max_index, "max_x"]
+      max_rho1 <- results_inner$max_rho1[max_index]
+      max_rho2 <- results_inner$max_rho2[max_index]
+      max_x <- results_inner$max_x[max_index]
           
       # Compute finite sample covariance
       finitesamplecovariance <- stats::cov(log(Y)[d1,], log(Y)[d2,])
