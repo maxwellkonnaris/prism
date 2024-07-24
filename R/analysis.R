@@ -255,6 +255,8 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.9, S = 1000, v
         return(NULL)
     })
   }
+
+  print(str(results_list))
   
   # Combine the results into a data frame, transpose it, remove row names
   final_results <- do.call(rbind, lapply(results_list, function(x) t(x$results)))
