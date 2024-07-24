@@ -6,7 +6,7 @@
 #'
 #' @param all_inner_results A data frame containing sigma values and corresponding parameters.
 #' @param save_format A character string specifying the format to save the plots (\code{NULL}, \code{"jpg"}, \code{"png"}, \code{"svg"}). Defaults to \code{NULL}.
-#' @param plot_type A character string specifying the type of plot ("point" or "average"). Defaults to "point".
+#' @param plot_type A character string specifying the type of plot ("point" or "line"). Defaults to "point".
 #' @return Plots visualizing the impact of the parameters on sigma.
 #' @import ggplot2
 #' @import gridExtra
@@ -16,7 +16,7 @@
 #' # results <- run_analysis(Y)
 #' # all_inner_results <- results$all_inner_results
 #' # sigmaplot(all_inner_results)  # Without saving
-#' # sigmaplot(all_inner_results, save_format = "png", plot_type = "average")  # Save as PNG with average lines
+#' # sigmaplot(all_inner_results, save_format = "png", plot_type = "line")  # Save as PNG with best fit lines
 #' @export
 sigmaplot <- function(all_inner_results, save_format = NULL, plot_type = "point") {
   
@@ -42,16 +42,10 @@ sigmaplot <- function(all_inner_results, save_format = NULL, plot_type = "point"
   
   # Function to create plots
   create_plot <- function(xvar, yvar, title) {
-    if (plot_type == "average") {
-      p <- ggplot(all_inner_results, aes_string(x = xvar, y = yvar, color = "comparison", fill = "comparison")) +
-        stat_summary(aes_string(group = "comparison"), 
-                     fun.data = mean_se, 
-                     geom = "ribbon", 
-                     alpha = 0.2) +  # Error zone
-        stat_summary(aes_string(group = "comparison"), 
-                     fun = mean, 
-                     geom = "line", 
-                     size = 1.5) +  # Thicker line
+    if (plot_type == "line") {
+      p <- ggplot(all_inner_results, aes_string(x = xvar, y = yvar, color = "comparison")) +
+        geom_point(shape = 16) +  # Use circle shape for points
+        geom_smooth(method = "lm", se = TRUE) +  # Add line of best fit
         labs(title = title, x = xvar, y = yvar) +
         custom_theme
     } else {
