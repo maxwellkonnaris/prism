@@ -174,7 +174,7 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.9, S = 1000, v
   results_list <- foreach(pair = pair_indices, .combine = 'rbind', .packages = c('stats', 'MCMCpack'), .options.snow = opts) %dopar% {
     d1 <- pair[1]
     d2 <- pair[2]
-    #comparison <- paste(rownames(Y)[d1], rownames(Y)[d2], sep = ":")
+    comparison <- paste(rownames(Y)[d1], rownames(Y)[d2], sep = ":")
   
     minsigma_values <- numeric(S)
     maxsigma_values <- numeric(S)
