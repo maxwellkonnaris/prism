@@ -30,38 +30,41 @@ sigmaplot <- function(all_inner_results, save_format = NULL) {
   all_inner_results$max_rho2 <- as.numeric(all_inner_results$max_rho2)
   all_inner_results$max_x <- as.numeric(all_inner_results$max_x)
   
+  # Custom theme to adjust legend position
+  custom_theme <- theme_minimal() + theme(legend.position = "right")
+  
   # Min and Max Sigma vs rho1
   p1_min <- ggplot(all_inner_results, aes(x = min_rho1, y = minsigma, color = comparison)) +
-    geom_point() +
+    geom_point(shape = 16) +
     labs(title = "Min Sigma vs rho1", x = "rho1", y = "Min Sigma") +
-    theme_minimal()
+    custom_theme
   
   p1_max <- ggplot(all_inner_results, aes(x = max_rho1, y = maxsigma, color = comparison)) +
-    geom_point() +
+    geom_point(shape = 16) +
     labs(title = "Max Sigma vs rho1", x = "rho1", y = "Max Sigma") +
-    theme_minimal()
+    custom_theme
   
   # Min and Max Sigma vs rho2
   p2_min <- ggplot(all_inner_results, aes(x = min_rho2, y = minsigma, color = comparison)) +
-    geom_point() +
+    geom_point(shape = 16) +
     labs(title = "Min Sigma vs rho2", x = "rho2", y = "Min Sigma") +
-    theme_minimal()
+    custom_theme
   
   p2_max <- ggplot(all_inner_results, aes(x = max_rho2, y = maxsigma, color = comparison)) +
-    geom_point() +
+    geom_point(shape = 16) +
     labs(title = "Max Sigma vs rho2", x = "rho2", y = "Max Sigma") +
-    theme_minimal()
+    custom_theme
   
   # Min and Max Sigma vs x
   p3_min <- ggplot(all_inner_results, aes(x = min_x, y = minsigma, color = comparison)) +
-    geom_point() +
+    geom_point(shape = 16) +
     labs(title = "Min Sigma vs x", x = "x", y = "Min Sigma") +
-    theme_minimal()
+    custom_theme
   
   p3_max <- ggplot(all_inner_results, aes(x = max_x, y = maxsigma, color = comparison)) +
-    geom_point() +
+    geom_point(shape = 16) +
     labs(title = "Max Sigma vs x", x = "x", y = "Max Sigma") +
-    theme_minimal()
+    custom_theme
 
   # Combined
   combined_plot <- gridExtra::grid.arrange(p1_min, p1_max, p2_min, p2_max, p3_min, p3_max, ncol = 2)
