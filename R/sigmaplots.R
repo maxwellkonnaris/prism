@@ -30,6 +30,11 @@ sigmaplot <- function(all_inner_results, filename = NULL, save = NULL, plot_type
   all_inner_results$max_rho1 <- as.numeric(all_inner_results$max_rho1)
   all_inner_results$max_rho2 <- as.numeric(all_inner_results$max_rho2)
   all_inner_results$max_x <- as.numeric(all_inner_results$max_x)
+
+    # Ensure 'comparison' column exists
+  if (!"comparison" %in% colnames(all_inner_results)) {
+    all_inner_results$comparison <- "default"  # Add a default value if the column doesn't exist
+  }
   
   # Custom theme to adjust legend position and size
   custom_theme <- theme_minimal() + 
