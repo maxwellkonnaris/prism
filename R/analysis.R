@@ -21,7 +21,7 @@
 #' results <- estimate_covariance(Y)
 #' @export
 
-estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.9, S = 1000, variance=FALSE) {
+estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000, variance=FALSE) {
 
   # Record the start time for profiling
   start_time <- Sys.time()
