@@ -22,7 +22,7 @@
 #' plot <- forest_plot(results, save = "jpg")
 #' plot <- forest_plot(results, save = "svg")
 #' plot <- forest_plot(results, save = "pdf")
-forest_plot <- function(data, bg = "white", save = NULL) {
+forest_plot <- function(data, bg = "white", save = NULL, filename = NULL) {
   # Ensure the data has the necessary columns
   if (!all(c("comparison", "cilower", "ciupper") %in% colnames(data))) {
     stop("Data must contain 'comparison', 'cilower', and 'ciupper' columns")
@@ -92,6 +92,9 @@ forest_plot <- function(data, bg = "white", save = NULL) {
   # Save the plot if save is not NULL
   if (!is.null(save)) {
     file_name <- paste0("forest_plot.", save)
+    if (!is.null(filename)) {
+      file_name <- paste0(filename, ".", save  
+    }
     ggsave(file_name, plot, width = 12, height = 15, dpi = 300, device = save)
   }
   
