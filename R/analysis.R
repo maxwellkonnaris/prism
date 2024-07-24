@@ -170,8 +170,6 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.9, S = 1000, v
   # Run the analysis
   cat("Running sigma estimation")
   
-  # List to store all inner results
-  all_inner_results <- list()
                                            
   results_list <- foreach(pair = pair_indices, .combine = 'rbind', .packages = c('stats', 'MCMCpack'), .options.snow = opts) %dopar% {
     d1 <- pair[1]
@@ -194,11 +192,8 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.9, S = 1000, v
         -objective_function(params, Yboot, d1, d2, alpha)
       }, Yboot = Yboot, d1 = d1, d2 = d2, alpha = alpha, method = "L-BFGS-B", lower = c(-rhobound, -rhobound, 0.05), upper = c(rhobound, rhobound, 1.0))
       
-      c(d1 = d1, d2 = d2, s = s, Yboot = Yboot, minsigma = res_min$value, maxsigma = -res_max$value, min_rho1 = res_min$par[1], min_rho2 = res_min$par[2], min_x = res_min$par[3], max_rho1 = res_max$par[1], max_rho2 = res_max$par[2], max_x = res_max$par[3])
+      c(comparison = comparison, d1 = d1, d2 = d2, s = s, Yboot = Yboot, minsigma = res_min$value, maxsigma = -res_max$value, min_rho1 = res_min$par[1], min_rho2 = res_min$par[2], min_x = res_min$par[3], max_rho1 = res_max$par[1], max_rho2 = res_max$par[2], max_x = res_max$par[3])
     }
-    
-    # Store the inner results for this pair
-    all_inner_results[[comparison]] <- results_inner
 
     # Gather the min and max optimized sigmas
     minsigma_values <- results_inner[, "minsigma"]
@@ -229,29 +224,33 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.9, S = 1000, v
     # Compute finite sample covariance
     finitesamplecovariance <- stats::cov(log(Y)[d1,], log(Y)[d2,])
 
-    # Store as dataframe
-    data.frame(
-      comparison = comparison,
-      d1 = rownames(Y)[d1],
-      d2 = rownames(Y)[d2],
-      cilower = cilower,
-      ciupper = ciupper,
-      minsigma = minsigma,
-      maxsigma = maxsigma,
-      min_rho1 = min_rho1,
-      min_rho2 = min_rho2,
-      min_x = min_x,
-      max_rho1 = max_rho1,
-      max_rho2 = max_rho2,
-      max_x = max_x,
-      finitesamplecovariance = finitesamplecovariance,
-      stringsAsFactors = FALSE
+    list(
+      resultsinner = as.data.frame(results_inner),
+      results = data.frame(
+        comparison = comparison,
+        d1 = rownames(Y)[d1],
+        d2 = rownames(Y)[d2],
+        cilower = cilower,
+        ciupper = ciupper,
+        minsigma = minsigma,
+        maxsigma = maxsigma,
+        min_rho1 = min_rho1,
+        min_rho2 = min_rho2,
+        min_x = min_x,
+        max_rho1 = max_rho1,
+        max_rho2 = max_rho2,
+        max_x = max_x,
+        finitesamplecovariance = finitesamplecovariance,
+        stringsAsFactors = FALSE
+      )
     )
   }
   
   # Combine the results into a data frame and transpose it
-  final_results <- do.call(rbind, lapply(results_list, t))
+  final_results <- do.call(rbind, lapply(results_list, function(x) t(x$results)))
   final_results <- as.data.frame(final_results, stringsAsFactors = FALSE)
+
+  all_inner_results <- lapply(results_list, function(x) x$resultsinner)
   
   # Remove row names
   rownames(final_results) <- NULL
