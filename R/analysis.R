@@ -182,12 +182,12 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.9, S = 1000, v
   
       # Find the minimum sigma
       res_min <- optim(par = c(0, 0, 0.1), fn = objective_function, Yboot = Yboot, d1 = d1, d2 = d2, alpha = alpha, 
-                       method = "L-BFGS-B", lower = c(-rhobound, -rhobound, 0.05), upper = c(rhobound, rhobound, 1.0))
+                       method = "L-BFGS-B", lower = c(-rhobound, -rhobound, 0.05), upper = c(rhobound, rhobound, 0.9))
   
       # Find the maximum sigma by negating the objective function
       res_max <- optim(par = c(0, 0, 0.1), fn = function(params, Yboot, d1, d2, alpha) {
         -objective_function(params, Yboot, d1, d2, alpha)
-      }, Yboot = Yboot, d1 = d1, d2 = d2, alpha = alpha, method = "L-BFGS-B", lower = c(-rhobound, -rhobound, 0.05), upper = c(rhobound, rhobound, 1.0))
+      }, Yboot = Yboot, d1 = d1, d2 = d2, alpha = alpha, method = "L-BFGS-B", lower = c(-rhobound, -rhobound, 0.05), upper = c(rhobound, rhobound, 0.9))
       
       c(d1 = d1, d2 = d2, s = s, Yboot = Yboot, minsigma = res_min$value, maxsigma = -res_max$value, min_rho1 = res_min$par[1], min_rho2 = res_min$par[2], min_x = res_min$par[3], max_rho1 = res_max$par[1], max_rho2 = res_max$par[2], max_x = res_max$par[3])
     }
@@ -208,8 +208,6 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.9, S = 1000, v
    # Obtain parameters for the minimum and maximum sigma values
     min_index <- which.min(minsigma_values)
     max_index <- which.max(maxsigma_values)
-    ci_lower_index <- which(sortedmin == cilower)[1]
-    ci_upper_index <- which(sortedmax == ciupper)[1]
     
     min_rho1 <- results_inner[min_index, "min_rho1"]
     min_rho2 <- results_inner[min_index, "min_rho2"]
@@ -218,15 +216,7 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.9, S = 1000, v
     max_rho1 <- results_inner[max_index, "max_rho1"]
     max_rho2 <- results_inner[max_index, "max_rho2"]
     max_x <- results_inner[max_index, "max_x"]
-    
-    ci_lower_rho1 <- results_inner[ci_lower_index, "min_rho1"]
-    ci_lower_rho2 <- results_inner[ci_lower_index, "min_rho2"]
-    ci_lower_x <- results_inner[ci_lower_index, "min_x"]
-    
-    ci_upper_rho1 <- results_inner[ci_upper_index, "max_rho1"]
-    ci_upper_rho2 <- results_inner[ci_upper_index, "max_rho2"]
-    ci_upper_x <- results_inner[ci_upper_index, "max_x"]
-    
+        
     # Compute finite sample covariance
     finitesamplecovariance <- stats::cov(log(Y)[d1,], log(Y)[d2,])
     
@@ -253,30 +243,32 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.9, S = 1000, v
     )
   }
   
-  # Process overall results
-  final_results <- do.call(rbind, lapply(results_list, function(x) data.frame(
-    comparison = paste(rownames(Y)[x$d1],rownames(Y)[x$d2],sep=":"),
-    d1 = rownames(Y)[x$d1],
-    d2 = rownames(Y)[x$d2],
-    cilower = x$cilower,
-    ciupper = x$ciupper,
-    minsigma = x$minsigma,
-    maxsigma = x$maxsigma,
-    finitesamplecovariance = x$finitesamplecovariance,
-    min_rho1 = x$min_rho1,
-    min_rho2 = x$min_rho2,
-    min_x = x$min_x,
-    max_rho1 = x$max_rho1,
-    max_rho2 = x$max_rho2,
-    max_x = x$max_x,
-    ci_lower_rho1 = x$ci_lower_rho1,
-    ci_lower_rho2 = x$ci_lower_rho2,
-    ci_lower_x = x$ci_lower_x,
-    ci_upper_rho1 = x$ci_upper_rho1,
-    ci_upper_rho2 = x$ci_upper_rho2,
-    ci_upper_x = x$ci_upper_x,
-    stringsAsFactors = FALSE
-  )))
+  # Combine the results into a data frame
+  final_results <- do.call(rbind, lapply(results_list, function(x) {
+    data.frame(
+      comparison = paste(rownames(Y)[x$d1], rownames(Y)[x$d2], sep=":"),
+      d1 = rownames(Y)[x$d1],
+      d2 = rownames(Y)[x$d2],
+      cilower = x$cilower,
+      ciupper = x$ciupper,
+      minsigma = x$minsigma,
+      maxsigma = x$maxsigma,
+      finitesamplecovariance = x$finitesamplecovariance,
+      min_rho1 = x$min_rho1,
+      min_rho2 = x$min_rho2,
+      min_x = x$min_x,
+      max_rho1 = x$max_rho1,
+      max_rho2 = x$max_rho2,
+      max_x = x$max_x,
+      ci_lower_rho1 = x$ci_lower_rho1,
+      ci_lower_rho2 = x$ci_lower_rho2,
+      ci_lower_x = x$ci_lower_x,
+      ci_upper_rho1 = x$ci_upper_rho1,
+      ci_upper_rho2 = x$ci_upper_rho2,
+      ci_upper_x = x$ci_upper_x,
+      stringsAsFactors = FALSE
+    )
+  }))
   
   # Remove row names
   rownames(final_results) <- NULL
