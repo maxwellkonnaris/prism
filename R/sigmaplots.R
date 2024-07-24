@@ -62,17 +62,21 @@ sigmaplot <- function(all_inner_results, save_format = NULL) {
     geom_point() +
     labs(title = "Max Sigma vs x", x = "x", y = "Max Sigma") +
     theme_minimal()
+
+  # Combined
+  combined_plot <- gridExtra::grid.arrange(p1_min, p1_max, p2_min, p2_max, p3_min, p3_max, ncol = 2)
   
   # Display the plots
   gridExtra::grid.arrange(p1_min, p1_max, p2_min, p2_max, p3_min, p3_max, ncol = 2)
   
   # Save plots to files if save_format is specified
   if (!is.null(save_format)) {
-    ggsave(filename = paste0("Min_Sigma_vs_rho1.", save_format), plot = p1_min, width = 10, height = 6, dpi = 300)
-    ggsave(filename = paste0("Max_Sigma_vs_rho1.", save_format), plot = p1_max, width = 10, height = 6, dpi = 300)
-    ggsave(filename = paste0("Min_Sigma_vs_rho2.", save_format), plot = p2_min, width = 10, height = 6, dpi = 300)
-    ggsave(filename = paste0("Max_Sigma_vs_rho2.", save_format), plot = p2_max, width = 10, height = 6, dpi = 300)
-    ggsave(filename = paste0("Min_Sigma_vs_x.", save_format), plot = p3_min, width = 10, height = 6, dpi = 300)
-    ggsave(filename = paste0("Max_Sigma_vs_x.", save_format), plot = p3_max, width = 10, height = 6, dpi = 300)
+    ggsave(filename = paste0("Min_Sigma_vs_rho1.", save_format), plot = p1_min, width = 10, height = 10, dpi = 300)
+    ggsave(filename = paste0("Max_Sigma_vs_rho1.", save_format), plot = p1_max, width = 10, height = 10, dpi = 300)
+    ggsave(filename = paste0("Min_Sigma_vs_rho2.", save_format), plot = p2_min, width = 10, height = 10, dpi = 300)
+    ggsave(filename = paste0("Max_Sigma_vs_rho2.", save_format), plot = p2_max, width = 10, height = 10, dpi = 300)
+    ggsave(filename = paste0("Min_Sigma_vs_x.", save_format), plot = p3_min, width = 10, height = 10, dpi = 300)
+    ggsave(filename = paste0("Max_Sigma_vs_x.", save_format), plot = p3_max, width = 10, height = 10, dpi = 300)
+    ggsave(filename = paste0("Combined", save_format), plot = combined_plot, width = 15, heigt = 25, dpi = 300)
   }
 }
