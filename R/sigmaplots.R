@@ -85,7 +85,7 @@ sigmaplot <- function(all_inner_results, filename = NULL, save = NULL, plot_type
   #                                                    vp = grid::viewport(y = unit(1, "npc"))))
   
   # Save plots to files if save_format is specified
-  if (!is.null(save_format)) {
+  if (!is.null(save)) {
     ggsave(filename = paste0(filename,"Min_Sigma_vs_rho1_", plot_type, ".", save), plot = p1_min, width = 10, height = 10, dpi = 300)
     ggsave(filename = paste0(filename,"Max_Sigma_vs_rho1_", plot_type, ".", save), plot = p1_max, width = 10, height = 10, dpi = 300)
     ggsave(filename = paste0(filename,"Min_Sigma_vs_rho2_", plot_type, ".", save), plot = p2_min, width = 10, height = 10, dpi = 300)
