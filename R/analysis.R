@@ -256,15 +256,14 @@ run_analysis <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.9, S = 1000, v
     })
   }
   
-  # Combine the results into a data frame and transpose it
+  # Combine the results into a data frame, transpose it, remove row names
   final_results <- do.call(rbind, lapply(results_list, function(x) t(x$results)))
   final_results <- as.data.frame(final_results, stringsAsFactors = FALSE)
-
-  all_inner_results <- lapply(results_list, function(x) x$resultsinner)
-  
-  # Remove row names
   rownames(final_results) <- NULL
 
+  # Combine all inner loop results
+  all_inner_results <- lapply(results_list, function(x) x$resultsinner)
+  
   # Calculate and print the total elapsed time
   end_time <- Sys.time()
   elapsed_time <- end_time - start_time
