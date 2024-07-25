@@ -46,7 +46,7 @@ Run Analysis on All Pairwise Combinations <br>
 <br>
 The primary function of the PRISM package is estimate_covariance, which runs a bootstrapped analysis on the input data matrix Y using scale models which account for uncertainty due to a partially identified system where the dataset does not include information about scale. <br>
 <br>
-See Scale Reliant Inference for more information: 
+See Scale Reliant Inference for more information: https://arxiv.org/abs/2201.03616 
 
 ```r
 results = estimate_covariance(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000, variance = FALSE, upperx = 1.0)
