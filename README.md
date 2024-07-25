@@ -4,7 +4,7 @@
 
 **Version:** 0.1.0
 
-**Author:** Maxwell Konnaris
+**Author:** Maxwell Konnaris, Michelle Nixon, and Justin Silverman
 
 **Maintainer:** Maxwell Konnaris <Maxwellkonnaris @ gmail . com>
 
