@@ -46,7 +46,7 @@ sigmaplot <- function(all_inner_results, filename = NULL, save = NULL, individua
   create_plot <- function(xvar, yvar, comparison, title) {
     if (plot_type == "line") {
       p <- ggplot(all_inner_results, aes_string(x = xvar, y = yvar, color = comparison)) +
-        geom_smooth(method = "lm", se = TRUE) +  
+      	geom_smooth(method = "lm", formula = y ~ poly(x, 2), se = TRUE) +  
         labs(title = title, x = xvar, y = yvar) +
         custom_theme
     } else {
@@ -85,13 +85,41 @@ sigmaplot <- function(all_inner_results, filename = NULL, save = NULL, individua
                           bottom = grid::textGrob("Combined Legend",
                                                      gp = grid::gpar(fontsize = 10, fontface = "bold"),
                                                      vp = grid::viewport(y = unit(1, "npc"))))
+                                                   
+  # Function to create combined histogram plot with facets
+  create_facet_histogram <- function(data, min_var, max_var) {
+    # Calculate quantiles for each comparison
+    quantiles <- data %>%
+      group_by(comparison) %>%
+      summarise(min_ci = quantile(!!sym(min_var), probs = 0.025),
+                max_ci = quantile(!!sym(max_var), probs = 0.975))
+    
+    p <- ggplot(data) +
+      geom_histogram(aes_string(x = min_var, fill = "'minsigma'"), alpha = 0.5, binwidth = 0.05, position = "identity") +
+      geom_histogram(aes_string(x = max_var, fill = "'maxsigma'"), alpha = 0.5, binwidth = 0.05, position = "identity") +
+      geom_vline(data = quantiles, aes(xintercept = min_ci), color = "purple", linetype = "dashed", size = 2) +
+      geom_vline(data = quantiles, aes(xintercept = max_ci), color = "purple", linetype = "dashed", size = 2) +
+      labs(title = "Histogram of Min and Max Sigma by Comparison", x = "Sigma Value", y = "Frequency") +
+      scale_fill_manual(name = "Sigma Type", values = c("minsigma" = "blue", "maxsigma" = "red"), labels = c("Min Sigma", "Max Sigma")) +
+      custom_theme +
+      facet_wrap(~comparison, scales = "free")
+    
+    return(p)
+  }
+  
+  # Create the facet histogram plot
+  facet_histogram <- create_facet_histogram(all_inner_results, "minsigma", "maxsigma")
+  
+  print(facet_histogram)
   
   # Save plots to files if save_format is specified
   if (!is.null(save)) {
   	if (!is.null(filename)) {
-    		ggsave(filename = paste0(filename, "Combined_", plot_type, ".", save), plot = combined_plot, width = 15, height = 30, dpi = 300)
+    		ggsave(filename = paste0(filename, "_Combined_", plot_type, ".", save), plot = combined_plot, width = 15, height = 30, dpi = 300)
+    		ggsave(filename = paste0(filename, "_Histograms.", save), plot = facet_histogram, width = 15, height = 30, dpi = 300) 
     	} else {
     		ggsave(filename = paste0("Combined_sigmaparameters_", plot_type, ".", save), plot = combined_plot, width = 15, height = 30, dpi = 300)
+    		ggsave(filename = paste0("Histograms_sigmaparameters.", save), plot = facet_histogram, width = 15, height = 30, dpi = 300) 
     	}
   }
   
