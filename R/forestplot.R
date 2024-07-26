@@ -2,9 +2,10 @@
 #'
 #' This function creates a forest plot of confidence intervals ordered by the largest range.
 #'
-#' @param data A data frame containing the comparison names, lower confidence intervals, upper confidence intervals, and optionally minsigma and maxsigma columns.
-#' @param bg A character string indicating the background color of the plot. Options are "transparent" (default) or "white".
+#' @param data A data frame containing the covariance comparison names, lower bound for the range of sigma, upper bound of the range of sigma, 2.5 percent quartile of the sorted minimized sigmas, and the 97.5 percent quartile of the sorted maximized sigmas.
+#' @param bg A character string indicating the background color of the plot. Options are "white" (default) or "transparent".
 #' @param save A character string indicating the file format to save the plot. Options are "png", "jpg", "svg", "pdf". Default is NULL, which means the plot is not saved.
+#' @param filename A character string indicating the file name when saving the plot. Default is NULL, which means the plot is saved as forest_plot if save format is indicated.
 #' @return A ggplot object representing the forest plot.
 #' @import ggplot2
 #' @import dplyr
@@ -18,10 +19,10 @@
 #'   minsigma = c(0.05, 0.15, 0.25),
 #'   maxsigma = c(0.45, 0.55, 0.65)
 #' )
-#' plot <- forest_plot(results, save = "png")
-#' plot <- forest_plot(results, save = "jpg")
-#' plot <- forest_plot(results, save = "svg")
-#' plot <- forest_plot(results, save = "pdf")
+#' plot <- forest_plot(results, save = "png", filename = "sampledataset")
+#' plot <- forest_plot(results, save = "jpg", filename = "sampledataset")
+#' plot <- forest_plot(results, save = "svg", filename = "sampledataset")
+#' plot <- forest_plot(results, save = "pdf", filename = "sampledataset")
 forest_plot <- function(data, bg = "white", save = NULL, filename = NULL) {
   # Ensure the data has the necessary columns
   if (!all(c("comparison", "cilower", "ciupper") %in% colnames(data))) {

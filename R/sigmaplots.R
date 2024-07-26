@@ -5,20 +5,23 @@
 #' Optionally, it can save the plots in \code{jpg}, \code{png}, or \code{svg} format with 300 dpi resolution.
 #'
 #' @param all_inner_results A data frame containing sigma values and corresponding parameters.
-#' @param save_format A character string specifying the format to save the plots (\code{NULL}, \code{"jpg"}, \code{"png"}, \code{"svg"}). Defaults to \code{NULL}.
-#' @param plot_type A character string specifying the type of plot ("point" or "line"). Defaults to "point".
+#' @param save A character string specifying the format to save the plots (\code{NULL}, \code{"jpg"}, \code{"png"}, \code{"svg"}). Defaults to \code{NULL}.
+#' @param plot_type A character string specifying the type of plot ("point" or "line"). Defaults to "line".
+#' @param filename A character string specifying an alternate name of the file. Defaults to \code{NULL} which saves as parameter combination names.
+#' @param individual A boolean type specifying whether you would like to save individual plots. Defaults to \code{FALSE}.
 #' @return Plots visualizing the impact of the parameters on sigma.
 #' @import ggplot2
 #' @import gridExtra
+#' @import grid
 #' @examples
 #' # Example usage:
-#' # Assuming 'results' is the output from run_analysis function
-#' # results <- run_analysis(Y)
+#' # Assuming 'results' is the output from estimate_covariance function
+#' # results <- estimate_covariance(Y)
 #' # all_inner_results <- results$all_inner_results
 #' # sigmaplot(all_inner_results)  # Without saving
-#' # sigmaplot(all_inner_results, save = "png", plot_type = "line")  # Save as PNG with best fit lines
+#' # sigmaplot(all_inner_results, save = "png", filename = "sampledataset", individual = FALSE, plot_type = "line")  # Save as PNG with best fit lines
 #' @export
-sigmaplot <- function(all_inner_results, filename = NULL, save = NULL, plot_type = "line") {
+sigmaplot <- function(all_inner_results, filename = NULL, save = NULL, individual = FALSE, plot_type = "line") {
   
   # Convert relevant columns to numeric
   all_inner_results <- all_inner_results %>%
@@ -85,12 +88,28 @@ sigmaplot <- function(all_inner_results, filename = NULL, save = NULL, plot_type
   
   # Save plots to files if save_format is specified
   if (!is.null(save)) {
-    ggsave(filename = paste0(filename,"Min_Sigma_vs_rho1_", plot_type, ".", save), plot = p1_min, width = 10, height = 10, dpi = 300)
-    ggsave(filename = paste0(filename,"Max_Sigma_vs_rho1_", plot_type, ".", save), plot = p1_max, width = 10, height = 10, dpi = 300)
-    ggsave(filename = paste0(filename,"Min_Sigma_vs_rho2_", plot_type, ".", save), plot = p2_min, width = 10, height = 10, dpi = 300)
-    ggsave(filename = paste0(filename,"Max_Sigma_vs_rho2_", plot_type, ".", save), plot = p2_max, width = 10, height = 10, dpi = 300)
-    ggsave(filename = paste0(filename,"Min_Sigma_vs_x_", plot_type, ".", save), plot = p3_min, width = 10, height = 10, dpi = 300)
-    ggsave(filename = paste0(filename,"Max_Sigma_vs_x_", plot_type, ".", save), plot = p3_max, width = 10, height = 10, dpi = 300)
-    ggsave(filename = paste0(filename, "Combined_", plot_type, ".", save), plot = combined_plot, width = 15, height = 30, dpi = 300)
+  	if (!is.null(filename)) {
+    		ggsave(filename = paste0(filename, "Combined_", plot_type, ".", save), plot = combined_plot, width = 15, height = 30, dpi = 300)
+    	} else {
+    		ggsave(filename = paste0("Combined_sigmaparameters_", plot_type, ".", save), plot = combined_plot, width = 15, height = 30, dpi = 300)
+    	}
+  }
+  
+  if (!is.null(save) && individual == TRUE) {
+  	if (!is.null(filename)) {
+	    ggsave(filename = paste0(filename,"Min_Sigma_vs_rho1_", plot_type, ".", save), plot = p1_min, width = 10, height = 10, dpi = 300)
+	    ggsave(filename = paste0(filename,"Max_Sigma_vs_rho1_", plot_type, ".", save), plot = p1_max, width = 10, height = 10, dpi = 300)
+	    ggsave(filename = paste0(filename,"Min_Sigma_vs_rho2_", plot_type, ".", save), plot = p2_min, width = 10, height = 10, dpi = 300)
+	    ggsave(filename = paste0(filename,"Max_Sigma_vs_rho2_", plot_type, ".", save), plot = p2_max, width = 10, height = 10, dpi = 300)
+	    ggsave(filename = paste0(filename,"Min_Sigma_vs_x_", plot_type, ".", save), plot = p3_min, width = 10, height = 10, dpi = 300)
+	    ggsave(filename = paste0(filename,"Max_Sigma_vs_x_", plot_type, ".", save), plot = p3_max, width = 10, height = 10, dpi = 300)
+	} else {
+	    ggsave(filename = paste0("Min_Sigma_vs_rho1_", plot_type, ".", save), plot = p1_min, width = 10, height = 10, dpi = 300)
+	    ggsave(filename = paste0("Max_Sigma_vs_rho1_", plot_type, ".", save), plot = p1_max, width = 10, height = 10, dpi = 300)
+	    ggsave(filename = paste0("Min_Sigma_vs_rho2_", plot_type, ".", save), plot = p2_min, width = 10, height = 10, dpi = 300)
+	    ggsave(filename = paste0("Max_Sigma_vs_rho2_", plot_type, ".", save), plot = p2_max, width = 10, height = 10, dpi = 300)
+	    ggsave(filename = paste0("Min_Sigma_vs_x_", plot_type, ".", save), plot = p3_min, width = 10, height = 10, dpi = 300)
+	    ggsave(filename = paste0("Max_Sigma_vs_x_", plot_type, ".", save), plot = p3_max, width = 10, height = 10, dpi = 300)
+	}
   }
 }

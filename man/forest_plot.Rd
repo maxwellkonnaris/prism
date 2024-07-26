@@ -4,12 +4,16 @@
 \alias{forest_plot}
 \title{Forest Plot of Confidence Intervals}
 \usage{
-forest_plot(data, bg = "transparent")
+forest_plot(data, bg = "white", save = NULL, filename = NULL)
 }
 \arguments{
-\item{data}{A data frame containing the comparison names, lower confidence intervals, and upper confidence intervals.}
+\item{data}{A data frame containing the covariance comparison names, lower bound for the range of sigma, upper bound of the range of sigma, 2.5 percent quartile of the sorted minimized sigmas, and the 97.5 percent quartile of the sorted maximized sigmas.}
 
-\item{bg}{A character string indicating the background color of the plot. Options are "transparent" (default) or "white".}
+\item{bg}{A character string indicating the background color of the plot. Options are "white" (default) or "transparent".}
+
+\item{save}{A character string indicating the file format to save the plot. Options are "png", "jpg", "svg", "pdf". Default is NULL, which means the plot is not saved.}
+
+\item{filename}{A character string indicating the file name when saving the plot. Default is NULL, which means the plot is saved as forest_plot if save format is indicated.}
 }
 \value{
 A ggplot object representing the forest plot.
@@ -22,8 +26,12 @@ This function creates a forest plot of confidence intervals ordered by the large
 results <- data.frame(
   comparison = c("A:B", "A:C", "B:C"),
   cilower = c(0.1, 0.2, 0.3),
-  ciupper = c(0.4, 0.5, 0.6)
+  ciupper = c(0.4, 0.5, 0.6),
+  minsigma = c(0.05, 0.15, 0.25),
+  maxsigma = c(0.45, 0.55, 0.65)
 )
-plot <- forest_plot(results)
-ggsave("forest_plot.png", plot, width = 12, height = 8, dpi = 300)
+plot <- forest_plot(results, save = "png", filename = "sampledataset")
+plot <- forest_plot(results, save = "jpg", filename = "sampledataset")
+plot <- forest_plot(results, save = "svg", filename = "sampledataset")
+plot <- forest_plot(results, save = "pdf", filename = "sampledataset")
 }

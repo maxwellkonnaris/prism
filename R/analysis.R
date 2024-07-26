@@ -5,15 +5,18 @@
 #' @param Y A matrix of data with observations in columns and variables in rows.
 #' @param alpha A numeric vector of priors for the Dirichlet distribution. Defaults to a vector of zeros.
 #' @param rhobound A numeric value specifying the bound for the \code{rho1} and \code{rho2} parameters. Defaults to 0.8.
-#' @param S An integer specifying the number of bootstrap samples. Defaults to 1000.
-#' @return A data frame containing the results of the analysis including estimated 95% confidence intervals, minimum and maximum values for estimated covariance, and finite sample covariances.
+#' @param S An integer specifying the number of bootstrap samples. Increase to reduce Monte Carlo error. Defaults to 1000.
+#' @param variance A boolean specifying whether to include diagonals of variance-covariance matrices (the variance). Defaults to FALSE.
+#' @param upperx A numeric value specifying the upper bound of the variance of the scale. Defaults to 1.0.
+#' @return A list of dataframes containing the results of the analysis including estimated 95% confidence intervals, minimum and maximum values for estimated covariance, and finite sample covariances. \code{final_results} contains the data intended for forest_plot() and \code{all_inner_results} contains the data intended for sigmaplot().
 #' @import progress
+#' @import progressr
 #' @import foreach
 #' @import doSNOW
 #' @import parallel
 #' @import MCMCpack
 #' @import stats
-#' @import profvis
+#' @import utils
 #' @examples
 #' # Example usage (You could also use the simulation function provided to generate sample data):
 #' set.seed(123)
@@ -21,7 +24,7 @@
 #' results <- estimate_covariance(Y)
 #' @export
 
-estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000, variance=FALSE, upperx = 1) {
+estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000, variance=FALSE, upperx = 1.0) {
 
   # Record the start time for profiling
   start_time <- Sys.time()
