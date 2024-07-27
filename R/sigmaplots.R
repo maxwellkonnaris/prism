@@ -57,7 +57,6 @@ sigmaplot <- function(all_inner_results, bg="white", filename = NULL, save = NUL
 		  plot.title = element_text(size = 14, face = "bold"),
 		  axis.title = element_text(size = 12),
 		  axis.text = element_text(size = 10))
-	      )
   } else {
     stop("bg parameter must be 'transparent' or 'white'")
   }
