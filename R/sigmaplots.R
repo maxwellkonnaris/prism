@@ -9,6 +9,7 @@
 #' @param plot_type A character string specifying the type of plot ("point" or "line"). Defaults to "line".
 #' @param filename A character string specifying an alternate name of the file. Defaults to \code{NULL} which saves as parameter combination names.
 #' @param individual A boolean type specifying whether you would like to save individual plots. Defaults to \code{FALSE}.
+#' @param bg A character string indicating the background color of the plot. Options are "white" (default) or "transparent".
 #' @return Plots visualizing the impact of the parameters on sigma.
 #' @import ggplot2
 #' @import gridExtra
@@ -17,11 +18,12 @@
 #' # Example usage:
 #' # Assuming 'results' is the output from estimate_covariance function
 #' # results <- estimate_covariance(Y)
-#' # all_inner_results <- results$all_inner_results
+#' # all_inner_results <- results$all_inner_results # OR 
+#' # all_inner_results <- results$all_inner_results_moment
 #' # sigmaplot(all_inner_results)  # Without saving
 #' # sigmaplot(all_inner_results, save = "png", filename = "sampledataset", individual = FALSE, plot_type = "line")  # Save as PNG with best fit lines
 #' @export
-sigmaplot <- function(all_inner_results, filename = NULL, save = NULL, individual = FALSE, plot_type = "line") {
+sigmaplot <- function(all_inner_results, bg="white", filename = NULL, save = NULL, individual = FALSE, plot_type = "line") {
   
   # Convert relevant columns to numeric
   all_inner_results <- all_inner_results %>%
@@ -33,14 +35,33 @@ sigmaplot <- function(all_inner_results, filename = NULL, save = NULL, individua
   }
   all_inner_results$comparison <- as.factor(all_inner_results$comparison)
   
-  # Custom theme to adjust legend position and size
-  custom_theme <- theme_minimal() + 
-    theme(legend.position = "bottom", 
-          legend.key.size = unit(0.5, "lines"), 
-          legend.text = element_text(size = 8),
-          plot.title = element_text(size = 14, face = "bold"),
-          axis.title = element_text(size = 12),
-          axis.text = element_text(size = 10))
+  
+    # Customize the background based on the bg parameter
+  if (bg == "transparent") {
+    	# Custom theme to adjust legend position and size
+	  custom_theme <- theme_minimal() + 
+	    theme(legend.position = "bottom", 
+		  legend.key.size = unit(0.5, "lines"), 
+		  legend.text = element_text(size = 8),
+		  plot.title = element_text(size = 14, face = "bold"),
+		  axis.title = element_text(size = 12),
+		  axis.text = element_text(size = 10))
+  } else if (bg == "white") {
+    	# Custom theme to adjust legend position and size
+	  custom_theme <- theme_minimal() + 
+	    theme(legend.position = "bottom", 
+		  legend.key.size = unit(0.5, "lines"), 
+		  legend.text = element_text(size = 8),
+		  plot.background = element_rect(fill = "white", color = NA),
+		  panel.background = element_rect(fill = "white", color = NA),
+		  plot.title = element_text(size = 14, face = "bold"),
+		  axis.title = element_text(size = 12),
+		  axis.text = element_text(size = 10))
+	      )
+  } else {
+    stop("bg parameter must be 'transparent' or 'white'")
+  }
+  
   
   # Function to create plots
   create_plot <- function(xvar, yvar, comparison, title) {
@@ -86,40 +107,54 @@ sigmaplot <- function(all_inner_results, filename = NULL, save = NULL, individua
                                                      gp = grid::gpar(fontsize = 10, fontface = "bold"),
                                                      vp = grid::viewport(y = unit(1, "npc"))))
                                                    
-  # Function to create combined histogram plot with facets
-  create_facet_histogram <- function(data, min_var, max_var) {
-    # Calculate quantiles for each comparison
-    quantiles <- data %>%
-      group_by(comparison) %>%
-      summarise(min_ci = quantile(!!sym(min_var), probs = 0.025),
-                max_ci = quantile(!!sym(max_var), probs = 0.975))
-    
-    p <- ggplot(data) +
-      geom_histogram(aes_string(x = min_var, fill = "'minsigma'"), alpha = 0.5, binwidth = 0.05, position = "identity") +
-      geom_histogram(aes_string(x = max_var, fill = "'maxsigma'"), alpha = 0.5, binwidth = 0.05, position = "identity") +
-      geom_vline(data = quantiles, aes(xintercept = min_ci), color = "purple", linetype = "dashed", size = 2) +
-      geom_vline(data = quantiles, aes(xintercept = max_ci), color = "purple", linetype = "dashed", size = 2) +
-      labs(title = "Histogram of Min and Max Sigma by Comparison", x = "Sigma Value", y = "Frequency") +
-      scale_fill_manual(name = "Sigma Type", values = c("minsigma" = "blue", "maxsigma" = "red"), labels = c("Min Sigma", "Max Sigma")) +
-      custom_theme +
-      facet_wrap(~comparison, scales = "free")
-    
-    return(p)
+  # Function to create combined histogram plot with facets for min and max parameters
+  create_facet_histogram <- function(data, min_var, max_var, parameter) {
+  	# Calculate quantiles for each comparison
+  	quantiles <- data %>%
+    		group_by(comparison) %>%
+    		summarise(min_ci = quantile(!!sym(min_var), probs = 0.025, na.rm = TRUE),
+	      	max_ci = quantile(!!sym(max_var), probs = 0.975, na.rm = TRUE))
+  
+	p <- ggplot(data) +
+	    	geom_histogram(aes_string(x = min_var, fill = "'Min'"), alpha = 0.5, binwidth = 0.05, position = "identity") +
+	    	geom_histogram(aes_string(x = max_var, fill = "'Max'"), alpha = 0.5, binwidth = 0.05, position = "identity") +
+	    	geom_vline(data = quantiles, aes(xintercept = min_ci), color = "purple", linetype = "dashed", size = 1) +
+	    	geom_vline(data = quantiles, aes(xintercept = max_ci), color = "purple", linetype = "dashed", size = 1) +
+	    	labs(title = paste("Histogram of Min and Max", parameter, "by Comparison"),
+			 x = paste(parameter, "Value"), y = "Frequency") +
+	    	scale_fill_manual(name = "Type", values = c("Min" = "blue", "Max" = "red"), labels = c("Min", "Max")) +
+	    	theme_minimal() +
+	    	facet_wrap(~comparison, scales = "free")
+	  
+	return(p)
   }
-  
-  # Create the facet histogram plot
-  facet_histogram <- create_facet_histogram(all_inner_results, "minsigma", "maxsigma")
-  
-  print(facet_histogram)
+
+  # Example usage: Create the facet histogram plots for the parameters sigma, rho1, rho2, and x
+  facet_histogram_sigma <- create_facet_histogram(all_inner_results, "minsigma", "maxsigma", "Sigma")
+  facet_histogram_rho1 <- create_facet_histogram(all_inner_results, "min_rho1", "max_rho1", "rho1")
+  facet_histogram_rho2 <- create_facet_histogram(all_inner_results, "min_rho2", "max_rho2", "rho2")
+  facet_histogram_x <- create_facet_histogram(all_inner_results, "min_x", "max_x", "x")
+
+  # Plot the facet histograms
+  print(facet_histogram_sigma)
+  print(facet_histogram_rho1)
+  print(facet_histogram_rho2)
+  print(facet_histogram_x)
   
   # Save plots to files if save_format is specified
   if (!is.null(save)) {
   	if (!is.null(filename)) {
     		ggsave(filename = paste0(filename, "_Combined_", plot_type, ".", save), plot = combined_plot, width = 15, height = 30, dpi = 300)
-    		ggsave(filename = paste0(filename, "_Histograms.", save), plot = facet_histogram, width = 15, height = 30, dpi = 300) 
+    		ggsave(filename = paste0(filename, "_Histograms_sigma.", save), plot = facet_histogram_sigma, width = 15, height = 30, dpi = 300) 
+    		ggsave(filename = paste0(filename, "_Histograms_rho1.", save), plot = facet_histogram_rho1, width = 15, height = 30, dpi = 300) 
+    		ggsave(filename = paste0(filename, "_Histograms_rho2.", save), plot = facet_histogram_rho2, width = 15, height = 30, dpi = 300) 
+    		ggsave(filename = paste0(filename, "_Histograms_x.", save), plot = facet_histogram_x, width = 15, height = 30, dpi = 300) 
     	} else {
     		ggsave(filename = paste0("Combined_sigmaparameters_", plot_type, ".", save), plot = combined_plot, width = 15, height = 30, dpi = 300)
-    		ggsave(filename = paste0("Histograms_sigmaparameters.", save), plot = facet_histogram, width = 15, height = 30, dpi = 300) 
+    		ggsave(filename = paste0("Histograms_sigma.", save), plot = facet_histogram_sigma, width = 15, height = 30, dpi = 300) 
+    		ggsave(filename = paste0("Histograms_rho1.", save), plot = facet_histogram_rho1, width = 15, height = 30, dpi = 300) 
+    		ggsave(filename = paste0("Histograms_rho2.", save), plot = facet_histogram_rho2, width = 15, height = 30, dpi = 300)  
+    		ggsave(filename = paste0("Histograms_x.", save), plot = facet_histogram_x, width = 15, height = 30, dpi = 300) 
     	}
   }
   
