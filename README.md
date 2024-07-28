@@ -6,7 +6,7 @@
 
 **Author:** Maxwell Konnaris, Michelle Nixon, and Justin Silverman
 
-**Maintainer:** Maxwell Konnaris <Maxwellkonnaris @ gmail . com>
+**Maintainer:** Maxwell Konnaris 
 
 ## Description
 
