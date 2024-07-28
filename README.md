@@ -6,7 +6,7 @@
 
 **Author:** Maxwell Konnaris, Michelle Nixon, and Justin Silverman
 
-**Maintainer:** Maxwell Konnaris 
+**Maintainer:** Maxwell Konnaris <Maxwellkonnaris @ gmail . com>
 
 ## Description
 
@@ -80,5 +80,5 @@ PRISM is licensed under the GPL-3 license. See the LICENSE file for more details
 Bug reports are welcome, please direct any issues to https://github.com/maxwellkonnaris/prism/issues
 
 ## Contact
-For any questions or issues, please contact the maintainer through github: Maxwell Konnaris 
+For any questions or issues, please contact the maintainer: Maxwell Konnaris Maxwellkonnaris @ gmail . com
 
