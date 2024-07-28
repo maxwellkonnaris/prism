@@ -6,6 +6,7 @@
 \usage{
 sigmaplot(
   all_inner_results,
+  bg = "white",
   filename = NULL,
   save = NULL,
   individual = FALSE,
@@ -14,6 +15,8 @@ sigmaplot(
 }
 \arguments{
 \item{all_inner_results}{A data frame containing sigma values and corresponding parameters.}
+
+\item{bg}{A character string indicating the background color of the plot. Options are "white" (default) or "transparent".}
 
 \item{filename}{A character string specifying an alternate name of the file. Defaults to \code{NULL} which saves as parameter combination names.}
 
@@ -35,7 +38,8 @@ Optionally, it can save the plots in \code{jpg}, \code{png}, or \code{svg} forma
 # Example usage:
 # Assuming 'results' is the output from estimate_covariance function
 # results <- estimate_covariance(Y)
-# all_inner_results <- results$all_inner_results
+# all_inner_results <- results$all_inner_results # OR 
+# all_inner_results <- results$all_inner_results_moment
 # sigmaplot(all_inner_results)  # Without saving
 # sigmaplot(all_inner_results, save = "png", filename = "sampledataset", individual = FALSE, plot_type = "line")  # Save as PNG with best fit lines
 }

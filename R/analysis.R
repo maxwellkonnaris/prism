@@ -24,7 +24,7 @@
 #' results <- estimate_covariance(Y)
 #' @export
 
-estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000, variance=FALSE, upperx = 1.0) {
+estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 1.0, S = 1000, variance=FALSE, upperx = 2.0) {
 
   # Record the start time for profiling
   start_time <- Sys.time()
@@ -71,7 +71,7 @@ estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 
   # Create a sequence for rho1, rho2, and x based on the given bounds
   rho1 <- seq(-rhobound, rhobound, by = 0.05)
   rho2 <- seq(-rhobound, rhobound, by = 0.05)
-  x <- seq(0.05, upperx, by = 0.01)
+  x <- seq(0.05, upperx, by = 0.025)
   
   # Generate all combinations of rho1, rho2, and x
   pars <- expand.grid(rho1, rho2, x)
@@ -219,7 +219,7 @@ estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 
             min_x = res_min$par[3],
             max_rho1 = res_max$par[1],
             max_rho2 = res_max$par[2],
-            max_x = res_max$par[3]
+            max_x = res_max$par[3],
             min_a = obj_min$a,
             min_b = obj_min$b,
             min_c = obj_min$c,
