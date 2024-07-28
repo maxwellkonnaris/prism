@@ -4,7 +4,13 @@
 \alias{forest_plot}
 \title{Forest Plot of Confidence Intervals}
 \usage{
-forest_plot(data, bg = "white", save = NULL, filename = NULL)
+forest_plot(
+  data,
+  bg = "white",
+  save = NULL,
+  filename = NULL,
+  dir_path = "./plots/"
+)
 }
 \arguments{
 \item{data}{A data frame containing the covariance comparison names, lower bound for the range of sigma, upper bound of the range of sigma, 2.5 percent quartile of the sorted minimized sigmas, and the 97.5 percent quartile of the sorted maximized sigmas.}
@@ -14,6 +20,8 @@ forest_plot(data, bg = "white", save = NULL, filename = NULL)
 \item{save}{A character string indicating the file format to save the plot. Options are "png", "jpg", "svg", "pdf". Default is NULL, which means the plot is not saved.}
 
 \item{filename}{A character string indicating the file name when saving the plot. Default is NULL, which means the plot is saved as forest_plot if save format is indicated.}
+
+\item{dir_path}{A character string indicating the directory to store the plot. Default is \code{"./plots/"} which creates the plots directory in the current directory.}
 }
 \value{
 A ggplot object representing the forest plot.

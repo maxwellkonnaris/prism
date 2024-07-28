@@ -6,6 +6,7 @@
 #' @param bg A character string indicating the background color of the plot. Options are "white" (default) or "transparent".
 #' @param save A character string indicating the file format to save the plot. Options are "png", "jpg", "svg", "pdf". Default is NULL, which means the plot is not saved.
 #' @param filename A character string indicating the file name when saving the plot. Default is NULL, which means the plot is saved as forest_plot if save format is indicated.
+#' @param dir_path A character string indicating the directory to store the plot. Default is \code{"./plots/"} which creates the plots directory in the current directory.
 #' @return A ggplot object representing the forest plot.
 #' @import ggplot2
 #' @import dplyr
@@ -23,12 +24,25 @@
 #' plot <- forest_plot(results, save = "jpg", filename = "sampledataset")
 #' plot <- forest_plot(results, save = "svg", filename = "sampledataset")
 #' plot <- forest_plot(results, save = "pdf", filename = "sampledataset")
-forest_plot <- function(data, bg = "white", save = NULL, filename = NULL) {
+forest_plot <- function(data, bg = "white", save = NULL, filename = NULL, dir_path = "./plots/") {
   # Ensure the data has the necessary columns
   if (!all(c("comparison", "cilower", "ciupper") %in% colnames(data))) {
     stop("Data must contain 'comparison', 'cilower', and 'ciupper' columns")
   }
-  
+
+  # Check if the directory exists
+  if (!dir.exists(dir_path)) {
+    # Create the directory
+    dir.create(dir_path)
+    if (dir.exists(dir_path)) {
+      cat("Directory created successfully!")
+    } else {
+      cat("Failed to create directory.")
+    }
+  } else {
+    cat("Directory already present")
+  }
+
   # Check if the data has minsigma and maxsigma columns
   has_sigma <- all(c("minsigma", "maxsigma") %in% colnames(data))
   
@@ -92,9 +106,9 @@ forest_plot <- function(data, bg = "white", save = NULL, filename = NULL) {
   
   # Save the plot if save is not NULL
   if (!is.null(save)) {
-    file_name <- paste0("forest_plot.", save)
+    file_name <- paste0(dir_path,"forest_plot.", save)
     if (!is.null(filename)) {
-      file_name <- paste0(filename, ".", save)
+      file_name <- paste0(dir_path, filename, ".", save)
     }
     ggsave(file_name, plot, width = 12, height = 15, dpi = 300, device = save)
   }

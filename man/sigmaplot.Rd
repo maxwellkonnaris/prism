@@ -10,6 +10,7 @@ sigmaplot(
   filename = NULL,
   save = NULL,
   individual = FALSE,
+  dir_path = "./plots/",
   plot_type = "line"
 )
 }
@@ -24,7 +25,9 @@ sigmaplot(
 
 \item{individual}{A boolean type specifying whether you would like to save individual plots. Defaults to \code{FALSE}.}
 
-\item{plot_type}{A character string specifying the type of plot ("point" or "line"). Defaults to "line".}
+\item{dir_path}{A character string indicating the directory to store the plot. Default is \code{"./plots/"} which creates the plots directory in the current directory.}
+
+\item{plot_type}{A character string specifying the type of plot ("point" or "line"). Defaults to "line". "line" fits a quadratic line of best fit to the data points. "point" plots the individual points.}
 }
 \value{
 Plots visualizing the impact of the parameters on sigma.
