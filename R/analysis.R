@@ -160,7 +160,6 @@ estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 1.0, S = 
   cat("Running sigma estimation")
                                            
   results_list <- foreach(pair = pair_indices, .packages = c('stats', 'MCMCpack'), .options.snow = opts) %dopar% {
-    tryCatch({
       d1 <- pair[1]
       d2 <- pair[2]
       comparison <- paste(rownames(Y)[d1], rownames(Y)[d2], sep = ":")
@@ -170,7 +169,6 @@ estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 1.0, S = 
       
       # Use parallel foreach for the inner loop
       results_inner <- foreach(s = 1:S, .combine = 'rbind', .packages = c('stats', 'MCMCpack'), .options.snow = opts) %dopar% {
-        tryCatch({
           Yboot <- Y[, bootstrap_samples[[s]]]
           
           rWpara <- matrix(NA, D, N)
@@ -194,28 +192,24 @@ estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 1.0, S = 
             d1 = d1,
             d2 = d2,
             s = s,
-            minsigma = res_min$value,
-            maxsigma = -res_max$value,
-            min_rho1 = res_min$par[1],
-            min_rho2 = res_min$par[2],
-            min_x = res_min$par[3],
-            max_rho1 = res_max$par[1],
-            max_rho2 = res_max$par[2],
-            max_x = res_max$par[3],
+            minsigma_absolute_minimum_covariance = res_min$value,
+            maxsigma_absolute_maximum_covariance = -res_max$value,
+            minsigma_correlation_relativetaxa1_scale = res_min$par[1],
+            minsigma_correlation_relativetaxa2_scale = res_min$par[2],
+            minsigma_scale_variance = res_min$par[3],
+            maxsigma_correlation_relativetaxa1_scale = res_max$par[1],
+            maxsigma_correlation_relativetaxa2_scale = res_max$par[2],
+            maxsigma_scale_variance = res_max$par[3],
             taxa1relativesd = taxa1relativesd,
             taxa2relativesd = taxa2relativesd,
             relativecorrelation = relativecorrelation,
             relativecovariance = relativecovariance
           )
-      }, error = function(e) {
-        message("Error in inner loop: ", e$message)
-        return(data.frame(d1 = d1, d2 = d2, s = s, minsigma = NA, maxsigma = NA, min_rho1 = NA, min_rho2 = NA, min_x = NA, max_rho1 = NA, max_rho2 = NA, max_x = NA, taxa1relativesd = taxa1relativesd, taxa2relativesd = taxa2relativesd, relativecorrelation, relativecovariance = relativecovariance))
-        })
       }
       
       # Gather the min and max optimized sigmas
-      minsigma_values <- results_inner$minsigma
-      maxsigma_values <- results_inner$maxsigma
+      minsigma_values <- results_inner$minsigma_absolute_minimum_covariance
+      maxsigma_values <- results_inner$maxsigma_absolute_maximum_covariance
       
       # Sort the results
       sortedmin <- sort(minsigma_values)
@@ -231,13 +225,13 @@ estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 1.0, S = 
       min_index <- which.min(minsigma_values)
       max_index <- which.max(maxsigma_values)
       
-      min_rho1 <- results_inner$min_rho1[min_index]
-      min_rho2 <- results_inner$min_rho2[min_index]
-      min_x <- results_inner$min_x[min_index]
+      min_rho1 <- results_inner$minsigma_correlation_relativetaxa1_scale[min_index]
+      min_rho2 <- results_inner$minsigma_correlation_relativetaxa2_scale[min_index]
+      min_x <- results_inner$minsigma_scale_variance[min_index]
       
-      max_rho1 <- results_inner$max_rho1[max_index]
-      max_rho2 <- results_inner$max_rho2[max_index]
-      max_x <- results_inner$max_x[max_index]
+      max_rho1 <- results_inner$maxsigma_correlation_relativetaxa1_scale[max_index]
+      max_rho2 <- results_inner$maxsigma_correlation_relativetaxa2_scale[max_index]
+      max_x <- results_inner$maxsigma_scale_variance[max_index]
       
       taxa1relativesd <- results_inner$taxa1relativesd[min_index]
       taxa2relativesd <- results_inner$taxa2relativesd[min_index]
@@ -267,10 +261,6 @@ estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 1.0, S = 
           stringsAsFactors = FALSE
         )
       )
-    }, error = function(e) {
-        message("Error in outer loop: ", e$message)
-        return(NULL)
-    })
   }
   
   # Combine the results into a data frame, transpose it, remove row names
