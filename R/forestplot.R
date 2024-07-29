@@ -66,7 +66,7 @@ forest_plot <- function(data, bg = "white", save = NULL, filename = NULL, dir_pa
       x = "Taxa Comparison",
       y = "Estimated Covariance/Variance Range (log scale)",
       color = "Legend",
-      size = "p-value"
+      size = "-log10(p-value)"
     ) +
     theme(
       axis.text.x = element_text(angle = 45, hjust = 1),
@@ -74,15 +74,15 @@ forest_plot <- function(data, bg = "white", save = NULL, filename = NULL, dir_pa
       axis.title = element_text(size = 18),
       axis.text = element_text(size = 15)
     ) +
-    scale_color_manual(values = c("95% CI Covers Zero" = "#FF00FF", "95% CI Doesnt Cover Zero" = "green", "Covariance Range" = "#000000")) + 
+    scale_color_manual(values = c("95% CI Covers Zero" = "#FF00FF", "95% CI Doesnt Cover Zero" = "green", "Covariance Range" = "#000000")) +
     scale_size_continuous(range = c(1, 10), breaks = c(1, 2, 3), labels = c("0.1", "0.01", "0.001"))
   
   # Add the range from minimum to maximum sigma value
   plot <- plot + geom_errorbar(aes(ymin = minsigma_absolute_minimum_covariance, ymax = maxsigma_absolute_maximum_covariance, color = "Covariance Range"), width = 0.5, size = 1)
-
+  
   # Add points for the p-values
   plot <- plot + geom_point(aes(y = (ninetyfive_ci_lower + ninetyfive_ci_upper) / 2, size = -log10(p_value)), color = "black")
-
+  
   # Add the 95% confidence intervals and highlight those not covering 0
   plot <- plot + geom_errorbar(aes(ymin = ninetyfive_ci_lower, ymax = ninetyfive_ci_upper, color = highlight), width = 0.5, size = 1)
   
