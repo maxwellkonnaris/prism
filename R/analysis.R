@@ -214,7 +214,7 @@ estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 1.0, S = 
           )
       }, error = function(e) {
         message("Error in inner loop: ", e$message)
-        return(NULL)
+        return(data.frame(d1 = d1, d2 = d2, s = s, minsigma = NA, maxsigma = NA, min_rho1 = NA, min_rho2 = NA, min_x = NA, max_rho1 = NA, max_rho2 = NA, max_x = NA, a = a, b = b, c = c))
         })
       }
       
