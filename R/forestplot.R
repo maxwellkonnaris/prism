@@ -15,10 +15,13 @@
 #' # Example usage:
 #' results <- data.frame(
 #'   comparison = c("A:B", "A:C", "B:C"),
-#'   cilower = c(0.1, 0.2, 0.3),
-#'   ciupper = c(0.4, 0.5, 0.6),
-#'   minsigma = c(0.05, 0.15, 0.25),
-#'   maxsigma = c(0.45, 0.55, 0.65)
+#'   95_ci_lower = c(0.1, 0.2, 0.3),
+#'   95_ci_upper = c(0.4, 0.5, 0.6),
+#'   minsigma_absolute_minimum_covariance = c(0.05, 0.15, 0.25),
+#'   maxsigma_absolute_maximum_covariance = c(0.45, 0.55, 0.65),
+#'   p_value = c(0.01, 0.05, 0.10), # Example p-values
+#'   bonferroni_p_value = c(0.03, 0.15, 0.30), # Example adjusted p-values
+#'   bh_p_value = c(0.02, 0.10, 0.25) # Example adjusted p-values
 #' )
 #' plot <- forest_plot(results, save = "png", filename = "sampledataset")
 #' plot <- forest_plot(results, save = "jpg", filename = "sampledataset")
@@ -26,8 +29,8 @@
 #' plot <- forest_plot(results, save = "pdf", filename = "sampledataset")
 forest_plot <- function(data, bg = "white", save = NULL, filename = NULL, dir_path = "./plots/") {
   # Ensure the data has the necessary columns
-  if (!all(c("comparison", "cilower", "ciupper") %in% colnames(data))) {
-    stop("Data must contain 'comparison', 'cilower', and 'ciupper' columns")
+  if (!all(c("comparison", "95_ci_lower", "95_ci_upper", "minsigma_absolute_minimum_covariance", "maxsigma_absolute_maximum_covariance", "p_value", "bonferroni_p_value", "bh_p_value") %in% colnames(data))) {
+    stop("Data must contain 'comparison', '95_ci_lower', '95_ci_upper', 'minsigma_absolute_minimum_covariance', 'maxsigma_absolute_maximum_covariance', 'p_value', 'bonferroni_p_value', and 'bh_p_value' columns")
   }
 
   # Check if the directory exists
@@ -42,30 +45,28 @@ forest_plot <- function(data, bg = "white", save = NULL, filename = NULL, dir_pa
   } else {
     cat("Directory already present")
   }
-
-  # Check if the data has minsigma and maxsigma columns
-  has_sigma <- all(c("minsigma", "maxsigma") %in% colnames(data))
   
   # Calculate the range of the confidence intervals
   data <- data %>%
-    mutate(range = ciupper - cilower)
+    mutate(range = 95_ci_upper - 95_ci_lower)
   
   # Reorder the comparison names by the range
   data$comparison <- factor(data$comparison, levels = data$comparison[order(data$range, decreasing = TRUE)])
   
   # Highlight intervals that do not cover 0
   data <- data %>%
-    mutate(highlight = ifelse((cilower > 0 & ciupper > 0) | (cilower < 0 & ciupper < 0), "95% CI Doesnt Cover Zero", "95% CI Covers Zero"))
+    mutate(highlight = ifelse((95_ci_lower > 0 & 95_ci_upper > 0) | (95_ci_lower < 0 & 95_ci_upper < 0), "95% CI Doesnt Cover Zero", "95% CI Covers Zero"))
   
   # Create the forest plot with confidence intervals and sigma ranges
   plot <- ggplot(data, aes(x = comparison)) +
     coord_flip() +
     theme_minimal(base_size = 15) +
     labs(
-      title = "Forest Plot of Confidence Intervals",
+      title = "Covariance Intervals",
       x = "Taxa Comparison",
-      y = "Confidence Interval of Estimated Covariance/Variance (log scale)",
-      color = "Legend"
+      y = "Estimated Covariance/Variance Range (log scale)",
+      color = "Legend",
+      size = "p-value"
     ) +
     theme(
       axis.text.x = element_text(angle = 45, hjust = 1),
@@ -73,15 +74,17 @@ forest_plot <- function(data, bg = "white", save = NULL, filename = NULL, dir_pa
       axis.title = element_text(size = 18),
       axis.text = element_text(size = 15)
     ) +
-    scale_color_manual(values = c("95% CI Covers Zero" = "#FF00FF", "95% CI Doesnt Cover Zero" = "green", "Sigma Range" = "#000000"))
+    scale_color_manual(values = c("95% CI Covers Zero" = "#FF00FF", "95% CI Doesnt Cover Zero" = "green", "Covariance Range" = "#000000")) + 
+    scale_size_continuous(range = c(1, 10), breaks = c(1, 2, 3), labels = c("0.1", "0.01", "0.001"))
   
-  # Add sigma ranges if available
-  if (has_sigma) {
-    plot <- plot + geom_errorbar(aes(ymin = minsigma, ymax = maxsigma, color = "Sigma Range"), width = 0.3, size = 1)
-  }
-  
+  # Add the range from minimum to maximum sigma value
+  plot <- plot + geom_errorbar(aes(ymin = minsigma_absolute_minimum_covariance, ymax = maxsigma_absolute_maximum_covariance, color = "Covariance Range"), width = 0.5, size = 1)
+
+  # Add points for the p-values
+  plot <- plot + geom_point(aes(y = (95_ci_lower + 95_ci_upper) / 2, size = -log10(p_value)), color = "black")
+
   # Add the 95% confidence intervals and highlight those not covering 0
-  plot <- plot + geom_errorbar(aes(ymin = cilower, ymax = ciupper, color = highlight), width = 0.3, size = 1)
+  plot <- plot + geom_errorbar(aes(ymin = 95_ci_lower, ymax = 95_ci_upper, color = highlight), width = 0.5, size = 1)
   
   # Customize the background based on the bg parameter
   if (bg == "transparent") {

@@ -250,12 +250,12 @@ estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 1.0, S = 
         resultsinner = results_inner,
         results = data.frame(
           comparison = comparison,
-          d1 = rownames(Y)[d1],
-          d2 = rownames(Y)[d2],
-          cilower = cilower,
-          ciupper = ciupper,
-          minsigma = minsigma,
-          maxsigma = maxsigma,
+          taxa1 = rownames(Y)[d1],
+          taxa2 = rownames(Y)[d2],
+          95_ci_lower = cilower,
+          95_ci_upper = ciupper,
+          minsigma_absolute_minimum_covariance = minsigma,
+          maxsigma_absolute_maximum_covariance = maxsigma,
           minsigma_correlation_taxa1_scale = min_rho1,
           minsigma_correlation_taxa2_scale = min_rho2,
           minsigma_scale_variance = min_x,
@@ -278,6 +278,9 @@ estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 1.0, S = 
   final_results <- do.call(rbind, lapply(results_list, function(x) x$results))
   final_results <- as.data.frame(final_results, stringsAsFactors = FALSE)
   rownames(final_results) <- NULL
+  
+  # Calculate p-values and adjust for multiple hypothesis testing
+  final_results <- calculate_pval(final_results)
                                          
   # Combine all inner loop results
   all_inner_results <- do.call(rbind, lapply(results_list, function(x) x$resultsinner))
