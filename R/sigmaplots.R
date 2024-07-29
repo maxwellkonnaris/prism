@@ -28,8 +28,24 @@ sigmaplot <- function(all_inner_results, bg="white", filename = NULL, save = NUL
   
   # Convert relevant columns to numeric
   all_inner_results <- all_inner_results %>%
-    mutate(across(c(s, minsigma, maxsigma, min_rho1, min_rho2, min_x, max_rho1, max_rho2, max_x), as.numeric))
+    mutate(across(c(s, minsigma_absolute_minimum_covariance, maxsigma_absolute_maximum_covariance, minsigma_correlation_taxa1_scale, minsigma_correlation_taxa2_scale, minsigma_scale_variance, maxsigma_correlation_taxa1_scale, maxsigma_correlation_taxa2_scale, maxsigma_scale_variance), as.numeric))
 
+          taxa1 = rownames(Y)[d1],
+          taxa2 = rownames(Y)[d2],
+          95_ci_lower = cilower,
+          95_ci_upper = ciupper,
+          minsigma_absolute_minimum_covariance = minsigma,
+          maxsigma_absolute_maximum_covariance = maxsigma,
+          minsigma_correlation_taxa1_scale = minsigma_correlation_taxa1_scale,
+          minsigma_correlation_taxa2_scale = minsigma_correlation_taxa2_scale,
+          minsigma_scale_variance = minsigma_scale_variance,
+          maxsigma_correlation_taxa1_scale = maxsigma_correlation_taxa1_scale,
+          maxsigma_correlation_taxa2_scale = maxsigma_correlation_taxa2_scale,
+          maxsigma_scale_variance = maxsigma_scale_variance,
+          relative_standard_dev_taxa1 = a,
+          relative_standard_dev_taxa2 = b,
+          relative_covariance = c,
+          
     # Ensure 'comparison' column exists
   if (!"comparison" %in% colnames(all_inner_results)) {
     all_inner_results$comparison <- "default"  # Add a default value if the column doesn't exist
@@ -92,16 +108,16 @@ sigmaplot <- function(all_inner_results, bg="white", filename = NULL, save = NUL
   }
   
   # Min and Max Sigma vs rho1
-  p1_min <- create_plot("min_rho1", "minsigma", "comparison", "Min Sigma vs rho1")
-  p1_max <- create_plot("max_rho1", "maxsigma", "comparison", "Max Sigma vs rho1")
+  p1_min <- create_plot("minsigma_correlation_taxa1_scale", "minsigma_absolute_minimum_covariance", "comparison", "Min Sigma vs rho1")
+  p1_max <- create_plot("maxsigma_correlation_taxa1_scale", "maxsigma_absolute_maximum_covariance", "comparison", "Max Sigma vs rho1")
   
   # Min and Max Sigma vs rho2
-  p2_min <- create_plot("min_rho2", "minsigma", "comparison", "Min Sigma vs rho2")
-  p2_max <- create_plot("max_rho2", "maxsigma", "comparison", "Max Sigma vs rho2")
+  p2_min <- create_plot("minsigma_correlation_taxa2_scale", "minsigma_absolute_minimum_covariance", "comparison", "Min Sigma vs rho2")
+  p2_max <- create_plot("maxsigma_correlation_taxa2_scale", "maxsigma_absolute_maximum_covariance", "comparison", "Max Sigma vs rho2")
   
   # Min and Max Sigma vs x
-  p3_min <- create_plot("min_x", "minsigma", "comparison", "Min Sigma vs x")
-  p3_max <- create_plot("max_x", "maxsigma", "comparison", "Max Sigma vs x")
+  p3_min <- create_plot("minsigma_scale_variance", "minsigma_absolute_minimum_covariance", "comparison", "Min Sigma vs x")
+  p3_max <- create_plot("maxsigma_scale_variance", "maxsigma_absolute_maximum_covariance", "comparison", "Max Sigma vs x")
   
   # Combined
   combined_plot <- gridExtra::grid.arrange(p1_min, p1_max, p2_min, p2_max, p3_min, p3_max, ncol = 2)
@@ -114,7 +130,7 @@ sigmaplot <- function(all_inner_results, bg="white", filename = NULL, save = NUL
                           p3_min + theme(legend.position="none"), 
                           p3_max + theme(legend.position="none"), 
                           ncol = 2,
-                          top = grid::textGrob("Sigma Plots", gp = grid::gpar(fontsize = 16, fontface = "bold")),
+                          top = grid::textGrob("Parameter Plots", gp = grid::gpar(fontsize = 16, fontface = "bold")),
                           bottom = grid::textGrob("Combined Legend",
                                                      gp = grid::gpar(fontsize = 10, fontface = "bold"),
                                                      vp = grid::viewport(y = unit(1, "npc"))))
@@ -135,17 +151,17 @@ sigmaplot <- function(all_inner_results, bg="white", filename = NULL, save = NUL
 	    	labs(title = paste("Histogram of Min and Max", parameter, "by Comparison"),
 			 x = paste(parameter, "Value"), y = "Frequency") +
 	    	scale_fill_manual(name = "Type", values = c("Min" = "blue", "Max" = "red"), labels = c("Min", "Max")) +
-	    	theme_minimal() +
+	    	custom_theme +
 	    	facet_wrap(~comparison, scales = "free")
 	  
 	return(p)
   }
 
   # Example usage: Create the facet histogram plots for the parameters sigma, rho1, rho2, and x
-  facet_histogram_sigma <- create_facet_histogram(all_inner_results, "minsigma", "maxsigma", "Sigma")
-  facet_histogram_rho1 <- create_facet_histogram(all_inner_results, "min_rho1", "max_rho1", "rho1")
-  facet_histogram_rho2 <- create_facet_histogram(all_inner_results, "min_rho2", "max_rho2", "rho2")
-  facet_histogram_x <- create_facet_histogram(all_inner_results, "min_x", "max_x", "x")
+  facet_histogram_sigma <- create_facet_histogram(all_inner_results, "minsigma_absolute_minimum_covariance", "maxsigma_absolute_maximum_covariance", "Covariance")
+  facet_histogram_rho1 <- create_facet_histogram(all_inner_results, "minsigma_correlation_taxa1_scale", "maxsigma_correlation_taxa1_scale", "rho1")
+  facet_histogram_rho2 <- create_facet_histogram(all_inner_results, "minsigma_correlation_taxa2_scale", "maxsigma_correlation_taxa2_scale", "rho2")
+  facet_histogram_x <- create_facet_histogram(all_inner_results, "minsigma_scale_variance", "maxsigma_scale_variance", "x")
 
   # Plot the facet histograms
   print(facet_histogram_sigma)
