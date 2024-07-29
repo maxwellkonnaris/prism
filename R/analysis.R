@@ -278,9 +278,11 @@ estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 1.0, S = 
   final_results <- do.call(rbind, lapply(results_list, function(x) x$results))
   final_results <- as.data.frame(final_results, stringsAsFactors = FALSE)
   rownames(final_results) <- NULL
+
+  print(colnames(final_results))
   
   # Calculate p-values and adjust for multiple hypothesis testing
-  final_results <- calculate_pval(final_results)
+  # final_results <- calculate_pval(final_results)
                                          
   # Combine all inner loop results
   all_inner_results <- do.call(rbind, lapply(results_list, function(x) x$resultsinner))
