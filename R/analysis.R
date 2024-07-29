@@ -279,7 +279,7 @@ estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 1.0, S = 
   final_results <- as.data.frame(final_results, stringsAsFactors = FALSE)
   rownames(final_results) <- NULL
 
-  print(colnames(final_results))
+  print(paste(colnames(final_results)))
   
   # Calculate p-values and adjust for multiple hypothesis testing
   final_results <- calculate_pval(final_results)
@@ -293,6 +293,7 @@ estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 1.0, S = 
   end_time <- Sys.time()
   elapsed_time <- end_time - start_time
   formatted_time <- format_elapsed_time(elapsed_time)
+  print("Estimation complete")
   print(paste("Total time taken:", formatted_time))
   
   return(list(final_results = final_results, all_inner_results = all_inner_results))
