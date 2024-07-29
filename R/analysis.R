@@ -4,10 +4,10 @@
 #'
 #' @param Y A matrix of data with observations in columns and variables in rows.
 #' @param alpha A numeric vector of priors for the Dirichlet distribution. Defaults to a vector of zeros.
-#' @param rhobound A numeric value specifying the bound for the \code{rho1} and \code{rho2} parameters. Defaults to 0.8.
+#' @param rhobound A numeric value specifying the bound for the \code{rho1} and \code{rho2} parameters. Defaults to 0.9.
 #' @param S An integer specifying the number of bootstrap samples. Increase to reduce Monte Carlo error. Defaults to 1000.
 #' @param upperscalevariance A numeric value specifying the upper bound of the variance of the scale. Defaults to 1.0.
-#' @return A list of dataframes containing the results of the analysis including estimated 95% confidence intervals, minimum and maximum values for estimated covariance, and finite sample covariances. \code{final_results} contains the data intended for forest_plot() and \code{all_inner_results} contains the data intended for sigmaplot().
+#' @return A list of dataframes containing the results of the analysis including estimated 95% confidence intervals, minimum and maximum values for estimated absolute covariance, and parameters. \code{final_results} contains the data intended for forest_plot() and \code{all_inner_results} contains the data intended for sigmaplot().
 #' @import progress
 #' @import progressr
 #' @import foreach
@@ -23,7 +23,7 @@
 #' results <- estimate_covariance(Y)
 #' @export
 
-estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 1.0, S = 1000, upperscalevariance = 2.0) {
+estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.9, S = 1000, upperscalevariance = 1.0) {
 
   # Record the start time for profiling
   start_time <- Sys.time()
@@ -123,7 +123,7 @@ estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 1.0, S = 
   }
   
   # Initialize progress bars
-  total_pairs <- D * (D + 1) / 2
+  total_pairs <- D * (D - 1) / 2
   pb_precomp <- progress::progress_bar$new(total = S, format = "  Precomputing bootstrap samples [:bar] :percent in :elapsed | eta: :eta", clear = FALSE, width = 100)
   pb <- progress::progress_bar$new(total = total_pairs, format = " Generating Sigmas [:bar] :percent in :elapsed | eta: :eta", clear = FALSE, width = 100)
   
