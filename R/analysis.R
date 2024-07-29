@@ -187,6 +187,12 @@ estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 1.0, S = 
           a <- var(rWpara[d1, ])
           b <- var(rWpara[d2, ])
           c <- cor(rWpara[d1, ], rWpara[d2, ])
+
+          # Print a, b, c to verify their values
+          cat("Bootstrap sample:", s, "Pair:", comparison, "\n")
+          cat("a:", a, "\n")
+          cat("b:", b, "\n")
+          cat("c:", c, "\n")
           
           # Find the minimum sigma
           res_min <- optim(par = c(0, 0, 0.5), a = a, b = b, c = c, fn = objective_function,
