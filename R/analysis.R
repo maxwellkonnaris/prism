@@ -6,7 +6,7 @@
 #' @param alpha A numeric vector of priors for the Dirichlet distribution. Defaults to a vector of zeros.
 #' @param rhobound A numeric value specifying the bound for the \code{rho1} and \code{rho2} parameters. Defaults to 0.8.
 #' @param S An integer specifying the number of bootstrap samples. Increase to reduce Monte Carlo error. Defaults to 1000.
-#' @param upperx A numeric value specifying the upper bound of the variance of the scale. Defaults to 1.0.
+#' @param upperscalevariance A numeric value specifying the upper bound of the variance of the scale. Defaults to 1.0.
 #' @return A list of dataframes containing the results of the analysis including estimated 95% confidence intervals, minimum and maximum values for estimated covariance, and finite sample covariances. \code{final_results} contains the data intended for forest_plot() and \code{all_inner_results} contains the data intended for sigmaplot().
 #' @import progress
 #' @import progressr
@@ -23,7 +23,7 @@
 #' results <- estimate_covariance(Y)
 #' @export
 
-estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 1.0, S = 1000, upperx = 2.0) {
+estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 1.0, S = 1000, upperscalevariance = 2.0) {
 
   # Record the start time for profiling
   start_time <- Sys.time()
@@ -70,7 +70,7 @@ estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 1.0, S = 
   # Create a sequence for rho1, rho2, and x based on the given bounds
   rho1 <- seq(-rhobound, rhobound, by = 0.05)
   rho2 <- seq(-rhobound, rhobound, by = 0.05)
-  x <- seq(0.05, upperx, by = 0.025)
+  x <- seq(0.05, upperscalevariance, by = 0.025)
   
   # Generate all combinations of rho1, rho2, and x
   pars <- expand.grid(rho1, rho2, x)
@@ -97,12 +97,12 @@ estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 1.0, S = 
   results <- matrix(list(), D, D)
   
   # Define the objective function used in the optimization
-  objective_function <- function(params, a, b, c) {
-    rho1 <- params[1]
-    rho2 <- params[2]
-    x <- params[3]
+  objective_function <- function(params, taxa1relativesd, taxa2relativesd, relativecovariance) {
+    taxa1scalecorrelation <- params[1]
+    taxa2scalecorrelation <- params[2]
+    scalevariance <- params[3]
     
-    sigma <- a * b * c + a * x * rho1 + b * x * rho2 + x^2
+    sigma <- taxa1relativesd * taxa2relativesd * relativecovariance + taxa1relativesd * scalevariance * taxa1scalecorrelation + taxa2relativesd * scalevariance * taxa2scalecorrelation + scalevariance^2
     return(sigma)
   }
 
@@ -158,8 +158,6 @@ estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 1.0, S = 
                                           
   # Run the analysis
   cat("Running sigma estimation")
-  log_file <- "abclog.txt"
-  writeLines(c("Bootstrap sample,Pair,a,b,c"), log_file)
                                            
   results_list <- foreach(pair = pair_indices, .packages = c('stats', 'MCMCpack'), .options.snow = opts) %dopar% {
     tryCatch({
@@ -181,19 +179,15 @@ estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 1.0, S = 
           }
           rWpara <- log(rWpara)
     
-          a <- var(rWpara[d1, ])
-          b <- var(rWpara[d2, ])
-          c <- cor(rWpara[d1, ], rWpara[d2, ])
-
-          # Log a, b, c to a file
-          log_message <- paste(s, comparison, a, b, c, sep = ",")
-          write(log_message, file = log_file, append = TRUE)
+          taxa1relativesd <- var(rWpara[d1, ])
+          taxa2relativesd <- var(rWpara[d2, ])
+          relativecovariance <- cor(rWpara[d1, ], rWpara[d2, ])
           
           # Find the minimum sigma
-          res_min <- optim(par = c(0, 0, 0.5), a = a, b = b, c = c, fn = objective_function, method = "L-BFGS-B", lower = c(-rhobound, -rhobound, 0.05), upper = c(rhobound, rhobound, upperx))
+          res_min <- optim(par = c(0, 0, 0.5), taxa1relativesd = taxa1relativesd, taxa2relativesd = taxa2relativesd, relativecovariance = relativecovariance, fn = objective_function, method = "L-BFGS-B", lower = c(-rhobound, -rhobound, 0.05), upper = c(rhobound, rhobound, upperscalevariance))
           
           # Find the maximum sigma by negating the objective function
-          res_max <- optim(par = c(0, 0, 0.5), a = a, b = b, c = c, fn = function(params, a, b, c) {-objective_function(params, a, b, c)}, method = "L-BFGS-B", lower = c(-rhobound, -rhobound, 0.05), upper = c(rhobound, rhobound, upperx))
+          res_max <- optim(par = c(0, 0, 0.5), taxa1relativesd = taxa1relativesd, taxa2relativesd = taxa2relativesd, relativecovariance = relativecovariance, fn = function(params, taxa1relativesd, taxa2relativesd, relativecovariance) {-objective_function(params, taxa1relativesd, taxa2relativesd, relativecovariance)}, method = "L-BFGS-B", lower = c(-rhobound, -rhobound, 0.05), upper = c(rhobound, rhobound, upperscalevariance))
           
           data.frame(
             d1 = d1,
@@ -207,13 +201,13 @@ estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 1.0, S = 
             max_rho1 = res_max$par[1],
             max_rho2 = res_max$par[2],
             max_x = res_max$par[3],
-            a = a,
-            b = b,
-            c = c,
+            taxa1relativesd = taxa1relativesd,
+            taxa2relativesd = taxa2relativesd,
+            relativecovariance = relativecovariance,
           )
       }, error = function(e) {
         message("Error in inner loop: ", e$message)
-        return(data.frame(d1 = d1, d2 = d2, s = s, minsigma = NA, maxsigma = NA, min_rho1 = NA, min_rho2 = NA, min_x = NA, max_rho1 = NA, max_rho2 = NA, max_x = NA, a = a, b = b, c = c))
+        return(data.frame(d1 = d1, d2 = d2, s = s, minsigma = NA, maxsigma = NA, min_rho1 = NA, min_rho2 = NA, min_x = NA, max_rho1 = NA, max_rho2 = NA, max_x = NA, taxa1relativesd = taxa1relativesd, taxa2relativesd = taxa2relativesd, relativecovariance = relativecovariance))
         })
       }
       
@@ -243,9 +237,9 @@ estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 1.0, S = 
       max_rho2 <- results_inner$max_rho2[max_index]
       max_x <- results_inner$max_x[max_index]
       
-      a <- results_inner$a[min_index]
-      b <- results_inner$b[min_index]
-      c <- results_inner$c[min_index]
+      taxa1relativesd <- results_inner$taxa1relativesd[min_index]
+      taxa2relativesd <- results_inner$taxa2relativesd[min_index]
+      relativecovariance <- results_inner$relativecovariance[min_index]
   
       list(
         resultsinner = results_inner,
@@ -263,9 +257,9 @@ estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 1.0, S = 
           maxsigma_correlation_taxa1_scale = max_rho1,
           maxsigma_correlation_taxa2_scale = max_rho2,
           maxsigma_scale_variance = max_x,
-          relative_standard_dev_taxa1 = a,
-          relative_standard_dev_taxa2 = b,
-          relative_covariance = c,
+          relative_standard_dev_taxa1 = taxa1relativesd,
+          relative_standard_dev_taxa2 = taxa2relativesd,
+          relative_covariance = relativecovariance,
           stringsAsFactors = FALSE
         )
       )
@@ -279,7 +273,9 @@ estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 1.0, S = 
   final_results <- do.call(rbind, lapply(results_list, function(x) x$results))
   final_results <- as.data.frame(final_results, stringsAsFactors = FALSE)
   rownames(final_results) <- NULL
-                                        
+
+  # Calculate pvals
+  final_results <- calculate_pval(final_results)
                                          
   # Combine all inner loop results
   all_inner_results <- do.call(rbind, lapply(results_list, function(x) x$resultsinner))
