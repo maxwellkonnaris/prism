@@ -12,9 +12,9 @@
 #' @export
 calculate_pval <- function(results) {
   # Check if the necessary columns are present in the results dataframe
-  required_columns <- c("cilower", "ciupper", "comparison")
+  required_columns <- c("ninetyfive_ci_lower", "ninetyfive_ci_upper", "comparison")
   if (!all(required_columns %in% colnames(results))) {
-    stop("The input results dataframe must contain the following columns: cilower, ciupper, comparison")
+    stop("The input results dataframe must contain the following columns: ninetyfive_ci_lower, ninetyfive_ci_upper, comparison")
   }
   
   # Function to calculate p-value from confidence interval
@@ -28,8 +28,8 @@ calculate_pval <- function(results) {
   
   # Calculate p-values for each row in the results dataframe
   results$p_value <- apply(results, 1, function(row) {
-    lower <- as.numeric(row["cilower"])
-    upper <- as.numeric(row["ciupper"])
+    lower <- as.numeric(row["ninetyfive_ci_lower"])
+    upper <- as.numeric(row["ninetyfive_ci_upper"])
     get_p_value(lower, upper)
   })
   
