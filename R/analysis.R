@@ -192,13 +192,13 @@ estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 1.0, S = 
           
           # Find the minimum sigma
           res_min <- optim(par = c(0, 0, 0.5), fn = function(params, a, b, c) {
-          	objective_function(params, a, b, c) 
+          	objective_function(par, a, b, c) 
           	}, a = a, b = b, c = c,
         	method = "L-BFGS-B", lower = c(-rhobound, -rhobound, 0.05), upper = c(rhobound, rhobound, upperx))
           
           # Find the maximum sigma by negating the objective function
           res_max <- optim(par = c(0, 0, 0.5), fn =  function(params, a, b, c) {
-          	-objective_function(params, a, b, c)
+          	-objective_function(par, a, b, c)
           	}, a = a, b = b, c = c,
           		   method = "L-BFGS-B", lower = c(-rhobound, -rhobound, 0.05), upper = c(rhobound, rhobound, upperx))
           
@@ -284,7 +284,7 @@ estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 1.0, S = 
   rownames(final_results) <- NULL
                                          
   # Calculate p-values and adjust for multiple hypothesis testing
-  #final_results <- calculate_pval(final_results)
+  final_results <- calculate_pval(final_results)
                                          
   # Combine all inner loop results
   all_inner_results <- do.call(rbind, lapply(results_list, function(x) x$resultsinner))
