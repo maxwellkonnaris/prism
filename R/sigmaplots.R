@@ -29,22 +29,6 @@ sigmaplot <- function(all_inner_results, bg="white", filename = NULL, save = NUL
   # Convert relevant columns to numeric
   all_inner_results <- all_inner_results %>%
     mutate(across(c(s, minsigma_absolute_minimum_covariance, maxsigma_absolute_maximum_covariance, minsigma_correlation_taxa1_scale, minsigma_correlation_taxa2_scale, minsigma_scale_variance, maxsigma_correlation_taxa1_scale, maxsigma_correlation_taxa2_scale, maxsigma_scale_variance), as.numeric))
-
-          taxa1 = rownames(Y)[d1],
-          taxa2 = rownames(Y)[d2],
-          95_ci_lower = cilower,
-          95_ci_upper = ciupper,
-          minsigma_absolute_minimum_covariance = minsigma,
-          maxsigma_absolute_maximum_covariance = maxsigma,
-          minsigma_correlation_taxa1_scale = minsigma_correlation_taxa1_scale,
-          minsigma_correlation_taxa2_scale = minsigma_correlation_taxa2_scale,
-          minsigma_scale_variance = minsigma_scale_variance,
-          maxsigma_correlation_taxa1_scale = maxsigma_correlation_taxa1_scale,
-          maxsigma_correlation_taxa2_scale = maxsigma_correlation_taxa2_scale,
-          maxsigma_scale_variance = maxsigma_scale_variance,
-          relative_standard_dev_taxa1 = a,
-          relative_standard_dev_taxa2 = b,
-          relative_covariance = c,
           
     # Ensure 'comparison' column exists
   if (!"comparison" %in% colnames(all_inner_results)) {
