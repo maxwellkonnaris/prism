@@ -28,7 +28,7 @@ sigmaplot <- function(all_inner_results, bg="white", filename = NULL, save = NUL
   
   # Convert relevant columns to numeric
   all_inner_results <- all_inner_results %>%
-    mutate(across(c(s, minsigma_absolute_minimum_covariance, maxsigma_absolute_maximum_covariance, minsigma_correlation_taxa1_scale, minsigma_correlation_taxa2_scale, minsigma_scale_variance, maxsigma_correlation_taxa1_scale, maxsigma_correlation_taxa2_scale, maxsigma_scale_variance), as.numeric))
+    mutate(across(c(s, minsigma_absolute_minimum_covariance, maxsigma_absolute_maximum_covariance, minsigma_correlation_relativetaxa1_scale, minsigma_correlation_relativetaxa2_scale, minsigma_scale_variance, maxsigma_correlation_relativetaxa1_scale, maxsigma_correlation_relativetaxa2_scale, maxsigma_scale_variance), as.numeric))
           
     # Ensure 'comparison' column exists
   if (!"comparison" %in% colnames(all_inner_results)) {
@@ -92,16 +92,16 @@ sigmaplot <- function(all_inner_results, bg="white", filename = NULL, save = NUL
   }
   
   # Min and Max Sigma vs rho1
-  p1_min <- create_plot("minsigma_correlation_taxa1_scale", "minsigma_absolute_minimum_covariance", "comparison", "Min Sigma vs rho1")
-  p1_max <- create_plot("maxsigma_correlation_taxa1_scale", "maxsigma_absolute_maximum_covariance", "comparison", "Max Sigma vs rho1")
+  p1_min <- create_plot("minsigma_correlation_relativetaxa1_scale", "minsigma_absolute_minimum_covariance", "comparison", "Min Absolute Sigma vs Relativetaxa1_scale_correlation")
+  p1_max <- create_plot("maxsigma_correlation_relativetaxa1_scale", "maxsigma_absolute_maximum_covariance", "comparison", "Max Absolute Sigma vs Relativetaxa1_scale_correlation")
   
   # Min and Max Sigma vs rho2
-  p2_min <- create_plot("minsigma_correlation_taxa2_scale", "minsigma_absolute_minimum_covariance", "comparison", "Min Sigma vs rho2")
-  p2_max <- create_plot("maxsigma_correlation_taxa2_scale", "maxsigma_absolute_maximum_covariance", "comparison", "Max Sigma vs rho2")
+  p2_min <- create_plot("minsigma_correlation_relativetaxa2_scale", "minsigma_absolute_minimum_covariance", "comparison", "Min Absolute Sigma vs Relativetaxa2_scale_correlation")
+  p2_max <- create_plot("maxsigma_correlation_relativetaxa2_scale", "maxsigma_absolute_maximum_covariance", "comparison", "Max Absolute Sigma vs Relativetaxa2_scale_correlation")
   
   # Min and Max Sigma vs x
-  p3_min <- create_plot("minsigma_scale_variance", "minsigma_absolute_minimum_covariance", "comparison", "Min Sigma vs x")
-  p3_max <- create_plot("maxsigma_scale_variance", "maxsigma_absolute_maximum_covariance", "comparison", "Max Sigma vs x")
+  p3_min <- create_plot("minsigma_scale_variance", "minsigma_absolute_minimum_covariance", "comparison", "Min Absolute Sigma vs Scale Variance")
+  p3_max <- create_plot("maxsigma_scale_variance", "maxsigma_absolute_maximum_covariance", "comparison", "Max Absolute Sigma vs Scale Variance")
   
   # Combined
   combined_plot <- gridExtra::grid.arrange(p1_min, p1_max, p2_min, p2_max, p3_min, p3_max, ncol = 2)
@@ -142,10 +142,10 @@ sigmaplot <- function(all_inner_results, bg="white", filename = NULL, save = NUL
   }
 
   # Example usage: Create the facet histogram plots for the parameters sigma, rho1, rho2, and x
-  facet_histogram_sigma <- create_facet_histogram(all_inner_results, "minsigma_absolute_minimum_covariance", "maxsigma_absolute_maximum_covariance", "Covariance")
-  facet_histogram_rho1 <- create_facet_histogram(all_inner_results, "minsigma_correlation_taxa1_scale", "maxsigma_correlation_taxa1_scale", "rho1")
-  facet_histogram_rho2 <- create_facet_histogram(all_inner_results, "minsigma_correlation_taxa2_scale", "maxsigma_correlation_taxa2_scale", "rho2")
-  facet_histogram_x <- create_facet_histogram(all_inner_results, "minsigma_scale_variance", "maxsigma_scale_variance", "x")
+  facet_histogram_sigma <- create_facet_histogram(all_inner_results, "minsigma_absolute_minimum_covariance", "maxsigma_absolute_maximum_covariance", "Absolute Covariance")
+  facet_histogram_rho1 <- create_facet_histogram(all_inner_results, "minsigma_correlation_relativetaxa1_scale", "maxsigma_correlation_relativetaxa1_scale", "Relativetaxa1_scale_correlation")
+  facet_histogram_rho2 <- create_facet_histogram(all_inner_results, "minsigma_correlation_relativetaxa2_scale", "maxsigma_correlation_relativetaxa2_scale", "Relativetaxa1_scale_correlation")
+  facet_histogram_x <- create_facet_histogram(all_inner_results, "minsigma_scale_variance", "maxsigma_scale_variance", "Scale Variance")
 
   # Plot the facet histograms
   print(facet_histogram_sigma)
@@ -157,16 +157,16 @@ sigmaplot <- function(all_inner_results, bg="white", filename = NULL, save = NUL
   if (!is.null(save)) {
   	if (!is.null(filename)) {
     		ggsave(filename = paste0(dir_path, filename, "_Combined_", plot_type, ".", save), plot = combined_plot, width = 15, height = 30, dpi = 300)
-    		ggsave(filename = paste0(dir_path, filename, "_Histograms_sigma.", save), plot = facet_histogram_sigma, width = 15, height = 30, dpi = 300) 
+    		ggsave(filename = paste0(dir_path, filename, "_Histograms_abolutesigma.", save), plot = facet_histogram_sigma, width = 15, height = 30, dpi = 300) 
     		ggsave(filename = paste0(dir_path, filename, "_Histograms_rho1.", save), plot = facet_histogram_rho1, width = 15, height = 30, dpi = 300) 
     		ggsave(filename = paste0(dir_path, filename, "_Histograms_rho2.", save), plot = facet_histogram_rho2, width = 15, height = 30, dpi = 300) 
-    		ggsave(filename = paste0(dir_path, filename, "_Histograms_x.", save), plot = facet_histogram_x, width = 15, height = 30, dpi = 300) 
+    		ggsave(filename = paste0(dir_path, filename, "_Histograms_scalevariance.", save), plot = facet_histogram_x, width = 15, height = 30, dpi = 300) 
     	} else {
     		ggsave(filename = paste0(dir_path, "Combined_sigmaparameters_", plot_type, ".", save), plot = combined_plot, width = 15, height = 30, dpi = 300)
-    		ggsave(filename = paste0(dir_path, "Histograms_sigma.", save), plot = facet_histogram_sigma, width = 15, height = 30, dpi = 300) 
+    		ggsave(filename = paste0(dir_path, "Histograms_absolutesigma.", save), plot = facet_histogram_sigma, width = 15, height = 30, dpi = 300) 
     		ggsave(filename = paste0(dir_path, "Histograms_rho1.", save), plot = facet_histogram_rho1, width = 15, height = 30, dpi = 300) 
     		ggsave(filename = paste0(dir_path, "Histograms_rho2.", save), plot = facet_histogram_rho2, width = 15, height = 30, dpi = 300)  
-    		ggsave(filename = paste0(dir_path, "Histograms_x.", save), plot = facet_histogram_x, width = 15, height = 30, dpi = 300) 
+    		ggsave(filename = paste0(dir_path, "Histograms_scalevariance.", save), plot = facet_histogram_x, width = 15, height = 30, dpi = 300) 
     	}
   }
   
@@ -176,15 +176,15 @@ sigmaplot <- function(all_inner_results, bg="white", filename = NULL, save = NUL
 	    ggsave(filename = paste0(dir_path, filename,"Max_Sigma_vs_rho1_", plot_type, ".", save), plot = p1_max, width = 10, height = 10, dpi = 300)
 	    ggsave(filename = paste0(dir_path, filename,"Min_Sigma_vs_rho2_", plot_type, ".", save), plot = p2_min, width = 10, height = 10, dpi = 300)
 	    ggsave(filename = paste0(dir_path, filename,"Max_Sigma_vs_rho2_", plot_type, ".", save), plot = p2_max, width = 10, height = 10, dpi = 300)
-	    ggsave(filename = paste0(dir_path, filename,"Min_Sigma_vs_x_", plot_type, ".", save), plot = p3_min, width = 10, height = 10, dpi = 300)
-	    ggsave(filename = paste0(dir_path, filename,"Max_Sigma_vs_x_", plot_type, ".", save), plot = p3_max, width = 10, height = 10, dpi = 300)
+	    ggsave(filename = paste0(dir_path, filename,"Min_Sigma_vs_scalevariance_", plot_type, ".", save), plot = p3_min, width = 10, height = 10, dpi = 300)
+	    ggsave(filename = paste0(dir_path, filename,"Max_Sigma_vs_scalevariance_", plot_type, ".", save), plot = p3_max, width = 10, height = 10, dpi = 300)
 	} else {
 	    ggsave(filename = paste0(dir_path, "Min_Sigma_vs_rho1_", plot_type, ".", save), plot = p1_min, width = 10, height = 10, dpi = 300)
 	    ggsave(filename = paste0(dir_path, "Max_Sigma_vs_rho1_", plot_type, ".", save), plot = p1_max, width = 10, height = 10, dpi = 300)
 	    ggsave(filename = paste0(dir_path, "Min_Sigma_vs_rho2_", plot_type, ".", save), plot = p2_min, width = 10, height = 10, dpi = 300)
 	    ggsave(filename = paste0(dir_path, "Max_Sigma_vs_rho2_", plot_type, ".", save), plot = p2_max, width = 10, height = 10, dpi = 300)
-	    ggsave(filename = paste0(dir_path, "Min_Sigma_vs_x_", plot_type, ".", save), plot = p3_min, width = 10, height = 10, dpi = 300)
-	    ggsave(filename = paste0(dir_path, "Max_Sigma_vs_x_", plot_type, ".", save), plot = p3_max, width = 10, height = 10, dpi = 300)
+	    ggsave(filename = paste0(dir_path, "Min_Sigma_vs_scalevariance_", plot_type, ".", save), plot = p3_min, width = 10, height = 10, dpi = 300)
+	    ggsave(filename = paste0(dir_path, "Max_Sigma_vs_scalevariance_", plot_type, ".", save), plot = p3_max, width = 10, height = 10, dpi = 300)
 	}
   }
 }
