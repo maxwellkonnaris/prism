@@ -68,13 +68,13 @@ estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 1.0, S = 
   D <- nrow(Y)
 
   # Create a sequence for rho1, rho2, and x based on the given bounds
-  rho1 <- seq(-rhobound, rhobound, by = 0.05)
-  rho2 <- seq(-rhobound, rhobound, by = 0.05)
-  x <- seq(0.05, upperscalevariance, by = 0.025)
+  taxa1scalecorrelation <- seq(-rhobound, rhobound, by = 0.05)
+  taxa2scalecorrelation <- seq(-rhobound, rhobound, by = 0.05)
+  scalevariance <- seq(0.05, upperscalevariance, by = 0.025)
   
   # Generate all combinations of rho1, rho2, and x
-  pars <- expand.grid(rho1, rho2, x)
-  colnames(pars) <- c("rho1", "rho2", "x")
+  pars <- expand.grid(taxa1scalecorrelation, taxa2scalecorrelation, scalevariance)
+  colnames(pars) <- c("Taxa1-Scale Correlation", "Taxa2-Scale Correlation", "Scale Variance")
   
   # Print priors
   cat("Priors used for the analysis:\n")
@@ -97,12 +97,12 @@ estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 1.0, S = 
   results <- matrix(list(), D, D)
   
   # Define the objective function used in the optimization
-  objective_function <- function(params, taxa1relativesd, taxa2relativesd, relativecovariance) {
+  objective_function <- function(params, taxa1relativesd, taxa2relativesd, relativecorrelation) {
     taxa1scalecorrelation <- params[1]
     taxa2scalecorrelation <- params[2]
     scalevariance <- params[3]
     
-    sigma <- taxa1relativesd * taxa2relativesd * relativecovariance + taxa1relativesd * scalevariance * taxa1scalecorrelation + taxa2relativesd * scalevariance * taxa2scalecorrelation + scalevariance^2
+    sigma <- taxa1relativesd * taxa2relativesd * relativecorrelation + taxa1relativesd * scalevariance * taxa1scalecorrelation + taxa2relativesd * scalevariance * taxa2scalecorrelation + scalevariance^2
     return(sigma)
   }
 
@@ -181,13 +181,14 @@ estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 1.0, S = 
     
           taxa1relativesd <- var(rWpara[d1, ])
           taxa2relativesd <- var(rWpara[d2, ])
-          relativecovariance <- cor(rWpara[d1, ], rWpara[d2, ])
+          relativecorrelation <- cor(rWpara[d1, ], rWpara[d2, ])
+          relativecovariance <- cov(rWpara[d1, ], rWpara[d2, ])
           
           # Find the minimum sigma
-          res_min <- optim(par = c(0, 0, 0.5), taxa1relativesd = taxa1relativesd, taxa2relativesd = taxa2relativesd, relativecovariance = relativecovariance, fn = objective_function, method = "L-BFGS-B", lower = c(-rhobound, -rhobound, 0.05), upper = c(rhobound, rhobound, upperscalevariance))
+          res_min <- optim(par = c(0, 0, 0.5), taxa1relativesd = taxa1relativesd, taxa2relativesd = taxa2relativesd, relativecorrelation = relativecorrelation, fn = objective_function, method = "L-BFGS-B", lower = c(-rhobound, -rhobound, 0.05), upper = c(rhobound, rhobound, upperscalevariance))
           
           # Find the maximum sigma by negating the objective function
-          res_max <- optim(par = c(0, 0, 0.5), taxa1relativesd = taxa1relativesd, taxa2relativesd = taxa2relativesd, relativecovariance = relativecovariance, fn = function(params, taxa1relativesd, taxa2relativesd, relativecovariance) {-objective_function(params, taxa1relativesd, taxa2relativesd, relativecovariance)}, method = "L-BFGS-B", lower = c(-rhobound, -rhobound, 0.05), upper = c(rhobound, rhobound, upperscalevariance))
+          res_max <- optim(par = c(0, 0, 0.5), taxa1relativesd = taxa1relativesd, taxa2relativesd = taxa2relativesd, relativecorrelation = relativecorrelation, fn = function(params, taxa1relativesd, taxa2relativesd, relativecorrelation) {-objective_function(params, taxa1relativesd, taxa2relativesd, relativecorrelation)}, method = "L-BFGS-B", lower = c(-rhobound, -rhobound, 0.05), upper = c(rhobound, rhobound, upperscalevariance))
           
           data.frame(
             d1 = d1,
@@ -203,11 +204,12 @@ estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 1.0, S = 
             max_x = res_max$par[3],
             taxa1relativesd = taxa1relativesd,
             taxa2relativesd = taxa2relativesd,
-            relativecovariance = relativecovariance,
+            relativecorrelation = relativecorrelation,
+            relativecovariance = relativecovariance
           )
       }, error = function(e) {
         message("Error in inner loop: ", e$message)
-        return(data.frame(d1 = d1, d2 = d2, s = s, minsigma = NA, maxsigma = NA, min_rho1 = NA, min_rho2 = NA, min_x = NA, max_rho1 = NA, max_rho2 = NA, max_x = NA, taxa1relativesd = taxa1relativesd, taxa2relativesd = taxa2relativesd, relativecovariance = relativecovariance))
+        return(data.frame(d1 = d1, d2 = d2, s = s, minsigma = NA, maxsigma = NA, min_rho1 = NA, min_rho2 = NA, min_x = NA, max_rho1 = NA, max_rho2 = NA, max_x = NA, taxa1relativesd = taxa1relativesd, taxa2relativesd = taxa2relativesd, relativecorrelation, relativecovariance = relativecovariance))
         })
       }
       
@@ -239,6 +241,7 @@ estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 1.0, S = 
       
       taxa1relativesd <- results_inner$taxa1relativesd[min_index]
       taxa2relativesd <- results_inner$taxa2relativesd[min_index]
+      relativecorrelation <- results_inner$relativecorrelation[min_index]
       relativecovariance <- results_inner$relativecovariance[min_index]
   
       list(
@@ -259,6 +262,7 @@ estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 1.0, S = 
           maxsigma_scale_variance = max_x,
           relative_standard_dev_taxa1 = taxa1relativesd,
           relative_standard_dev_taxa2 = taxa2relativesd,
+          relative_correlation = relativecorrelation,
           relative_covariance = relativecovariance,
           stringsAsFactors = FALSE
         )
