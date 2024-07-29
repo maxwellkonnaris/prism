@@ -6,7 +6,6 @@
 #' @param alpha A numeric vector of priors for the Dirichlet distribution. Defaults to a vector of zeros.
 #' @param rhobound A numeric value specifying the bound for the \code{rho1} and \code{rho2} parameters. Defaults to 0.8.
 #' @param S An integer specifying the number of bootstrap samples. Increase to reduce Monte Carlo error. Defaults to 1000.
-#' @param variance A boolean specifying whether to include diagonals of variance-covariance matrices (the variance). Defaults to FALSE.
 #' @param upperx A numeric value specifying the upper bound of the variance of the scale. Defaults to 1.0.
 #' @return A list of dataframes containing the results of the analysis including estimated 95% confidence intervals, minimum and maximum values for estimated covariance, and finite sample covariances. \code{final_results} contains the data intended for forest_plot() and \code{all_inner_results} contains the data intended for sigmaplot().
 #' @import progress
@@ -24,7 +23,7 @@
 #' results <- estimate_covariance(Y)
 #' @export
 
-estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 1.0, S = 1000, variance=FALSE, upperx = 2.0) {
+estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 1.0, S = 1000, upperx = 2.0) {
 
   # Record the start time for profiling
   start_time <- Sys.time()
@@ -151,9 +150,6 @@ estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 1.0, S = 
   
   # Generate all pairs of indices and add diagonal pairs
   pair_indices <- combn(D, 2, simplify = FALSE)
-  if (variance) {
-    pair_indices <- c(pair_indices, lapply(1:D, function(x) c(x, x)))  # Add diagonal pairs
-  }
 
   # Check if pair_indices is populated correctly
   if (length(pair_indices) == 0) {
@@ -162,7 +158,8 @@ estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 1.0, S = 
                                           
   # Run the analysis
   cat("Running sigma estimation")
-  
+  log_file <- "abclog.txt"
+  writeLines(c("Bootstrap sample,Pair,a,b,c"), log_file)
                                            
   results_list <- foreach(pair = pair_indices, .packages = c('stats', 'MCMCpack'), .options.snow = opts) %dopar% {
     tryCatch({
@@ -188,19 +185,15 @@ estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 1.0, S = 
           b <- var(rWpara[d2, ])
           c <- cor(rWpara[d1, ], rWpara[d2, ])
 
-          # Print a, b, c to verify their values
-          cat("Bootstrap sample:", s, "Pair:", comparison, "\n")
-          cat("a:", a, "\n")
-          cat("b:", b, "\n")
-          cat("c:", c, "\n")
+          # Log a, b, c to a file
+          log_message <- paste(s, comparison, a, b, c, sep = ",")
+          write(log_message, file = log_file, append = TRUE)
           
           # Find the minimum sigma
-          res_min <- optim(par = c(0, 0, 0.5), a = a, b = b, c = c, fn = objective_function,
-        	method = "L-BFGS-B", lower = c(-rhobound, -rhobound, 0.05), upper = c(rhobound, rhobound, upperx))
+          res_min <- optim(par = c(0, 0, 0.5), a = a, b = b, c = c, fn = objective_function, method = "L-BFGS-B", lower = c(-rhobound, -rhobound, 0.05), upper = c(rhobound, rhobound, upperx))
           
           # Find the maximum sigma by negating the objective function
-          res_max <- optim(par = c(0, 0, 0.5), a = a, b = b, c = c, fn = function(params, a, b, c) {-objective_function(params, a, b, c)}, 
-          		   method = "L-BFGS-B", lower = c(-rhobound, -rhobound, 0.05), upper = c(rhobound, rhobound, upperx))
+          res_max <- optim(par = c(0, 0, 0.5), a = a, b = b, c = c, fn = function(params, a, b, c) {-objective_function(params, a, b, c)}, method = "L-BFGS-B", lower = c(-rhobound, -rhobound, 0.05), upper = c(rhobound, rhobound, upperx))
           
           data.frame(
             d1 = d1,
