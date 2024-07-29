@@ -98,23 +98,13 @@ estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 1.0, S = 
   results <- matrix(list(), D, D)
   
   # Define the objective function used in the optimization
-  objective_function <- function(params, Yboot, d1, d2, alpha) {
+  objective_function <- function(params, a, b, c) {
     rho1 <- params[1]
     rho2 <- params[2]
     x <- params[3]
     
-    rWpara <- matrix(NA, D, N)
-    for (n in 1:N) {
-      rWpara[, n] <- MCMCpack::rdirichlet(1, Yboot[, n] + alpha)
-    }
-    rWpara <- log(rWpara)
-    
-    a <- var(rWpara[d1, ])
-    b <- var(rWpara[d2, ])
-    c <- cor(rWpara[d1, ], rWpara[d2, ])
-    
     sigma <- a * b * c + a * x * rho1 + b * x * rho2 + x^2
-    return(list(sigma = sigma, a = a, b = b, c = c))
+    return(sigma)
   }
 
   # Register the parallel backend
@@ -182,31 +172,31 @@ estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 1.0, S = 
     
       minsigma_values <- numeric(S)
       maxsigma_values <- numeric(S)
-      min_a_values <- numeric(S)
-      min_b_values <- numeric(S)
-      min_c_values <- numeric(S)
-      max_a_values <- numeric(S)
-      max_b_values <- numeric(S)
-      max_c_values <- numeric(S)
+      a_values <- numeric(S)
+      b_values <- numeric(S)
+      c_values <- numeric(S)
       
       # Use parallel foreach for the inner loop
       results_inner <- foreach(s = 1:S, .combine = 'rbind', .packages = c('stats', 'MCMCpack'), .options.snow = opts) %dopar% {
-        tryCatch({
           Yboot <- Y[, bootstrap_samples[[s]]]
           
+          rWpara <- matrix(NA, D, N)
+          for (n in 1:N) {
+            rWpara[, n] <- MCMCpack::rdirichlet(1, Yboot[, n] + alpha)
+          }
+          rWpara <- log(rWpara)
+    
+          a <- var(rWpara[d1, ])
+          b <- var(rWpara[d2, ])
+          c <- cor(rWpara[d1, ], rWpara[d2, ])
+          
           # Find the minimum sigma
-          res_min <- optim(par = c(0, 0, 0.5), fn = function(params, Yboot, d1, d2, alpha) {
-            objective_function(params, Yboot, d1, d2, alpha)$sigma
-          }, Yboot = Yboot, d1 = d1, d2 = d2, alpha = alpha, 
+          res_min <- optim(par = c(0, 0, 0.5), fn = objective_function(params, a, b, c), a = a, b = b, c = c,
                            method = "L-BFGS-B", lower = c(-rhobound, -rhobound, 0.05), upper = c(rhobound, rhobound, upperx))
           
           # Find the maximum sigma by negating the objective function
-          res_max <- optim(par = c(0, 0, 0.5), fn = function(params, Yboot, d1, d2, alpha) {
-            -objective_function(params, Yboot, d1, d2, alpha)$sigma
-          }, Yboot = Yboot, d1 = d1, d2 = d2, alpha = alpha, method = "L-BFGS-B", lower = c(-rhobound, -rhobound, 0.05), upper = c(rhobound, rhobound, upperx))
-          
-          obj_min <- objective_function(res_min$par, Yboot, d1, d2, alpha)
-          obj_max <- objective_function(res_max$par, Yboot, d1, d2, alpha)
+          res_max <- optim(par = c(0, 0, 0.5), fn = -objective_function(params, a, b, c), a = a, b = b, c = c,
+          		   method = "L-BFGS-B", lower = c(-rhobound, -rhobound, 0.05), upper = c(rhobound, rhobound, upperx))
           
           data.frame(
             d1 = d1,
@@ -220,21 +210,10 @@ estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 1.0, S = 
             max_rho1 = res_max$par[1],
             max_rho2 = res_max$par[2],
             max_x = res_max$par[3],
-            min_a = obj_min$a,
-            min_b = obj_min$b,
-            min_c = obj_min$c,
-            max_a = obj_max$a,
-            max_b = obj_max$b,
-            max_c = obj_max$c
+            a = a,
+            b = b,
+            c = c,
           )
-        }, error = function(e) {
-          message("Error in inner loop: ", e$message)
-          return(data.frame(d1 = d1, d2 = d2, s = s, minsigma = NA, maxsigma = NA, min_rho1 = NA, min_rho2 = NA, min_x = NA, max_rho1 = NA, max_rho2 = NA, max_x = NA))
-        })
-      }
-      
-      if (is.null(results_inner) || all(is.na(results_inner))) {
-        return(NULL)
       }
   
       # Gather the min and max optimized sigmas
@@ -263,16 +242,9 @@ estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 1.0, S = 
       max_rho2 <- results_inner$max_rho2[max_index]
       max_x <- results_inner$max_x[max_index]
       
-      min_a <- results_inner$min_a[min_index]
-      min_b <- results_inner$min_b[min_index]
-      min_c <- results_inner$min_c[min_index]
-      
-      max_a <- results_inner$max_a[max_index]
-      max_b <- results_inner$max_b[max_index]
-      max_c <- results_inner$max_c[max_index]
-          
-      # Compute finite sample covariance
-      finitesamplecovariance <- stats::cov(log(Y)[d1,], log(Y)[d2,])
+      a <- results_inner$a[min_index]
+      b <- results_inner$b[min_index]
+      c <- results_inner$c[min_index]
   
       list(
         resultsinner = results_inner,
@@ -284,19 +256,15 @@ estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 1.0, S = 
           ciupper = ciupper,
           minsigma = minsigma,
           maxsigma = maxsigma,
-          min_rho1 = min_rho1,
-          min_rho2 = min_rho2,
-          min_x = min_x,
-          max_rho1 = max_rho1,
-          max_rho2 = max_rho2,
-          max_x = max_x,
-          min_a = min_a,
-          min_b = min_b,
-          min_c = min_c,
-          max_a = max_a,
-          max_b = max_b,
-          max_c = max_c,
-          finitesamplecovariance = finitesamplecovariance,
+          minsigma_correlation_taxa1_scale = min_rho1,
+          minsigma_correlation_taxa2_scale = min_rho2,
+          minsigma_scale_variance = min_x,
+          maxsigma_correlation_taxa1_scale = max_rho1,
+          maxsigma_correlation_taxa2_scale = max_rho2,
+          maxsigma_scale_variance = max_x,
+          relative_standard_dev_taxa1 = a,
+          relative_standard_dev_taxa2 = b,
+          relative_covariance = c,
           stringsAsFactors = FALSE
         )
       )
