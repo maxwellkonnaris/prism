@@ -189,11 +189,11 @@ estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 1.0, S = 
           c <- cor(rWpara[d1, ], rWpara[d2, ])
           
           # Find the minimum sigma
-          res_min <- optim(params = c(0, 0, 0.5), a = a, b = b, c = c, fn = objective_function(params, a, b, c),
+          res_min <- optim(par = c(0, 0, 0.5), a = a, b = b, c = c, fn = objective_function,
         	method = "L-BFGS-B", lower = c(-rhobound, -rhobound, 0.05), upper = c(rhobound, rhobound, upperx))
           
           # Find the maximum sigma by negating the objective function
-          res_max <- optim(params = c(0, 0, 0.5), a = a, b = b, c = c, fn = function(params, a, b, c) {-objective_function(params, a, b, c)}, 
+          res_max <- optim(par = c(0, 0, 0.5), a = a, b = b, c = c, fn = function(params, a, b, c) {-objective_function(params, a, b, c)}, 
           		   method = "L-BFGS-B", lower = c(-rhobound, -rhobound, 0.05), upper = c(rhobound, rhobound, upperx))
           
           data.frame(
