@@ -191,11 +191,15 @@ estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 1.0, S = 
           c <- cor(rWpara[d1, ], rWpara[d2, ])
           
           # Find the minimum sigma
-          res_min <- optim(par = c(0, 0, 0.5), fn = objective_function(params, a, b, c), a = a, b = b, c = c,
-                           method = "L-BFGS-B", lower = c(-rhobound, -rhobound, 0.05), upper = c(rhobound, rhobound, upperx))
+          res_min <- optim(par = c(0, 0, 0.5), fn = function(params, a, b, c) {
+          	objective_function(params, a, b, c) 
+          	}, a = a, b = b, c = c,
+        	method = "L-BFGS-B", lower = c(-rhobound, -rhobound, 0.05), upper = c(rhobound, rhobound, upperx))
           
           # Find the maximum sigma by negating the objective function
-          res_max <- optim(par = c(0, 0, 0.5), fn = -objective_function(params, a, b, c), a = a, b = b, c = c,
+          res_max <- optim(par = c(0, 0, 0.5), fn =  function(params, a, b, c) {
+          	-objective_function(params, a, b, c)
+          	}, a = a, b = b, c = c,
           		   method = "L-BFGS-B", lower = c(-rhobound, -rhobound, 0.05), upper = c(rhobound, rhobound, upperx))
           
           data.frame(
@@ -278,8 +282,6 @@ estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 1.0, S = 
   final_results <- do.call(rbind, lapply(results_list, function(x) x$results))
   final_results <- as.data.frame(final_results, stringsAsFactors = FALSE)
   rownames(final_results) <- NULL
-
-  print(paste(colnames(final_results)))
   
   # Calculate p-values and adjust for multiple hypothesis testing
   final_results <- calculate_pval(final_results)
@@ -293,7 +295,6 @@ estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 1.0, S = 
   end_time <- Sys.time()
   elapsed_time <- end_time - start_time
   formatted_time <- format_elapsed_time(elapsed_time)
-  print("Estimation complete")
   print(paste("Total time taken:", formatted_time))
   
   return(list(final_results = final_results, all_inner_results = all_inner_results))
