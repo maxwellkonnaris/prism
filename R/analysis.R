@@ -172,9 +172,6 @@ estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 1.0, S = 
     
       minsigma_values <- numeric(S)
       maxsigma_values <- numeric(S)
-      a_values <- numeric(S)
-      b_values <- numeric(S)
-      c_values <- numeric(S)
       
       # Use parallel foreach for the inner loop
       results_inner <- foreach(s = 1:S, .combine = 'rbind', .packages = c('stats', 'MCMCpack'), .options.snow = opts) %dopar% {
