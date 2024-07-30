@@ -399,17 +399,17 @@ estimate_covariance_convergence <- function(Y, alpha = rep(0, nrow(Y)), rhobound
     cat("Number of workers/cpus: ", foreach::getDoParWorkers(), "\n")
   }
 
-  # Define the objective function used in the optimization
-  objective_function <- function(params, taxa1relativesd, taxa2relativesd, relativecorrelation) {
-    taxa1scalecorrelation <- params[1]
-    taxa2scalecorrelation <- params[2]
-    scalevariance <- params[3]
-    sigma <- taxa1relativesd * taxa2relativesd * relativecorrelation + taxa1relativesd * scalevariance * taxa1scalecorrelation + taxa2relativesd * scalevariance * taxa2scalecorrelation + scalevariance^2
-    return(sigma)
-  }
-
   # Function to run bootstrap analysis for a given number of samples
   run_bootstrap_analysis <- function(S, Y, N, D, alpha, rhobound, upperscalevariance) {
+
+    # Define the objective function used in the optimization
+    objective_function <- function(params, taxa1relativesd, taxa2relativesd, relativecorrelation) {
+      taxa1scalecorrelation <- params[1]
+      taxa2scalecorrelation <- params[2]
+      scalevariance <- params[3]
+      sigma <- taxa1relativesd * taxa2relativesd * relativecorrelation + taxa1relativesd * scalevariance * taxa1scalecorrelation + taxa2relativesd * scalevariance * taxa2scalecorrelation + scalevariance^2
+      return(sigma)
+    }
 
     # Initialize a results matrix to store the results for each pair
     results <- matrix(list(), D, D)
