@@ -431,7 +431,7 @@ estimate_covariance_convergence <- function(Y, alpha = rep(0, nrow(Y)), rhobound
   opts <- list(progress = progress)
 
   # Function to run bootstrap analysis for a given number of samples
-  run_bootstrap_analysis <- function(S, Y, alpha, rhobound, upperscalevariance) {
+  run_bootstrap_analysis <- function(S, Y, N, D, alpha, rhobound, upperscalevariance) {
 
     # Start timing
     bootstrap_start_time <- Sys.time()
@@ -559,7 +559,7 @@ estimate_covariance_convergence <- function(Y, alpha = rep(0, nrow(Y)), rhobound
   # Run bootstrap analysis for different sample sizes and store results
   sample_sizes <- c(100, 500, 1000, 2000, 5000, 10000)
   convergence_results <- lapply(sample_sizes, function(S) {
-    run_bootstrap_analysis(S, Y, alpha, rhobound, upperscalevariance)
+    run_bootstrap_analysis(S, Y, N, D, alpha, rhobound, upperscalevariance)
   })
   
   # Combine results for plotting
