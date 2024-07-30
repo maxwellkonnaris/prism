@@ -86,14 +86,13 @@ calculate_pval <- function(results) {
   return(results)
 }
 
-#' Calculate Comprehensive Summary Statistics
+#' Calculate Comprehensive Summary Statistics for Bootstrap Data
 #'
 #' This function calculates a comprehensive set of summary statistics (mean, standard deviation, variance, median, minimum, 1st quartile, 3rd quartile, and maximum) for each numeric column in a dataframe, grouped by a specified column. Optionally, the summary statistics can be saved as a CSV file.
-#' This is meant to provide summary statistics for the bootstrap results of the estimate_covariance() function in PRISM.
 #'
-#' @param results A list containing the dataframes. The function expects a dataframe named \code{`all_inner_results`} within the results list from estimate_covariance().
-#' @param group_col A string specifying the name of the column to group by. Default is \code{"comparison"}.
-#' @param exclude_cols A character vector of column names to exclude from the summary statistics calculation. Default is \code{c(d1, d2, s)}.
+#' @param data A dataframe containing the data.
+#' @param group_col A string specifying the name of the column to group by.
+#' @param exclude_cols A character vector of column names to exclude from the summary statistics calculation. Default is c("d1", "d2", "s").
 #' @param save_as_csv A logical value indicating whether to save the summary statistics as a CSV file. Default is FALSE.
 #' @param csv_path A string specifying the file path to save the CSV file if `save_as_csv` is TRUE. Default is "bootstrap_summary.csv".
 #' 
@@ -104,19 +103,18 @@ calculate_pval <- function(results) {
 #' # Load necessary libraries
 #' library(dplyr)
 #'
-#' # Example results list with all_inner_results dataframe
-#' results <- list(
-#'   all_inner_results = data.frame(
-#'     comparison = rep(c("Group1", "Group2"), each = 5),
-#'     value1 = rnorm(10),
-#'     value2 = runif(10),
-#'     d1 = rnorm(10),
-#'     d2 = rnorm(10)
-#'   )
+#' # Example dataframe
+#' data <- data.frame(
+#'   comparison = rep(c("Group1", "Group2"), each = 5),
+#'   value1 = rnorm(10),
+#'   value2 = runif(10),
+#'   d1 = rnorm(10),
+#'   d2 = rnorm(10),
+#'   s = rnorm(10)
 #' )
 #'
-#' # Calculate summary statistics excluding columns 'd1' and 'd2'
-#' summary_stats <- calculate_summary_stats(results$all_inner_results, group_col = "comparison", exclude_cols = c("d1", "d2"), save_as_csv = TRUE, csv_path = "bootstrap_summary_stats.csv")
+#' # Calculate summary statistics excluding columns 'd1', 'd2', and 's'
+#' summary_stats <- calculate_bootstrap_summary(data, group_col = "comparison", exclude_cols = c("d1", "d2", "s"), save_as_csv = TRUE, csv_path = "my_summary_stats.csv")
 #' print(summary_stats)
 #'
 calculate_bootstrap_summary <- function(data, group_col = "comparison", exclude_cols = c("d1", "d2", "s"), save_as_csv = FALSE, csv_path = "bootstrap_summary.csv") {
@@ -146,6 +144,10 @@ calculate_bootstrap_summary <- function(data, group_col = "comparison", exclude_
     group_by(across(all_of(group_col))) %>%
     summarise(across(where(is.numeric), summary_stats_fn, .names = "{col}_{fn}"))
   
+  # Convert the summary statistics to a tidy format
+  summary_stats <- summary_stats %>%
+    pivot_longer(cols = -all_of(group_col), names_to = c(".value", "stat"), names_sep = "_")
+  
   # Save the summary statistics as a CSV file if required
   if (save_as_csv) {
     write.csv(summary_stats, csv_path, row.names = FALSE)
@@ -153,6 +155,7 @@ calculate_bootstrap_summary <- function(data, group_col = "comparison", exclude_
   
   return(summary_stats)
 }
+
 
 #' Simulate Data
 #'
