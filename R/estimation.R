@@ -570,16 +570,19 @@ estimate_covariance_convergence <- function(Y, alpha = rep(0, nrow(Y)), rhobound
   
   # Modify the first plot to show ranges and add CI, grouped by comparison
   convergencediagnostics_plot <- ggplot(combined_results, aes(x = S)) +
-    geom_ribbon(aes(ymin = minsigma_absolute_minimum_covariance, ymax = maxsigma_absolute_maximum_covariance), fill = "lightblue", alpha = 0.5) +
-    geom_ribbon(aes(ymin = ninetyfive_ci_lower, ymax = ninetyfive_ci_upper), fill = "lightcoral", alpha = 0.5) +
+    geom_errorbar(aes(ymin = minsigma_absolute_minimum_covariance, ymax = maxsigma_absolute_maximum_covariance, color = "Covariance Range"), width = 0.2) +
+    geom_errorbar(aes(ymin = ninetyfive_ci_lower, ymax = ninetyfive_ci_upper, color = "95% CI"), width = 0.2) +
     facet_wrap(~ comparison, scales = "free_y") +
     labs(title = "Bootstrap Convergence Diagnostics",
          x = "Number of Bootstrap Samples",
          y = "Estimate (with Confidence Interval)") +
+    scale_color_manual(values = c("Covariance Range" = "blue", 
+                                  "95% CI" = "red"),
+                       name = "Legend") +
     theme_bw() +
     theme(plot.background = element_rect(fill = "white"),
           strip.text = element_text(size = 6))  # Adjust facet label size for readability
-  
+
   # Save the plot as JPG
   ggsave(convergencediagnostics_plot, filename = "convergence_diagnostics_facet.jpg", width = 12, height = 10)
   
