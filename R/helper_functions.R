@@ -86,6 +86,62 @@ calculate_pval <- function(results) {
   return(results)
 }
 
+#' Calculate Skewness
+#'
+#' This function calculates the skewness of a numeric vector.
+#' 
+#' Skewness is a measure of the asymmetry of the probability distribution of a real-valued random variable about its mean. 
+#' The skewness value can be positive or negative, or undefined. 
+#' A negative skewness indicates that the tail on the left side of the probability density function is longer or fatter than the right side.
+#' A positive skewness indicates that the tail on the right side is longer or fatter than the left side.
+#' 
+#' @param x A numeric vector.
+#' @param na.rm A logical value indicating whether NA values should be removed before the computation. Defaults to FALSE.
+#' @return The skewness of the numeric vector.
+#' @examples
+#' data <- c(1, 2, 2, 3, 4, 6, 7, 8, 9, NA)
+#' skewness(data, na.rm = TRUE)
+#' @export
+skewness <- function(x, na.rm = FALSE) {
+  if (na.rm) {
+    x <- x[!is.na(x)]
+  }
+  n <- length(x)
+  mean_x <- mean(x)
+  sd_x <- sd(x)
+  skewn <- (n / ((n - 1) * (n - 2))) * sum(((x - mean_x) / sd_x)^3)
+  return(skew)
+}
+
+#' Calculate Kurtosis
+#'
+#' This function calculates the kurtosis of a numeric vector.
+#'
+#' Kurtosis is a measure of the "tailedness" of the probability distribution of a real-valued random variable. 
+#' The kurtosis of the normal distribution is 3. Excess kurtosis is often defined as kurtosis minus 3, 
+#' such that the standard normal distribution has a kurtosis of zero.
+#' Positive kurtosis indicates a distribution with heavier tails and a sharper peak than the normal distribution.
+#' Negative kurtosis indicates a distribution with lighter tails and a flatter peak than the normal distribution.
+#' 
+#' @param x A numeric vector.
+#' @param na.rm A logical value indicating whether NA values should be removed before the computation. Defaults to FALSE.
+#' @return The kurtosis of the numeric vector.
+#' @examples
+#' data <- c(1, 2, 2, 3, 4, 6, 7, 8, 9, NA)
+#' kurtosis(data, na.rm = TRUE)
+#' @export
+kurtosis <- function(x, na.rm = FALSE) {
+  if (na.rm) {
+    x <- x[!is.na(x)]
+  }
+  n <- length(x)
+  mean_x <- mean(x)
+  sd_x <- sd(x)
+  kurt <- (n * (n + 1) / ((n - 1) * (n - 2) * (n - 3))) * sum(((x - mean_x) / sd_x)^4) -
+              (3 * (n - 1)^2 / ((n - 2) * (n - 3)))
+  return(kurt)
+}
+
 #' Calculate Comprehensive Summary Statistics
 #'
 #' This function calculates a comprehensive set of summary statistics (mean, standard deviation, variance, median, minimum, 1st quartile, 3rd quartile, and maximum) for each numeric column in a dataframe, grouped by a specified column. Optionally, the summary statistics can be saved as a CSV file.
@@ -133,12 +189,14 @@ calculate_bootstrap_summary <- function(data, group_col = "comparison", exclude_
   summary_stats_fn <- function(x) {
     c(mean = mean(x, na.rm = TRUE),
       sd = sd(x, na.rm = TRUE),
-      variance = var(x, na.rm = TRUE),
       median = median(x, na.rm = TRUE),
       min = min(x, na.rm = TRUE),
       q1 = quantile(x, probs = 0.25, na.rm = TRUE),
+      variance = var(x, na.rm = TRUE),
       q3 = quantile(x, probs = 0.75, na.rm = TRUE),
-      max = max(x, na.rm = TRUE))
+      max = max(x, na.rm = TRUE),
+      kurtosis = kurtosis(x, na.rm = TRUE),
+      skewness = skewness(x, na.rm = TRUE))
   }
   
   # Create summary statistics grouped by the specified column
