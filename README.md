@@ -60,7 +60,7 @@ See Scale Reliant Inference for more information: https://arxiv.org/abs/2201.036
 results = estimate_covariance(Y, alpha = rep(0, nrow(Y)), rhobound = 0.9, S = 1000, upperscalevariance = 1.0)
 forest_plot(results$final_results, save="png", filename="example_dataset")
 sigmaplot(results$all_inner_results, save="png", filename="example_dataset")
-calculate_summary_stats(results$all_inner_results, group_col = "comparison", exclude_cols = c("d1", "d2"), save_as_csv = TRUE, csv_path = "my_summary_stats.csv")
+calculate_bootstrap_summary(results$all_inner_results, group_col = "comparison", exclude_cols = c("d1", "d2"), save_as_csv = TRUE, csv_path = "my_summary_stats.csv")
 ```
 
 ## Parameters
