@@ -129,24 +129,29 @@ calculate_bootstrap_summary <- function(data, group_col = "comparison", exclude_
   
   # Define a custom summary function to include a comprehensive set of summary statistics
   summary_stats_fn <- function(x) {
-    c(mean = mean(x, na.rm = TRUE),
-      sd = sd(x, na.rm = TRUE),
-      variance = var(x, na.rm = TRUE),
-      median = median(x, na.rm = TRUE),
-      min = min(x, na.rm = TRUE),
-      q1 = quantile(x, probs = 0.25, na.rm = TRUE),
-      q3 = quantile(x, probs = 0.75, na.rm = TRUE),
-      max = max(x, na.rm = TRUE))
+    data.frame(
+      stat = c("mean", "sd", "variance", "median", "min", "q1", "q3", "max"),
+      value = c(mean(x, na.rm = TRUE),
+              sd(x, na.rm = TRUE),
+              var(x, na.rm = TRUE),
+              median(x, na.rm = TRUE),
+              min(x, na.rm = TRUE),
+              quantile(x, probs = 0.25, na.rm = TRUE),
+              quantile(x, probs = 0.75, na.rm = TRUE),
+              max(x, na.rm = TRUE))
+    )
   }
-  
+
   # Create summary statistics grouped by the specified column
   summary_stats <- data %>%
     group_by(across(all_of(group_col))) %>%
-    summarise(across(where(is.numeric), summary_stats_fn, .names = "{col}_{fn}"))
+    summarise(across(where(is.numeric), 
+                   list(stats = summary_stats_fn), 
+                   .names = "{col}")) %>%
+    unnest(cols = everything()) %>%
+    pivot_longer(cols = -group_col, names_to = c(".value", "stat"), names_pattern = "(.*)_(.*)") %>%
+    pivot_wider(names_from = stat, values_from = value)
   
-  # Convert the summary statistics to a tidy format
-  summary_stats <- summary_stats %>%
-    pivot_longer(cols = -all_of(group_col), names_to = c(".value", "stat"), names_sep = "_")
   
   # Save the summary statistics as a CSV file if required
   if (save_as_csv) {
