@@ -434,7 +434,7 @@ estimate_covariance_convergence <- function(Y, alpha = rep(0, nrow(Y)), rhobound
   run_bootstrap_analysis <- function(S, Y, alpha, rhobound, upperscalevariance) {
 
     # Start timing
-    bootstrap_ start_time <- Sys.time()
+    bootstrap_start_time <- Sys.time()
     
     # Parallelize bootstrap precomputation
     bootstrap_samples <- foreach(s = 1:S, .combine = 'c', .options.snow = opts_precomp) %dopar% {
