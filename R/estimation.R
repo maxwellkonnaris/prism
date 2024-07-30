@@ -275,8 +275,7 @@ estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.9, S = 
   all_inner_results <- do.call(rbind, lapply(results_list, function(x) x$resultsinner))
   all_inner_results <- as.data.frame(all_inner_results)
   all_inner_results$comparison <- paste(rownames(Y)[all_inner_results$d1],rownames(Y)[all_inner_results$d2],sep=":")
-    # Ensure N and D are exported to the parallel environment
-  clusterExport(cl, c("N", "D"))
+
   # Calculate and print the total elapsed time
   end_time <- Sys.time()
   elapsed_time <- end_time - start_time
@@ -286,7 +285,7 @@ estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.9, S = 
   return(list(final_results = final_results, all_inner_results = all_inner_results))
 }
 
-#' Run Analysis on All Pairwise Taxa with Bootstrap Convergence Diagnostics
+                                             #' Run Analysis on All Pairwise Taxa with Bootstrap Convergence Diagnostics
 #'
 #' This function runs a bootstrapped analysis on the input data matrix \code{Y}, estimating covariance for all pairwise comparisons of taxa. It includes convergence diagnostics by incrementally increasing the number of bootstrap samples.
 #'
