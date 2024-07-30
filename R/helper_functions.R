@@ -102,6 +102,7 @@ calculate_pval <- function(results) {
 #' @examples
 #' # Load necessary libraries
 #' library(dplyr)
+#' library(tidyr)
 #'
 #' # Example dataframe
 #' data <- data.frame(
@@ -126,32 +127,33 @@ calculate_bootstrap_summary <- function(data, group_col = "comparison", exclude_
   # Select columns to include in the summary statistics calculation
   data <- data %>%
     select(-all_of(exclude_cols))
-  
+
   # Define a custom summary function to include a comprehensive set of summary statistics
   summary_stats_fn <- function(x) {
     data.frame(
       stat = c("mean", "sd", "variance", "median", "min", "q1", "q3", "max"),
       value = c(mean(x, na.rm = TRUE),
-              sd(x, na.rm = TRUE),
-              var(x, na.rm = TRUE),
-              median(x, na.rm = TRUE),
-              min(x, na.rm = TRUE),
-              quantile(x, probs = 0.25, na.rm = TRUE),
-              quantile(x, probs = 0.75, na.rm = TRUE),
-              max(x, na.rm = TRUE))
+                sd(x, na.rm = TRUE),
+                var(x, na.rm = TRUE),
+                median(x, na.rm = TRUE),
+                min(x, na.rm = TRUE),
+                quantile(x, probs = 0.25, na.rm = TRUE),
+                quantile(x, probs = 0.75, na.rm = TRUE),
+                max(x, na.rm = TRUE))
     )
   }
-
+  
   # Create summary statistics grouped by the specified column
   summary_stats <- data %>%
     group_by(across(all_of(group_col))) %>%
-    summarise(across(where(is.numeric), 
-                   list(stats = summary_stats_fn), 
+    reframe(across(where(is.numeric), 
+                   list(stats = ~summary_stats_fn(.)), 
                    .names = "{col}")) %>%
-    unnest(cols = everything()) %>%
-    pivot_longer(cols = -group_col, names_to = c(".value", "stat"), names_pattern = "(.*)_(.*)") %>%
-    pivot_wider(names_from = stat, values_from = value)
-  
+    unnest(cols = everything(), names_repair = "universal") %>%
+    pivot_longer(cols = -one_of(group_col), 
+                 names_to = c(".value", "stat"), 
+                 names_sep = "_") %>%
+    pivot_wider(names_from = stat, values_from = value) 
   
   # Save the summary statistics as a CSV file if required
   if (save_as_csv) {
