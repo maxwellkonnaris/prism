@@ -434,6 +434,11 @@ estimate_covariance_convergence <- function(Y, alpha = rep(0, nrow(Y)), rhobound
   # Function to run bootstrap analysis for a given number of samples
   run_bootstrap_analysis <- function(S, Y, N, D, alpha, rhobound, upperscalevariance) {
 
+    # Run the analysis
+    cat("Running sigma estimation for convergence bootstrap diagnostics")
+    cat("Number of columns (N):", N, "\n")
+    cat("Number of rows (D):", D, "\n")
+    
     # Start timing
     bootstrap_start_time <- Sys.time()
 
