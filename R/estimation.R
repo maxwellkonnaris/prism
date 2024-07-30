@@ -324,8 +324,7 @@ estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.9, S = 
 #' Y <- matrix(rnorm(1000), nrow = 10)
 #' results <- estimate_covariance_convergence(Y)
 #' @export
-estimate_covariance_convergence <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.9, S = 1000, upperscalevariance = 1.0) {
-  
+estimate_covariance_convergence <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.9, S=c(100, 500, 1000, 2000, 5000, 10000), upperscalevariance = 1.0) {
   # Record the start time for profiling
   start_time <- Sys.time()
 
@@ -382,20 +381,8 @@ estimate_covariance_convergence <- function(Y, alpha = rep(0, nrow(Y)), rhobound
   print(tail(pars))
   cat("Dimensions of supplied matrix:\n")
   print(dim(Y))
-  cat("Bootstrap sample size (S):\n")
+  cat("Bootstrap sample sizes to diagnose convergence (S):\n")
   print(S)
-  
-  # Initialize a results matrix to store the results for each pair
-  results <- matrix(list(), D, D)
-  
-  # Define the objective function used in the optimization
-  objective_function <- function(params, taxa1relativesd, taxa2relativesd, relativecorrelation) {
-    taxa1scalecorrelation <- params[1]
-    taxa2scalecorrelation <- params[2]
-    scalevariance <- params[3]
-    sigma <- taxa1relativesd * taxa2relativesd * relativecorrelation + taxa1relativesd * scalevariance * taxa1scalecorrelation + taxa2relativesd * scalevariance * taxa2scalecorrelation + scalevariance^2
-    return(sigma)
-  }
 
   # Register the parallel backend
   num_cores <- parallel::detectCores() - 1
@@ -412,38 +399,45 @@ estimate_covariance_convergence <- function(Y, alpha = rep(0, nrow(Y)), rhobound
     # Check the number of workers
     cat("Number of workers/cpus: ", foreach::getDoParWorkers(), "\n")
   }
-  
-  # Initialize progress bars
-  total_pairs <- D * (D - 1) / 2
-  pb_precomp <- progress::progress_bar$new(total = S, format = "  Precomputing bootstrap samples [:bar] :percent in :elapsed | eta: :eta", clear = FALSE, width = 100)
-  pb <- progress::progress_bar$new(total = total_pairs, format = " Generating Sigmas [:bar] :percent in :elapsed | eta: :eta", clear = FALSE, width = 100)
-  
-  # Function to update progress bar
-  progress_precomp <- function(n) {
-    pb_precomp$tick()
+
+  # Define the objective function used in the optimization
+  objective_function <- function(params, taxa1relativesd, taxa2relativesd, relativecorrelation) {
+    taxa1scalecorrelation <- params[1]
+    taxa2scalecorrelation <- params[2]
+    scalevariance <- params[3]
+    sigma <- taxa1relativesd * taxa2relativesd * relativecorrelation + taxa1relativesd * scalevariance * taxa1scalecorrelation + taxa2relativesd * scalevariance * taxa2scalecorrelation + scalevariance^2
+    return(sigma)
   }
-  
-  progress <- function(n) {
-    pb$tick()
-  }
-  
-  # Options for foreach to include progress updates
-  opts_precomp <- list(progress = progress_precomp)
-  opts <- list(progress = progress)
 
   # Function to run bootstrap analysis for a given number of samples
   run_bootstrap_analysis <- function(S, Y, N, D, alpha, rhobound, upperscalevariance) {
 
+    # Initialize a results matrix to store the results for each pair
+    results <- matrix(list(), D, D)
+    
     # Run the analysis
-    cat("Running sigma estimation for convergence bootstrap diagnostics")
-    cat("Number of columns (N):", N, "\n")
-    cat("Number of rows (D):", D, "\n")
+    cat("Running sigma estimation for bootstrap sample size (S):",S,"\n")
     
     # Start timing
     bootstrap_start_time <- Sys.time()
 
-    # Ensure N and D are exported to the parallel environment
-    clusterExport(cl, c("N", "D"))
+    # Initialize progress bars
+    total_pairs <- D * (D - 1) / 2
+    pb_precomp <- progress::progress_bar$new(total = S, format = "  Precomputing bootstrap samples [:bar] :percent in :elapsed | eta: :eta", clear = FALSE, width = 100)
+    pb <- progress::progress_bar$new(total = total_pairs, format = " Generating Sigmas [:bar] :percent in :elapsed | eta: :eta", clear = FALSE, width = 100)
+    
+    # Function to update progress bar
+    progress_precomp <- function(n) {
+      pb_precomp$tick()
+    }
+    
+    progress <- function(n) {
+      pb$tick()
+    }
+    
+    # Options for foreach to include progress updates
+    opts_precomp <- list(progress = progress_precomp)
+    opts <- list(progress = progress)
     
     # Parallelize bootstrap precomputation
     bootstrap_samples <- foreach(s = 1:S, .combine = 'c', .options.snow = opts_precomp) %dopar% {
@@ -566,9 +560,8 @@ estimate_covariance_convergence <- function(Y, alpha = rep(0, nrow(Y)), rhobound
   }
   
   # Run bootstrap analysis for different sample sizes and store results
-  sample_sizes <- c(100, 500, 1000, 2000, 5000, 10000)
-  convergence_results <- lapply(sample_sizes, function(S) {
-    run_bootstrap_analysis(S, Y, N, D, alpha, rhobound, upperscalevariance)
+  convergence_results <- lapply(S, function(SS) {
+    run_bootstrap_analysis(SS, Y, N, D, alpha, rhobound, upperscalevariance)
   })
   
   # Combine results for plotting
@@ -576,7 +569,7 @@ estimate_covariance_convergence <- function(Y, alpha = rep(0, nrow(Y)), rhobound
     data.frame(S = sample_sizes[i], convergence_results[[i]]$final_results)
   }))
   
-# Modify the first plot to show ranges and add CI, grouped by comparison
+  # Modify the first plot to show ranges and add CI, grouped by comparison
   convergencediagnostics_plot <- ggplot(combined_results, aes(x = S)) +
     geom_ribbon(aes(ymin = minsigma_absolute_minimum_covariance, ymax = maxsigma_absolute_maximum_covariance), fill = "lightblue", alpha = 0.5) +
     geom_ribbon(aes(ymin = ninetyfive_ci_lower, ymax = ninetyfive_ci_upper), fill = "lightcoral", alpha = 0.5) +
