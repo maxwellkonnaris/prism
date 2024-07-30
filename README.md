@@ -12,7 +12,9 @@
 
 ## Description
 
-PRISM is an R package for running simulations and robust covariance analysis on count data using a bootstrap scale estimation approach to solve partially identified systems. This package is particularly useful for researchers working with high-dimensional data who need robust methods to estimate covariances. PRISM utilizes parallel computing for computationally efficient estimation dependent on available CPU cores, the size of matrix, and the number of bootstrap samples specified. On a local 11 core CPUs, 10x286 matrix, and default parameters: Expected 1 minutes 32 seconds. On a HPC 47 core CPUs, 10x286 matrix, and 1000 bootstrap samples: Expected 15 seconds. 
+PRISM is an R package for running simulations and robust covariance analysis on count data using a bootstrap scale estimation approach to solve partially identified systems. This package is particularly useful for researchers working with high-dimensional data who need robust methods to estimate covariances. PRISM utilizes parallel computing for computationally efficient estimation dependent on available CPU cores, the size of matrix, and the number of bootstrap samples specified. <br>
+Local 11 core CPUs, 10x286 matrix, and default parameters: Expected 1 minutes 32 seconds. <br>
+HPC 47 core CPUs, 10x286 matrix, and 1000 bootstrap samples: Expected 15 seconds. <br>
 
 ## Installation
 
