@@ -144,11 +144,12 @@ calculate_bootstrap_summary <- function(data, group_col = "comparison", exclude_
   # Create summary statistics grouped by the specified column
   summary_stats <- data %>%
     dplyr::group_by(across(all_of(group_col))) %>%
-    dplyr::summarise(across(dplyr::where(is.numeric), summary_stats_fn, .names = "{col}_{fn}")) %>%
-    tidyr::pivot_longer(cols = -all_of(group_col), 
-                        names_to = c(".value", "stat"), 
-                        names_sep = "_") %>%
-    dplyr::arrange(across(all_of(group_col)))
+    dplyr::summarise(across(dplyr::where(is.numeric), summary_stats_fn, .names = "{col}")) %>%
+    tidyr::pivot_longer(-all_of(group_col), names_to = c(".value", "stat"), names_sep = "_") %>%
+    mutate(stat = factor(stat, levels = c("mean", "sd", "variance", "median", "min", "q1", "q3", "max")),
+           stat_order = rep(c("mean", "sd", "variance", "median", "min", "q1", "q3", "max"), length.out = n())) %>%
+    arrange(across(all_of(group_col)), stat_order) %>%
+    select(-stat_order)
   
   # Save the summary statistics as a CSV file if required
   if (save_as_csv) {
