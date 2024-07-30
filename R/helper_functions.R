@@ -145,7 +145,14 @@ kurtosis <- function(x, na.rm = FALSE) {
 #' Calculate Comprehensive Summary Statistics
 #'
 #' This function calculates a comprehensive set of summary statistics (mean, standard deviation, variance, median, minimum, 1st quartile, 3rd quartile, and maximum) for each numeric column in a dataframe, grouped by a specified column. Optionally, the summary statistics can be saved as a CSV file.
-#' This is meant to provide summary statistics for the bootstrap results of the estimate_covariance() function in PRISM.
+#' This is meant to provide summary statistics for the bootstrap results of the \code{estimate_covariance()} function in PRISM.
+#'
+#' Bootstrap estimation is a powerful statistical technique, but its accuracy can be affected by several factors:
+#' - **Sample Size**: Larger samples tend to provide more accurate bootstrap estimates.
+#' - **Number of Resamples**: More resamples generally lead to more stable and accurate estimates, but also increase computational cost.
+#' - **Distribution of Data**: The underlying distribution of the data can affect the bootstrap results. Non-normal data can lead to biased estimates.
+#' - **Presence of Outliers**: Outliers can significantly impact the estimates of summary statistics.
+#' - **Dependence Structure**: Dependencies between data points can violate the assumptions of the bootstrap method, affecting the accuracy of the estimates.
 #'
 #' @param results A list containing the dataframes. The function expects a dataframe named \code{`all_inner_results`} within the results list from estimate_covariance().
 #' @param group_col A string specifying the name of the column to group by. Default is \code{"comparison"}.
@@ -185,28 +192,25 @@ calculate_bootstrap_summary <- function(data, group_col = "comparison", exclude_
   data <- data %>%
     select(-all_of(exclude_cols))
   
-  # Define a custom summary function to include a comprehensive set of summary statistics
-  summary_stats_fn <- function(x) {
-    c(mean = mean(x, na.rm = TRUE),
-      sd = sd(x, na.rm = TRUE),
-      median = median(x, na.rm = TRUE),
-      min = min(x, na.rm = TRUE),
-      q1 = quantile(x, probs = 0.25, na.rm = TRUE),
-      variance = var(x, na.rm = TRUE),
-      q3 = quantile(x, probs = 0.75, na.rm = TRUE),
-      max = max(x, na.rm = TRUE),
-      kurtosis = kurtosis(x, na.rm = TRUE),
-      skewness = skewness(x, na.rm = TRUE))
-  }
-  
-  # Create summary statistics grouped by the specified column
-  summary_stats <- data %>%
-    dplyr::group_by(across(all_of(group_col))) %>%
-    dplyr::summarise(across(dplyr::where(is.numeric), summary_stats_fn, .names = "{col}"))
+  # Calculate summary statistics grouped by the specified column
+  summary_df <- data %>%
+    group_by_at(group_col) %>%
+    summarise_if(is.numeric, list(
+      mean = ~mean(., na.rm = TRUE),
+      sd = ~sd(., na.rm = TRUE),
+      variance = ~var(., na.rm = TRUE),
+      median = ~median(., na.rm = TRUE),
+      min = ~min(., na.rm = TRUE),
+      q1 = ~quantile(., probs = 0.25, na.rm = TRUE),
+      q3 = ~quantile(., probs = 0.75, na.rm = TRUE),
+      max = ~max(., na.rm = TRUE),
+      kurtosis = ~PRISM::kurtosis(., na.rm = TRUE),
+      skewness = ~PRISM::skewness(., na.rm = TRUE)
+    ), .groups = 'drop')
   
   # Save the summary statistics as a CSV file if required
   if (save_as_csv) {
-    write.csv(summary_stats, csv_path, row.names = FALSE)
+    write.csv(summary_df, csv_path, row.names = FALSE)
   }
 
   return(summary_stats)
