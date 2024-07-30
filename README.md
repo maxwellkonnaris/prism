@@ -1,6 +1,6 @@
 # PRISM
 
-**Partial Rho Identification through Scale Modeling: Robust Covariance Analysis**
+**Partial Rho Identification through Scale Modeling: Robust Covariance and Correlation Analysis**
 
 **Version:** 0.1.0
 
