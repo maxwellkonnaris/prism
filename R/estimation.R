@@ -275,7 +275,8 @@ estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.9, S = 
   all_inner_results <- do.call(rbind, lapply(results_list, function(x) x$resultsinner))
   all_inner_results <- as.data.frame(all_inner_results)
   all_inner_results$comparison <- paste(rownames(Y)[all_inner_results$d1],rownames(Y)[all_inner_results$d2],sep=":")
-  
+    # Ensure N and D are exported to the parallel environment
+  clusterExport(cl, c("N", "D"))
   # Calculate and print the total elapsed time
   end_time <- Sys.time()
   elapsed_time <- end_time - start_time
@@ -435,6 +436,9 @@ estimate_covariance_convergence <- function(Y, alpha = rep(0, nrow(Y)), rhobound
 
     # Start timing
     bootstrap_start_time <- Sys.time()
+
+    # Ensure N and D are exported to the parallel environment
+    clusterExport(cl, c("N", "D"))
     
     # Parallelize bootstrap precomputation
     bootstrap_samples <- foreach(s = 1:S, .combine = 'c', .options.snow = opts_precomp) %dopar% {
