@@ -564,8 +564,8 @@ estimate_covariance_convergence <- function(Y, alpha = rep(0, nrow(Y)), rhobound
   })
   
   # Combine results for plotting
-  combined_results <- do.call(rbind, lapply(1:length(sample_sizes), function(i) {
-    data.frame(S = sample_sizes[i], convergence_results[[i]]$final_results)
+  combined_results <- do.call(rbind, lapply(1:length(S), function(i) {
+    data.frame(S = S[i], convergence_results[[i]]$final_results)
   }))
   
   # Modify the first plot to show ranges and add CI, grouped by comparison
