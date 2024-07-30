@@ -6,11 +6,13 @@
 
 **Author:** Maxwell Konnaris, Michelle Nixon, and Justin Silverman
 
-**Maintainer:** Maxwell Konnaris <Maxwellkonnaris @ gmail . com>
+**Maintainer:** Maxwell Konnaris
+
+**Affiliation(s):** Pennsylvania State University
 
 ## Description
 
-PRISM is an R package for running simulations and robust covariance analysis on count data using a bootstrap scale estimation approach to solve partially identified systems. This package is particularly useful for researchers working with high-dimensional data who need robust methods to estimate covariances.
+PRISM is an R package for running simulations and robust covariance analysis on count data using a bootstrap scale estimation approach to solve partially identified systems. This package is particularly useful for researchers working with high-dimensional data who need robust methods to estimate covariances. PRISM utilizes parallel computing for computationally efficient estimation dependent on available CPU cores, the size of matrix, and the number of bootstrap samples specified. On a local 11 core CPUs, 10x286 matrix, and 1000 bootstrap samples: Expected 3 minutes 8 seconds. On a HPC 47 core CPUs, 10x286 matrix, and 1000 bootstrap samples: Expected 30 seconds. 
 
 ## Installation
 
@@ -19,6 +21,12 @@ You can install the development version of PRISM from GitHub:
 ```r
 # install.packages("devtools")
 devtools::install_github("maxwellkonnaris/PRISM")
+```
+
+PRISM is also available via CRAN:
+
+```r
+install.packages("PRISM")
 ```
 
 ## Dependencies
@@ -49,18 +57,18 @@ The primary function of the PRISM package is estimate_covariance, which runs a b
 See Scale Reliant Inference for more information: https://arxiv.org/abs/2201.03616 
 
 ```r
-results = estimate_covariance(Y, alpha = rep(0, nrow(Y)), rhobound = 0.8, S = 1000, variance = FALSE, upperx = 1.0)
+results = estimate_covariance(Y, alpha = rep(0, nrow(Y)), rhobound = 0.9, S = 1000, upperscalevariance = 1.0)
 forest_plot(results$final_results, save="png", filename="example_dataset")
 sigmaplot(results$all_inner_results, save="png", filename="example_dataset")
+calculate_summary_stats(results$all_inner_results, group_col = "comparison", exclude_cols = c("d1", "d2"), save_as_csv = TRUE, csv_path = "my_summary_stats.csv")
 ```
 
 ## Parameters
 - **Y**: A matrix of data with observations in columns and variables in rows. <br>
 - **alpha**: A numeric vector of priors for the Dirichlet distribution. Defaults to a vector of zeros. <br>
-- **rhobound**: A numeric value specifying the bound for the rho1 and rho2 parameters. Defaults to 0.8. <br>
+- **rhobound**: A numeric value specifying the bound for the rho1 and rho2 parameters. Defaults to 0.9. <br>
 - **S**: An integer specifying the number of bootstrap samples. Defaults to 1000. <br>
-- **variance**: A boolean indicating whether to include diagonal pairs. Defaults to FALSE. <br>
-- **upperx**: A numeric value specifying the upper bound for the x parameter. Defaults to 1. <br>
+- **upperscalevariance**: A numeric value specifying the upper bound for the scalevariance parameter. Defaults to 1.0. <br>
 
 ## Return Value
 The function returns a list containing two data frames:<br>
@@ -68,17 +76,16 @@ The function returns a list containing two data frames:<br>
 - **final_results**: A data frame with the final results of the analysis, including estimated 95% confidence intervals, minimum and maximum values for estimated covariance, and finite sample covariances. <br>
 - **all_inner_results**: A data frame with detailed results from the inner loop of the analysis for each bootstrap sample.
 
-## Functions
+## Main Functions
 - **estimate_covariance()**: Main function for estimating the covariance of all pairwise rows <br>
 - **forest_plot()**: Plotting the range and confidence interval based on the final_results from estimate_covariance function <br>
 - **sigmaplot()**: Plotting the relationship between prior parameters specified to minimize or maximize the covariance objective function
+- **calculate_bootstrap_summary()**: Generate a table of summary stats for a csv, more specifically applied to the results$all_inner_results if youre interested in the summary stats from the bootstrap performed
 
 ## License
 PRISM is licensed under the GPL-3 license. See the LICENSE file for more details.
 
-## Bugs
-Bug reports are welcome, please direct any issues to https://github.com/maxwellkonnaris/prism/issues
+## Contact: Bugs, Questions, or Issues
+Bug reports, questions, or issues are welcome, please direct any issues to https://github.com/maxwellkonnaris/prism/issues
 
-## Contact
-For any questions or issues, please contact the maintainer: Maxwell Konnaris Maxwellkonnaris @ gmail . com
 
