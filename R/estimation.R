@@ -328,6 +328,9 @@ estimate_covariance_convergence <- function(Y, alpha = rep(0, nrow(Y)), rhobound
   # Record the start time for profiling
   start_time <- Sys.time()
 
+  # Record the times for the increments of bootstrap sample sizes
+  bootstrap_times <- data.frame(S = numeric(), Time = numeric())
+
   # Function to format elapsed time in a user-friendly format
   format_elapsed_time <- function(elapsed_time) {
     total_seconds <- as.numeric(elapsed_time, units = "secs")
@@ -429,6 +432,10 @@ estimate_covariance_convergence <- function(Y, alpha = rep(0, nrow(Y)), rhobound
 
   # Function to run bootstrap analysis for a given number of samples
   run_bootstrap_analysis <- function(S, Y, alpha, rhobound, upperscalevariance) {
+
+    # Start timing
+    bootstrap_ start_time <- Sys.time()
+    
     # Parallelize bootstrap precomputation
     bootstrap_samples <- foreach(s = 1:S, .combine = 'c', .options.snow = opts_precomp) %dopar% {
       sample(1:N, replace = TRUE)
@@ -538,6 +545,13 @@ estimate_covariance_convergence <- function(Y, alpha = rep(0, nrow(Y)), rhobound
     all_inner_results <- do.call(rbind, lapply(results_list, function(x) x$resultsinner))
     all_inner_results <- as.data.frame(all_inner_results)
     all_inner_results$comparison <- paste(rownames(Y)[all_inner_results$d1], rownames(Y)[all_inner_results$d2], sep = ":")
+
+    # End bootstrap timing
+    bootstrap_end_time <- Sys.time()
+    bootstrap_elapsed_time <- as.numeric(difftime(bootstrap_end_time, bootstrap_start_time, units = "secs"))
+    
+    # Record the time taken
+    bootstrap_times <<- rbind(bootstrap_times, data.frame(S = S, Time = bootstrap_elapsed_time))
     
     return(list(final_results = final_results, all_inner_results = all_inner_results))
   }
@@ -553,14 +567,37 @@ estimate_covariance_convergence <- function(Y, alpha = rep(0, nrow(Y)), rhobound
     data.frame(S = sample_sizes[i], convergence_results[[i]]$final_results)
   }))
   
-  # Plot the convergence diagnostics
-  ggplot(combined_results, aes(x = S)) +
-    geom_line(aes(y = minsigma_absolute_minimum_covariance), color = "blue", linetype = "solid") +
-    geom_line(aes(y = maxsigma_absolute_maximum_covariance), color = "red", linetype = "dashed") +
+# Modify the first plot to show ranges and add CI, grouped by comparison
+  convergencediagnostics_plot <- ggplot(combined_results, aes(x = S)) +
+    geom_ribbon(aes(ymin = minsigma_absolute_minimum_covariance, ymax = maxsigma_absolute_maximum_covariance), fill = "lightblue", alpha = 0.5) +
+    geom_ribbon(aes(ymin = ninetyfive_ci_lower, ymax = ninetyfive_ci_upper), fill = "lightcoral", alpha = 0.5) +
+    facet_wrap(~ comparison, scales = "free_y") +
     labs(title = "Bootstrap Convergence Diagnostics",
          x = "Number of Bootstrap Samples",
          y = "Estimate (with Confidence Interval)") +
-    theme_minimal()
+    theme_bw() +
+    theme(plot.background = element_rect(fill = "white"),
+          strip.text = element_text(size = 6))  # Adjust facet label size for readability
+  
+  # Save the plot as JPG
+  ggsave(convergencediagnostics_plot, filename = "convergence_diagnostics_facet.jpg", width = 12, height = 10)
+  
+  # Print the plot
+  print(convergencediagnostics_plot)
+
+  # Plot the time taken for each bootstrap sample size
+  bootstrapcomputationtime_plot = ggplot(bootstrap_times, aes(x = S, y = Time)) +
+                                    geom_line(color = "blue") +
+                                    geom_point(color = "red") +
+                                    labs(title = "Time Increase with Bootstrap Sample Size",
+                                         x = "Number of Bootstrap Samples",
+                                         y = "Time (seconds)") +
+                                    theme_bw() +
+                                    theme(plot.background = element_rect(fill = "white"))
+
+  # Save the plot as JPG
+  ggsave(bootstrapcomputationtime_plot, filename = "bootstrap_timeefficiency.jpg", width = 8, height = 6)
+  print(bootstrapcomputationtime_plot)
   
   # Calculate and print the total elapsed time
   end_time <- Sys.time()
