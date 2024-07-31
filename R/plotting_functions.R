@@ -351,6 +351,12 @@ sigmaplot <- function(all_inner_results, bg="white", filename = NULL, save = NUL
 #' @export
 diagnose_bootstrap_convergence <- function(combined_results, convergence_results) {
   
+  # Custom cumulative variance function
+  cumvar <- function(x) {
+    n <- length(x)
+    cumsum((x - cumsum(x) / seq_along(x))^2) / seq_along(x)
+  }
+  
   # Plot convergence of bootstrap estimates
   plot_convergence <- function(bootstrap_results) {
     ggplot(bootstrap_results, aes(x = S, y = (minsigma_absolute_minimum_covariance + maxsigma_absolute_maximum_covariance) / 2, color = comparison)) +
