@@ -309,3 +309,217 @@ sigmaplot <- function(all_inner_results, bg="white", filename = NULL, save = NUL
 	}
   }
 }
+
+#' Diagnostics for Bootstrap Convergence Results
+#'
+#' This function generates diagnostics plots and statistics for bootstrap convergence results from the `estimate_covariance_convergence` function. It includes convergence plots, standard error and confidence intervals, effective sample size, Rhat (Gelman-Rubin Diagnostic), cumulative mean and variance plots, resampling diagnostics (Jackknife-after-Bootstrap, Bootstrap-after-Bootstrap), Monte Carlo standard error, and comparison of subsamples.
+#'
+#' @param combined_results Dataframe combining the results from all the incremental bootstrap samples. This dataframe should include columns such as \code{S} (number of bootstrap samples), \code{minsigma_absolute_minimum_covariance} (minimum covariance estimate), \code{maxsigma_absolute_maximum_covariance} (maximum covariance estimate), \code{ninetyfive_ci_lower} (lower bound of the 95% confidence interval), \code{ninetyfive_ci_upper} (upper bound of the 95% confidence interval), and \code{comparison} (taxa comparison identifier).
+#' @param convergence_results List of results for each incrementally increased number of bootstrap samples.
+#' @return A list containing various diagnostics plots and statistics:
+#' \item{convergence_plot}{A plot showing the convergence of bootstrap estimates as a function of the number of bootstrap samples.}
+#' \item{ci_plot}{A plot displaying the standard error and 95\% confidence intervals of the bootstrap estimates.}
+#' \item{ess_values}{Effective sample size (ESS) for each combination of bootstrap sample size and taxa comparison.}
+#' \item{rhat_values}{Rhat (Gelman-Rubin Diagnostic) values for each combination of bootstrap sample size and taxa comparison.}
+#' \item{cumulative_mean_variance_plot}{Plots showing the cumulative mean and variance of bootstrap estimates as a function of the number of bootstrap samples.}
+#' \item{jackknife_results}{Jackknife estimates of the bootstrap results.}
+#' \item{bootstrap_resamples}{Bootstrap-after-Bootstrap estimates of the bootstrap results.}
+#' \item{mcse_values}{Monte Carlo Standard Error (MCSE) values for each combination of bootstrap sample size and taxa comparison.}
+#' \item{subsample_comparison_plot}{A plot comparing subsample estimates across different groups and bootstrap sample sizes.}
+#' @details
+#' This function provides a comprehensive set of diagnostics to assess the stability and convergence of bootstrap estimates obtained from the `estimate_covariance_convergence` function. The diagnostics include:
+#' \enumerate{
+#'   \item Convergence Plots: Visualize how the bootstrap estimates stabilize as the number of bootstrap samples increases.
+#'   \item Standard Error and Confidence Intervals: Display the standard error and 95\% confidence intervals for the bootstrap estimates.
+#'   \item Effective Sample Size (ESS): Calculate the ESS to determine the number of effectively independent samples in the bootstrap estimates.
+#'   \item Rhat (Gelman-Rubin Diagnostic): Assess the convergence of the bootstrap chains using the Rhat statistic.
+#'   \item Cumulative Mean and Variance Plots: Show how the cumulative mean and variance of the bootstrap estimates evolve with increasing bootstrap samples.
+#'   \item Resampling Diagnostics: Perform Jackknife-after-Bootstrap and Bootstrap-after-Bootstrap resampling to further assess the stability of the bootstrap estimates.
+#'   \item Monte Carlo Standard Error (MCSE): Calculate the MCSE to quantify the variability in the bootstrap estimates.
+#'   \item Comparing Subsamples: Compare the bootstrap estimates across different subsample groups to assess consistency.
+#' }
+#' @examples
+#' # Example usage:
+#' set.seed(123)
+#' Y <- matrix(rnorm(1000), nrow = 10)
+#' results <- estimate_covariance_convergence(Y)
+#' diagnostics <- diagnose_bootstrap_convergence(results$combined_results, results$convergence_results)
+#' @import ggplot2
+#' @import coda
+#' @import dplyr
+#' @import gridExtra
+#' @export
+diagnose_bootstrap_convergence <- function(combined_results, convergence_results) {
+  library(ggplot2)
+  library(coda)
+  library(dplyr)
+  library(gridExtra)
+  
+  # Plot convergence of bootstrap estimates
+  plot_convergence <- function(bootstrap_results) {
+    ggplot(bootstrap_results, aes(x = S, y = (minsigma_absolute_minimum_covariance + maxsigma_absolute_maximum_covariance) / 2, color = comparison)) +
+      geom_line() +
+      labs(title = "Convergence Plot of Bootstrap Estimates",
+           x = "Bootstrap Sample Size",
+           y = "Mean Estimate")
+  }
+  
+  # Plot standard error and confidence intervals
+  plot_standard_error_and_ci <- function(bootstrap_results) {
+    ggplot(bootstrap_results, aes(x = S, y = (minsigma_absolute_minimum_covariance + maxsigma_absolute_maximum_covariance) / 2, color = comparison)) +
+      geom_point() +
+      geom_errorbar(aes(ymin = ninetyfive_ci_lower, ymax = ninetyfive_ci_upper), width = 0.2) +
+      labs(title = "Bootstrap Estimates with 95% CI",
+           x = "Bootstrap Sample Size",
+           y = "Estimate")
+  }
+  
+  # Calculate effective sample size
+  calculate_effective_sample_size <- function(bootstrap_estimates) {
+    ess <- function(x) {
+      n <- length(x)
+      acf_x <- acf(x, plot = FALSE)
+      return(n / (1 + 2 * sum(acf_x$acf[-1])))
+    }
+    bootstrap_estimates %>%
+      group_by(S, comparison) %>%
+      summarise(
+        ess_min = ess(minsigma_absolute_minimum_covariance),
+        ess_max = ess(maxsigma_absolute_maximum_covariance)
+      )
+  }
+  
+  # Calculate Rhat (Gelman-Rubin Diagnostic)
+  calculate_rhat <- function(bootstrap_estimates) {
+    chains_min <- split(bootstrap_estimates$minsigma_absolute_minimum_covariance, bootstrap_estimates$S)
+    chains_max <- split(bootstrap_estimates$maxsigma_absolute_maximum_covariance, bootstrap_estimates$S)
+    mcmc_chains_min <- mcmc.list(lapply(chains_min, mcmc))
+    mcmc_chains_max <- mcmc.list(lapply(chains_max, mcmc))
+    list(
+      rhat_min = gelman.diag(mcmc_chains_min)$psrf,
+      rhat_max = gelman.diag(mcmc_chains_max)$psrf
+    )
+  }
+  
+  # Plot cumulative mean and variance
+  plot_cumulative_mean_variance <- function(bootstrap_estimates) {
+    cumulative_stats <- bootstrap_estimates %>%
+      group_by(S, comparison) %>%
+      arrange(S) %>%
+      mutate(
+        cumulative_mean_min = cummean(minsigma_absolute_minimum_covariance),
+        cumulative_mean_max = cummean(maxsigma_absolute_maximum_covariance),
+        cumulative_variance_min = cumvar(minsigma_absolute_minimum_covariance),
+        cumulative_variance_max = cumvar(maxsigma_absolute_maximum_covariance)
+      )
+    
+    mean_plot_min <- ggplot(cumulative_stats, aes(x = S, y = cumulative_mean_min, color = comparison)) +
+      geom_line() +
+      labs(title = "Cumulative Mean (Min)",
+           x = "Bootstrap Sample Size",
+           y = "Cumulative Mean")
+    
+    mean_plot_max <- ggplot(cumulative_stats, aes(x = S, y = cumulative_mean_max, color = comparison)) +
+      geom_line() +
+      labs(title = "Cumulative Mean (Max)",
+           x = "Bootstrap Sample Size",
+           y = "Cumulative Mean")
+    
+    variance_plot_min <- ggplot(cumulative_stats, aes(x = S, y = cumulative_variance_min, color = comparison)) +
+      geom_line() +
+      labs(title = "Cumulative Variance (Min)",
+           x = "Bootstrap Sample Size",
+           y = "Cumulative Variance")
+    
+    variance_plot_max <- ggplot(cumulative_stats, aes(x = S, y = cumulative_variance_max, color = comparison)) +
+      geom_line() +
+      labs(title = "Cumulative Variance (Max)",
+           x = "Bootstrap Sample Size",
+           y = "Cumulative Variance")
+    
+    gridExtra::grid.arrange(mean_plot_min, mean_plot_max, variance_plot_min, variance_plot_max, ncol = 2)
+  }
+  
+  # Resampling diagnostics (Jackknife-after-Bootstrap, Bootstrap-after-Bootstrap)
+  jackknife_after_bootstrap <- function(bootstrap_estimates) {
+    n <- length(bootstrap_estimates$minsigma_absolute_minimum_covariance)
+    list(
+      jackknife_min = sapply(1:n, function(i) {
+        mean(bootstrap_estimates$minsigma_absolute_minimum_covariance[-i])
+      }),
+      jackknife_max = sapply(1:n, function(i) {
+        mean(bootstrap_estimates$maxsigma_absolute_maximum_covariance[-i])
+      })
+    )
+  }
+  
+  bootstrap_after_bootstrap <- function(bootstrap_estimates, num_resamples = 1000) {
+    list(
+      bootstrap_min = replicate(num_resamples, {
+        resample_indices <- sample(seq_along(bootstrap_estimates$minsigma_absolute_minimum_covariance), replace = TRUE)
+        mean(bootstrap_estimates$minsigma_absolute_minimum_covariance[resample_indices])
+      }),
+      bootstrap_max = replicate(num_resamples, {
+        resample_indices <- sample(seq_along(bootstrap_estimates$maxsigma_absolute_maximum_covariance), replace = TRUE)
+        mean(bootstrap_estimates$maxsigma_absolute_maximum_covariance[resample_indices])
+      })
+    )
+  }
+  
+  # Calculate Monte Carlo Standard Error
+  calculate_mcse <- function(bootstrap_estimates) {
+    mcse <- function(x) {
+      sd(x) / sqrt(length(x))
+    }
+    bootstrap_estimates %>%
+      group_by(S, comparison) %>%
+      summarise(
+        mcse_min = mcse(minsigma_absolute_minimum_covariance),
+        mcse_max = mcse(maxsigma_absolute_maximum_covariance)
+      )
+  }
+  
+  # Compare subsamples
+  compare_subsamples <- function(bootstrap_estimates, num_groups = 2) {
+    subsample_comparison <- bootstrap_estimates %>%
+      group_by(S, comparison) %>%
+      mutate(group = ntile(row_number(), num_groups)) %>%
+      group_by(group, add = TRUE) %>%
+      summarise(
+        mean_min = mean(minsigma_absolute_minimum_covariance),
+        mean_max = mean(maxsigma_absolute_maximum_covariance)
+      )
+    
+    ggplot(subsample_comparison, aes(x = group, y = (mean_min + mean_max) / 2, color = factor(S))) +
+      geom_line() +
+      geom_point() +
+      labs(title = "Comparison of Subsamples",
+           x = "Subsample Group",
+           y = "Mean Estimate",
+           color = "Sample Size")
+  }
+  
+  # Generate all diagnostics
+  convergence_plot <- plot_convergence(combined_results)
+  ci_plot <- plot_standard_error_and_ci(combined_results)
+  ess_values <- calculate_effective_sample_size(combined_results)
+  rhat_values <- calculate_rhat(combined_results)
+  cumulative_mean_variance_plot <- plot_cumulative_mean_variance(combined_results)
+  jackknife_results <- jackknife_after_bootstrap(combined_results)
+  bootstrap_resamples <- bootstrap_after_bootstrap(combined_results)
+  mcse_values <- calculate_mcse(combined_results)
+  subsample_comparison_plot <- compare_subsamples(combined_results)
+  
+  return(list(
+    convergence_plot = convergence_plot,
+    ci_plot = ci_plot,
+    ess_values = ess_values,
+    rhat_values = rhat_values,
+    cumulative_mean_variance_plot = cumulative_mean_variance_plot,
+    jackknife_results = jackknife_results,
+    bootstrap_resamples = bootstrap_resamples,
+    mcse_values = mcse_values,
+    subsample_comparison_plot = subsample_comparison_plot
+  ))
+}
+
