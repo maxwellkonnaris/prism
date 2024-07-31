@@ -285,7 +285,7 @@ estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.9, S = 
   return(list(final_results = final_results, all_inner_results = all_inner_results))
 }
 
-                                             #' Run Analysis on All Pairwise Taxa with Bootstrap Convergence Diagnostics
+#' Run Analysis on All Pairwise Taxa with Bootstrap Convergence Diagnostics
 #'
 #' This function runs a bootstrapped analysis on the input data matrix \code{Y}, estimating covariance for all pairwise comparisons of taxa. It includes convergence diagnostics by incrementally increasing the number of bootstrap samples.
 #'
