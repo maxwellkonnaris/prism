@@ -350,10 +350,6 @@ sigmaplot <- function(all_inner_results, bg="white", filename = NULL, save = NUL
 #' @import gridExtra
 #' @export
 diagnose_bootstrap_convergence <- function(combined_results, convergence_results) {
-  library(ggplot2)
-  library(coda)
-  library(dplyr)
-  library(gridExtra)
   
   # Plot convergence of bootstrap estimates
   plot_convergence <- function(bootstrap_results) {
