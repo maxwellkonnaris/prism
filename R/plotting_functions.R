@@ -389,8 +389,8 @@ diagnose_bootstrap_convergence <- function(combined_results, convergence_results
   calculate_rhat <- function(bootstrap_estimates) {
     chains_min <- split(bootstrap_estimates$minsigma_absolute_minimum_covariance, bootstrap_estimates$S)
     chains_max <- split(bootstrap_estimates$maxsigma_absolute_maximum_covariance, bootstrap_estimates$S)
-    mcmc_chains_min <- mcmc.list(lapply(chains_min, mcmc))
-    mcmc_chains_max <- mcmc.list(lapply(chains_max, mcmc))
+    mcmc_chains_min <- coda::mcmc.list(lapply(chains_min, mcmc))
+    mcmc_chains_max <- coda::mcmc.list(lapply(chains_max, mcmc))
     list(
       rhat_min = gelman.diag(mcmc_chains_min)$psrf,
       rhat_max = gelman.diag(mcmc_chains_max)$psrf
