@@ -392,8 +392,8 @@ diagnose_bootstrap_convergence <- function(combined_results, convergence_results
     mcmc_chains_min <- coda::mcmc.list(lapply(chains_min, mcmc))
     mcmc_chains_max <- coda::mcmc.list(lapply(chains_max, mcmc))
     list(
-      rhat_min = gelman.diag(mcmc_chains_min)$psrf,
-      rhat_max = gelman.diag(mcmc_chains_max)$psrf
+      rhat_min = coda::gelman.diag(mcmc_chains_min)$psrf,
+      rhat_max = coda::gelman.diag(mcmc_chains_max)$psrf
     )
   }
   
