@@ -23,7 +23,7 @@
 #' results <- estimate_covariance(Y)
 #' @export
 
-estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.9, S = 1000, upperscalestdev = 1.0) {
+estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -0.9, upperrhobound = 0.9, S = 1000, lowerscalestdev=0.15, upperscalestdev = 0.5) {
 
   # Record the start time for profiling
   start_time <- Sys.time()
@@ -67,10 +67,11 @@ estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.9, S = 
   N <- ncol(Y)
   D <- nrow(Y)
 
-  # Create a sequence for rho1, rho2, and x based on the given bounds
-  taxa1scalecorrelation <- seq(-rhobound, rhobound, by = 0.05)
-  taxa2scalecorrelation <- seq(-rhobound, rhobound, by = 0.05)
-  scalestdev <- seq(0.05, upperscalestdev, by = 0.025)
+  # Create a sequence for alpha, rho1, rho2, and scale st deviation based on the given bounds
+  alpha = rep(alpha, D)
+  taxa1scalecorrelation <- seq(lowerrhobound, upperrhobound, by = 0.05)
+  taxa2scalecorrelation <- seq(lowerrhobound, upperrhobound, by = 0.05)
+  scalestdev <- seq(lowerscalestdev, upperscalestdev, by = 0.01)
   
   # Generate all combinations of rho1, rho2, and x
   pars <- expand.grid(taxa1scalecorrelation, taxa2scalecorrelation, scalestdev)
@@ -183,10 +184,10 @@ estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.9, S = 
           relativecovariance <- cov(rWpara[d1, ], rWpara[d2, ])
           
           # Find the minimum sigma
-          res_min <- optim(par = c(0, 0, 0.1), taxa1relativesd = taxa1relativesd, taxa2relativesd = taxa2relativesd, relativecorrelation = relativecorrelation, fn = objective_function, method = "L-BFGS-B", lower = c(-rhobound, -rhobound, 0.05), upper = c(rhobound, rhobound, upperscalestdev))
+          res_min <- optim(par = c(0, 0, 0.1), taxa1relativesd = taxa1relativesd, taxa2relativesd = taxa2relativesd, relativecorrelation = relativecorrelation, fn = objective_function, method = "L-BFGS-B", lower = c(lowerrhobound, lowerrhobound, lowerscalestdev), upper = c(upperrhobound, upperrhobound, upperscalestdev))
           
           # Find the maximum sigma by negating the objective function
-          res_max <- optim(par = c(0, 0, 0.1), taxa1relativesd = taxa1relativesd, taxa2relativesd = taxa2relativesd, relativecorrelation = relativecorrelation, fn = function(params, taxa1relativesd, taxa2relativesd, relativecorrelation) {-objective_function(params, taxa1relativesd, taxa2relativesd, relativecorrelation)}, method = "L-BFGS-B", lower = c(-rhobound, -rhobound, 0.05), upper = c(rhobound, rhobound, upperscalestdev))
+          res_max <- optim(par = c(0, 0, 0.1), taxa1relativesd = taxa1relativesd, taxa2relativesd = taxa2relativesd, relativecorrelation = relativecorrelation, fn = function(params, taxa1relativesd, taxa2relativesd, relativecorrelation) {-objective_function(params, taxa1relativesd, taxa2relativesd, relativecorrelation)}, method = "L-BFGS-B", lower = c(lowerrhobound, lowerrhobound, lowerscalestdev), upper = c(upperrhobound, upperrhobound, upperscalestdev))
           
           data.frame(
             d1 = d1,
