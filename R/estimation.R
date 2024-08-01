@@ -6,7 +6,7 @@
 #' @param alpha A numeric vector of priors for the Dirichlet distribution. Defaults to a vector of zeros.
 #' @param rhobound A numeric value specifying the bound for the \code{rho1} and \code{rho2} parameters. Defaults to 0.9.
 #' @param S An integer specifying the number of bootstrap samples. Increase to reduce Monte Carlo error. Defaults to 1000.
-#' @param upperscalevariance A numeric value specifying the upper bound of the variance of the scale. Defaults to 1.0.
+#' @param upperscalestdev A numeric value specifying the upper bound of the variance of the scale. Defaults to 1.0.
 #' @return A list of dataframes containing the results of the analysis including estimated 95% confidence intervals, minimum and maximum values for estimated absolute covariance, and parameters. \code{final_results} contains the data intended for forest_plot() and \code{all_inner_results} contains the data intended for sigmaplot().
 #' @import progress
 #' @import progressr
@@ -23,7 +23,7 @@
 #' results <- estimate_covariance(Y)
 #' @export
 
-estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.9, S = 1000, upperscalevariance = 1.0) {
+estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.9, S = 1000, upperscalestdev = 1.0) {
 
   # Record the start time for profiling
   start_time <- Sys.time()
@@ -70,10 +70,10 @@ estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.9, S = 
   # Create a sequence for rho1, rho2, and x based on the given bounds
   taxa1scalecorrelation <- seq(-rhobound, rhobound, by = 0.05)
   taxa2scalecorrelation <- seq(-rhobound, rhobound, by = 0.05)
-  scalevariance <- seq(0.05, upperscalevariance, by = 0.025)
+  scalestdev <- seq(0.05, upperscalestdev, by = 0.025)
   
   # Generate all combinations of rho1, rho2, and x
-  pars <- expand.grid(taxa1scalecorrelation, taxa2scalecorrelation, scalevariance)
+  pars <- expand.grid(taxa1scalecorrelation, taxa2scalecorrelation, scalestdev)
   colnames(pars) <- c("Taxa1-Scale Correlation", "Taxa2-Scale Correlation", "Scale Variance")
   
   # Print priors
@@ -100,9 +100,9 @@ estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.9, S = 
   objective_function <- function(params, taxa1relativesd, taxa2relativesd, relativecorrelation) {
     taxa1scalecorrelation <- params[1]
     taxa2scalecorrelation <- params[2]
-    scalevariance <- params[3]
+    scalestdev <- params[3]
     
-    sigma <- taxa1relativesd * taxa2relativesd * relativecorrelation + taxa1relativesd * scalevariance * taxa1scalecorrelation + taxa2relativesd * scalevariance * taxa2scalecorrelation + scalevariance^2
+    sigma <- taxa1relativesd * taxa2relativesd * relativecorrelation + taxa1relativesd * scalestdev * taxa1scalecorrelation + taxa2relativesd * scalestdev * taxa2scalecorrelation + scalestdev^2
     return(sigma)
   }
 
@@ -183,10 +183,10 @@ estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.9, S = 
           relativecovariance <- cov(rWpara[d1, ], rWpara[d2, ])
           
           # Find the minimum sigma
-          res_min <- optim(par = c(0, 0, 0.1), taxa1relativesd = taxa1relativesd, taxa2relativesd = taxa2relativesd, relativecorrelation = relativecorrelation, fn = objective_function, method = "L-BFGS-B", lower = c(-rhobound, -rhobound, 0.05), upper = c(rhobound, rhobound, upperscalevariance))
+          res_min <- optim(par = c(0, 0, 0.1), taxa1relativesd = taxa1relativesd, taxa2relativesd = taxa2relativesd, relativecorrelation = relativecorrelation, fn = objective_function, method = "L-BFGS-B", lower = c(-rhobound, -rhobound, 0.05), upper = c(rhobound, rhobound, upperscalestdev))
           
           # Find the maximum sigma by negating the objective function
-          res_max <- optim(par = c(0, 0, 0.1), taxa1relativesd = taxa1relativesd, taxa2relativesd = taxa2relativesd, relativecorrelation = relativecorrelation, fn = function(params, taxa1relativesd, taxa2relativesd, relativecorrelation) {-objective_function(params, taxa1relativesd, taxa2relativesd, relativecorrelation)}, method = "L-BFGS-B", lower = c(-rhobound, -rhobound, 0.05), upper = c(rhobound, rhobound, upperscalevariance))
+          res_max <- optim(par = c(0, 0, 0.1), taxa1relativesd = taxa1relativesd, taxa2relativesd = taxa2relativesd, relativecorrelation = relativecorrelation, fn = function(params, taxa1relativesd, taxa2relativesd, relativecorrelation) {-objective_function(params, taxa1relativesd, taxa2relativesd, relativecorrelation)}, method = "L-BFGS-B", lower = c(-rhobound, -rhobound, 0.05), upper = c(rhobound, rhobound, upperscalestdev))
           
           data.frame(
             d1 = d1,
@@ -293,7 +293,7 @@ estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.9, S = 
 #' @param alpha A numeric vector of priors for the Dirichlet distribution. Defaults to a vector of zeros.
 #' @param rhobound A numeric value specifying the bound for the \code{rho1} and \code{rho2} parameters. Defaults to 0.9.
 #' @param S An integer specifying the initial number of bootstrap samples. Defaults to 1000.
-#' @param upperscalevariance A numeric value specifying the upper bound of the variance of the scale. Defaults to 1.0.
+#' @param upperscalestdev A numeric value specifying the upper bound of the variance of the scale. Defaults to 1.0.
 #' @return A list containing:
 #' \item{convergence_results}{A list of results for each incrementally increased number of bootstrap samples (100, 500, 1000, 2000, 5000, 10000), including estimated 95% confidence intervals, minimum and maximum values for estimated absolute covariance, and parameters.}
 #' \item{combined_results}{A dataframe combining the results from all the incremental bootstrap samples, used for plotting convergence diagnostics.}
@@ -323,7 +323,7 @@ estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.9, S = 
 #' Y <- matrix(rnorm(1000), nrow = 10)
 #' results <- estimate_covariance_convergence(Y)
 #' @export
-estimate_covariance_convergence <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.9, S=c(100, 500, 1000, 2000, 5000, 10000), upperscalevariance = 1.0) {
+estimate_covariance_convergence <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.9, S=c(100, 500, 1000, 2000, 5000, 10000), upperscalestdev = 1.0) {
   # Record the start time for profiling
   start_time <- Sys.time()
 
@@ -360,10 +360,10 @@ estimate_covariance_convergence <- function(Y, alpha = rep(0, nrow(Y)), rhobound
   # Create a sequence for rho1, rho2, and x based on the given bounds
   taxa1scalecorrelation <- seq(-rhobound, rhobound, by = 0.05)
   taxa2scalecorrelation <- seq(-rhobound, rhobound, by = 0.05)
-  scalevariance <- seq(0.05, upperscalevariance, by = 0.025)
+  scalestdev <- seq(0.05, upperscalestdev, by = 0.025)
   
   # Generate all combinations of rho1, rho2, and x
-  pars <- expand.grid(taxa1scalecorrelation, taxa2scalecorrelation, scalevariance)
+  pars <- expand.grid(taxa1scalecorrelation, taxa2scalecorrelation, scalestdev)
   colnames(pars) <- c("Taxa1-Scale Correlation", "Taxa2-Scale Correlation", "Scale Variance")
   
   # Print priors
@@ -400,14 +400,14 @@ estimate_covariance_convergence <- function(Y, alpha = rep(0, nrow(Y)), rhobound
   }
 
   # Function to run bootstrap analysis for a given number of samples
-  run_bootstrap_analysis <- function(S, Y, N, D, alpha, rhobound, upperscalevariance) {
+  run_bootstrap_analysis <- function(S, Y, N, D, alpha, rhobound, upperscalestdev) {
 
     # Define the objective function used in the optimization
     objective_function <- function(params, taxa1relativesd, taxa2relativesd, relativecorrelation) {
       taxa1scalecorrelation <- params[1]
       taxa2scalecorrelation <- params[2]
-      scalevariance <- params[3]
-      sigma <- taxa1relativesd * taxa2relativesd * relativecorrelation + taxa1relativesd * scalevariance * taxa1scalecorrelation + taxa2relativesd * scalevariance * taxa2scalecorrelation + scalevariance^2
+      scalestdev <- params[3]
+      sigma <- taxa1relativesd * taxa2relativesd * relativecorrelation + taxa1relativesd * scalestdev * taxa1scalecorrelation + taxa2relativesd * scalestdev * taxa2scalecorrelation + scalestdev^2
       return(sigma)
     }
 
@@ -468,8 +468,8 @@ estimate_covariance_convergence <- function(Y, alpha = rep(0, nrow(Y)), rhobound
         relativecorrelation <- cor(rWpara[d1, ], rWpara[d2, ])
         relativecovariance <- cov(rWpara[d1, ], rWpara[d2, ])
         
-        res_min <- optim(par = c(0, 0, 0.1), taxa1relativesd = taxa1relativesd, taxa2relativesd = taxa2relativesd, relativecorrelation = relativecorrelation, fn = objective_function, method = "L-BFGS-B", lower = c(-rhobound, -rhobound, 0.05), upper = c(rhobound, rhobound, upperscalevariance))
-        res_max <- optim(par = c(0, 0, 0.1), taxa1relativesd = taxa1relativesd, taxa2relativesd = taxa2relativesd, relativecorrelation = relativecorrelation, fn = function(params, taxa1relativesd, taxa2relativesd, relativecorrelation) {-objective_function(params, taxa1relativesd, taxa2relativesd, relativecorrelation)}, method = "L-BFGS-B", lower = c(-rhobound, -rhobound, 0.05), upper = c(rhobound, rhobound, upperscalevariance))
+        res_min <- optim(par = c(0, 0, 0.1), taxa1relativesd = taxa1relativesd, taxa2relativesd = taxa2relativesd, relativecorrelation = relativecorrelation, fn = objective_function, method = "L-BFGS-B", lower = c(-rhobound, -rhobound, 0.05), upper = c(rhobound, rhobound, upperscalestdev))
+        res_max <- optim(par = c(0, 0, 0.1), taxa1relativesd = taxa1relativesd, taxa2relativesd = taxa2relativesd, relativecorrelation = relativecorrelation, fn = function(params, taxa1relativesd, taxa2relativesd, relativecorrelation) {-objective_function(params, taxa1relativesd, taxa2relativesd, relativecorrelation)}, method = "L-BFGS-B", lower = c(-rhobound, -rhobound, 0.05), upper = c(rhobound, rhobound, upperscalestdev))
         
         data.frame(
           d1 = d1,
@@ -560,7 +560,7 @@ estimate_covariance_convergence <- function(Y, alpha = rep(0, nrow(Y)), rhobound
   
   # Run bootstrap analysis for different sample sizes and store results
   convergence_results <- lapply(S, function(SS) {
-    run_bootstrap_analysis(SS, Y, N, D, alpha, rhobound, upperscalevariance)
+    run_bootstrap_analysis(SS, Y, N, D, alpha, rhobound, upperscalestdev)
   })
   
   # Combine results for plotting
