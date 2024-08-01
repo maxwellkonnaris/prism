@@ -58,9 +58,9 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -0.9, upperrhobo
   # Define global handlers for progress bars
   handlers(global = TRUE)
 
-  # Check if Y is a matrix and has appropriate dimensions
-  if (!is.matrix(Y) || nrow(Y) < 2 || ncol(Y) < 2) {
-    stop("Y must be a matrix with at least 2 rows and 2 columns.")
+  # Check if Y is a matrix, dataframe, or tibble, and has appropriate dimensions
+  if (!(is.matrix(Y) || is.data.frame(Y) || inherits(Y, "tbl_df")) || nrow(Y) < 2 || ncol(Y) < 2) {
+    stop("Y must be a matrix, dataframe, or tibble with at least 2 rows and 2 columns.")
   }
 
   # Get the number of columns (N) and rows (D) in the input matrix Y
@@ -82,7 +82,9 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -0.9, upperrhobo
   cat("Alpha:\n")
   print(alpha)
   cat("Rho bounds:\n")
-  print(paste0(-rhobound,":",rhobound))
+  print(paste0(lowerrhobound,":",upperrhobound))
+  cat("Scale standard deviation bounds:\n")
+  print(paste0(lowerscalestdev,":",upperscalestdev))
   # Print the head of the data frame
   cat("Head of the parameter grid:\n")
   print(head(pars))
@@ -184,10 +186,10 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -0.9, upperrhobo
           relativecovariance <- cov(rWpara[d1, ], rWpara[d2, ])
           
           # Find the minimum sigma
-          res_min <- optim(par = c(0, 0, 0.1), taxa1relativesd = taxa1relativesd, taxa2relativesd = taxa2relativesd, relativecorrelation = relativecorrelation, fn = objective_function, method = "L-BFGS-B", lower = c(lowerrhobound, lowerrhobound, lowerscalestdev), upper = c(upperrhobound, upperrhobound, upperscalestdev))
+          res_min <- optim(par = c(0, 0, 0.15), taxa1relativesd = taxa1relativesd, taxa2relativesd = taxa2relativesd, relativecorrelation = relativecorrelation, fn = objective_function, method = "L-BFGS-B", lower = c(lowerrhobound, lowerrhobound, lowerscalestdev), upper = c(upperrhobound, upperrhobound, upperscalestdev))
           
           # Find the maximum sigma by negating the objective function
-          res_max <- optim(par = c(0, 0, 0.1), taxa1relativesd = taxa1relativesd, taxa2relativesd = taxa2relativesd, relativecorrelation = relativecorrelation, fn = function(params, taxa1relativesd, taxa2relativesd, relativecorrelation) {-objective_function(params, taxa1relativesd, taxa2relativesd, relativecorrelation)}, method = "L-BFGS-B", lower = c(lowerrhobound, lowerrhobound, lowerscalestdev), upper = c(upperrhobound, upperrhobound, upperscalestdev))
+          res_max <- optim(par = c(0, 0, 0.15), taxa1relativesd = taxa1relativesd, taxa2relativesd = taxa2relativesd, relativecorrelation = relativecorrelation, fn = function(params, taxa1relativesd, taxa2relativesd, relativecorrelation) {-objective_function(params, taxa1relativesd, taxa2relativesd, relativecorrelation)}, method = "L-BFGS-B", lower = c(lowerrhobound, lowerrhobound, lowerscalestdev), upper = c(upperrhobound, upperrhobound, upperscalestdev))
           
           data.frame(
             d1 = d1,
@@ -324,7 +326,7 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -0.9, upperrhobo
 #' Y <- matrix(rnorm(1000), nrow = 10)
 #' results <- estimate_covariance_convergence(Y)
 #' @export
-estimate_covariance_convergence <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.9, S=c(100, 500, 1000, 2000, 5000, 10000), upperscalestdev = 1.0) {
+estimate_covariance_convergence <- function(Y, S=c(100, 500, 1000, 2000, 5000, 10000), alpha = 0.5, lowerrhobound = -0.9, upperrhobound = 0.9, lowerscalestdev=0.15, upperscalestdev = 0.5) {
   # Record the start time for profiling
   start_time <- Sys.time()
 
@@ -349,19 +351,20 @@ estimate_covariance_convergence <- function(Y, alpha = rep(0, nrow(Y)), rhobound
   # Define global handlers for progress bars
   handlers(global = TRUE)
 
-  # Check if Y is a matrix and has appropriate dimensions
-  if (!is.matrix(Y) || nrow(Y) < 2 || ncol(Y) < 2) {
-    stop("Y must be a matrix with at least 2 rows and 2 columns.")
+  # Check if Y is a matrix, dataframe, or tibble, and has appropriate dimensions
+  if (!(is.matrix(Y) || is.data.frame(Y) || inherits(Y, "tbl_df")) || nrow(Y) < 2 || ncol(Y) < 2) {
+    stop("Y must be a matrix, dataframe, or tibble with at least 2 rows and 2 columns.")
   }
 
   # Get the number of columns (N) and rows (D) in the input matrix Y
   N <- ncol(Y)
   D <- nrow(Y)
 
-  # Create a sequence for rho1, rho2, and x based on the given bounds
-  taxa1scalecorrelation <- seq(-rhobound, rhobound, by = 0.05)
-  taxa2scalecorrelation <- seq(-rhobound, rhobound, by = 0.05)
-  scalestdev <- seq(0.05, upperscalestdev, by = 0.025)
+  # Create a sequence for alpha, rho1, rho2, and scale st deviation based on the given bounds
+  alpha = rep(alpha, D)
+  taxa1scalecorrelation <- seq(lowerrhobound, upperrhobound, by = 0.05)
+  taxa2scalecorrelation <- seq(lowerrhobound, upperrhobound, by = 0.05)
+  scalestdev <- seq(lowerscalestdev, upperscalestdev, by = 0.01)
   
   # Generate all combinations of rho1, rho2, and x
   pars <- expand.grid(taxa1scalecorrelation, taxa2scalecorrelation, scalestdev)
@@ -372,7 +375,9 @@ estimate_covariance_convergence <- function(Y, alpha = rep(0, nrow(Y)), rhobound
   cat("Alpha:\n")
   print(alpha)
   cat("Rho bounds:\n")
-  print(paste0(-rhobound, ":", rhobound))
+  print(paste0(lowerrhobound,":",upperrhobound))
+  cat("Scale standard deviation bounds:\n")
+  print(paste0(lowerscalestdev,":",upperscalestdev))
   # Print the head of the data frame
   cat("Head of the parameter grid:\n")
   print(head(pars))
@@ -381,7 +386,7 @@ estimate_covariance_convergence <- function(Y, alpha = rep(0, nrow(Y)), rhobound
   print(tail(pars))
   cat("Dimensions of supplied matrix:\n")
   print(dim(Y))
-  cat("Bootstrap sample sizes to diagnose convergence (S):\n")
+  cat("Bootstrap sample size (S):\n")
   print(S)
 
   # Register the parallel backend
@@ -401,7 +406,7 @@ estimate_covariance_convergence <- function(Y, alpha = rep(0, nrow(Y)), rhobound
   }
 
   # Function to run bootstrap analysis for a given number of samples
-  run_bootstrap_analysis <- function(S, Y, N, D, alpha, rhobound, upperscalestdev) {
+  run_bootstrap_analysis <- function(S, Y, N, D, alpha, lowerrhobound, upperrhobound, lowerscalestdev, upperscalestdev) {
 
     # Define the objective function used in the optimization
     objective_function <- function(params, taxa1relativesd, taxa2relativesd, relativecorrelation) {
@@ -469,8 +474,8 @@ estimate_covariance_convergence <- function(Y, alpha = rep(0, nrow(Y)), rhobound
         relativecorrelation <- cor(rWpara[d1, ], rWpara[d2, ])
         relativecovariance <- cov(rWpara[d1, ], rWpara[d2, ])
         
-        res_min <- optim(par = c(0, 0, 0.1), taxa1relativesd = taxa1relativesd, taxa2relativesd = taxa2relativesd, relativecorrelation = relativecorrelation, fn = objective_function, method = "L-BFGS-B", lower = c(-rhobound, -rhobound, 0.05), upper = c(rhobound, rhobound, upperscalestdev))
-        res_max <- optim(par = c(0, 0, 0.1), taxa1relativesd = taxa1relativesd, taxa2relativesd = taxa2relativesd, relativecorrelation = relativecorrelation, fn = function(params, taxa1relativesd, taxa2relativesd, relativecorrelation) {-objective_function(params, taxa1relativesd, taxa2relativesd, relativecorrelation)}, method = "L-BFGS-B", lower = c(-rhobound, -rhobound, 0.05), upper = c(rhobound, rhobound, upperscalestdev))
+        res_min <- optim(par = c(0, 0, 0.15), taxa1relativesd = taxa1relativesd, taxa2relativesd = taxa2relativesd, relativecorrelation = relativecorrelation, fn = objective_function, method = "L-BFGS-B", lower = c(lowerrhobound, lowerrhobound, lowerscalestdev), upper = c(upperrhobound, upperrhobound, upperscalestdev))
+        res_max <- optim(par = c(0, 0, 0.15), taxa1relativesd = taxa1relativesd, taxa2relativesd = taxa2relativesd, relativecorrelation = relativecorrelation, fn = function(params, taxa1relativesd, taxa2relativesd, relativecorrelation) {-objective_function(params, taxa1relativesd, taxa2relativesd, relativecorrelation)}, method = "L-BFGS-B", lower = c(lowerrhobound, lowerrhobound, lowerscalestdev), upper = c(upperrhobound, upperrhobound, upperscalestdev))
         
         data.frame(
           d1 = d1,
@@ -561,7 +566,7 @@ estimate_covariance_convergence <- function(Y, alpha = rep(0, nrow(Y)), rhobound
   
   # Run bootstrap analysis for different sample sizes and store results
   convergence_results <- lapply(S, function(SS) {
-    run_bootstrap_analysis(SS, Y, N, D, alpha, rhobound, upperscalestdev)
+    run_bootstrap_analysis(SS, Y, N, D, alpha, lowerrhobound, upperrhobound, lowerscalestdev, upperscalestdev)
   })
   
   # Combine results for plotting
@@ -580,7 +585,7 @@ estimate_covariance_convergence <- function(Y, alpha = rep(0, nrow(Y)), rhobound
                                     theme(plot.background = element_rect(fill = "white"))
 
   # Save the plot as JPG
-  ggsave(bootstrapcomputationtime_plot, filename = "bootstrap_timeefficiency.jpg", width = 8, height = 6)
+  ggsave(bootstrapcomputationtime_plot, filename = "bootstrap_timeefficiency.jpg", width = 5, height = 5)
   
   # Modify the first plot to show ranges and add CI, grouped by comparison with flipped axes and categorical bootstrap samples
   convergencediagnostics_plot <- ggplot(combined_results, aes(y = factor(S))) +
@@ -599,7 +604,7 @@ estimate_covariance_convergence <- function(Y, alpha = rep(0, nrow(Y)), rhobound
           strip.text = element_text(size = 8))  # Adjust facet label size for readability
   
   # Save the plot as JPG
-  ggsave(convergencediagnostics_plot, filename = "convergence_diagnostics_facet.jpg", width = 12, height = 10)
+  ggsave(convergencediagnostics_plot, filename = "convergence_diagnostics_facet.jpg", width = 15, height = 15)
   
   # Print the plot
   print(convergencediagnostics_plot)
