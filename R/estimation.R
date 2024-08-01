@@ -177,8 +177,8 @@ estimate_covariance <- function(Y, alpha = rep(0, nrow(Y)), rhobound = 0.9, S = 
           }
           rWpara <- log(rWpara)
     
-          taxa1relativesd <- var(rWpara[d1, ])
-          taxa2relativesd <- var(rWpara[d2, ])
+          taxa1relativesd <- sd(rWpara[d1, ])
+          taxa2relativesd <- sd(rWpara[d2, ])
           relativecorrelation <- cor(rWpara[d1, ], rWpara[d2, ])
           relativecovariance <- cov(rWpara[d1, ], rWpara[d2, ])
           
@@ -463,8 +463,8 @@ estimate_covariance_convergence <- function(Y, alpha = rep(0, nrow(Y)), rhobound
         }
         rWpara <- log(rWpara)
     
-        taxa1relativesd <- var(rWpara[d1, ])
-        taxa2relativesd <- var(rWpara[d2, ])
+        taxa1relativesd <- sd(rWpara[d1, ])
+        taxa2relativesd <- sd(rWpara[d2, ])
         relativecorrelation <- cor(rWpara[d1, ], rWpara[d2, ])
         relativecovariance <- cov(rWpara[d1, ], rWpara[d2, ])
         
