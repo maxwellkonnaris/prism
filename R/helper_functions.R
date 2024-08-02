@@ -109,7 +109,7 @@ skewness <- function(x, na.rm = FALSE) {
   n <- length(x)
   mean_x <- mean(x)
   sd_x <- sd(x)
-  skewn <- (n / ((n - 1) * (n - 2))) * sum(((x - mean_x) / sd_x)^3)
+  skew <- (n / ((n - 1) * (n - 2))) * sum(((x - mean_x) / sd_x)^3)
   return(skew)
 }
 
@@ -241,3 +241,57 @@ simulate_data <- function(D, N, seq.depth) {
 
   return(list(Y = Y, logW = logW, Sigma = Sigma))
 }
+
+#' Calculate Proportionality Metrics (Rho) for All Pairs of Taxa
+#'
+#' This function calculates the proportionality metric (\eqn{\rho}) for all pairs of taxa
+#' in a given dataset of relative abundances. The \eqn{\rho} metric quantifies the consistency
+#' of the log-ratios of relative abundances between pairs of taxa across multiple samples.
+#'
+#' @param data A data frame of relative abundances where rows are samples and columns are taxa.
+#' @return A named vector of \eqn{\rho} values for each pair of taxa.
+#' @examples
+#' # Example relative abundance data
+#' relative_abundances <- data.frame(
+#'   Taxon1 = c(0.5, 0.6, 0.55, 0.7),
+#'   Taxon2 = c(0.3, 0.25, 0.35, 0.2),
+#'   Taxon3 = c(0.2, 0.15, 0.1, 0.1),
+#'   Taxon4 = c(0.1, 0.1, 0.05, 0.05)
+#' )
+#' # Calculate proportionality metrics
+#' rho_values <- calculate_proportionality_metrics(relative_abundances)
+#' print(rho_values)
+#' @export
+calculate_proportionality_metrics <- function(data) {
+  # Check for zeros in the data
+  if (any(data == 0)) {
+    stop("Data contains zero values. Please remove or replace zeros before calculating proportionality metrics.")
+  }
+  
+  # Define a function to calculate the rho proportionality metric
+  rho_proportionality <- function(x, y) {
+    log_ratio <- log(x / y)
+    var_log_ratio <- var(log_ratio, na.rm = TRUE)
+    var_x <- var(log(x), na.rm = TRUE)
+    var_y <- var(log(y), na.rm = TRUE)
+    
+    if (var_x + var_y == 0) {
+      return(NA)
+    }
+    
+    rho <- var_log_ratio / (var_x + var_y)
+    return(rho)
+  }
+  
+  # Calculate rho for each pair of taxa
+  taxa_pairs <- combn(names(data), 2, simplify = FALSE)
+  rho_values <- sapply(taxa_pairs, function(pair) {
+    rho_proportionality(data[[pair[1]]], data[[pair[2]]])
+  })
+  
+  # Convert rho values to a named vector
+  names(rho_values) <- sapply(taxa_pairs, function(pair) paste(pair, collapse = "-"))
+  
+  return(rho_values)
+}
+
