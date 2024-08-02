@@ -178,8 +178,19 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -0.9, upperrhobo
           for (n in 1:N) {
             rWpara[, n] <- MCMCpack::rdirichlet(1, Yboot[, n] + alpha)
           }
+          # Calculate proportionality metrics
+          rho_values <- calculate_proportionality(as.data.frame(t(rWpara)))
+
+          # Extract proportionality metrics and take the variance
+          proportionality_d1 <- rho_values[grep(paste0("^", d1, "-|-", d1, "$"), names(rho_values))]
+          proportionality_d2 <- rho_values[grep(paste0("^", d2, "-|-", d2, "$"), names(rho_values))]
+
+          variance_proportionality_d1 <- var(proportionality_d1, na.rm = TRUE)
+          variance_proportionality_d2 <- var(proportionality_d2, na.rm = TRUE)
+
+          # log transform relative abundances
           rWpara <- log(rWpara)
-    
+          
           taxa1relativesd <- sd(rWpara[d1, ])
           taxa2relativesd <- sd(rWpara[d2, ])
           relativecorrelation <- cor(rWpara[d1, ], rWpara[d2, ])
@@ -206,7 +217,9 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -0.9, upperrhobo
             taxa1relativesd = taxa1relativesd,
             taxa2relativesd = taxa2relativesd,
             relativecorrelation = relativecorrelation,
-            relativecovariance = relativecovariance
+            relativecovariance = relativecovariance,
+            variance_proportionality_taxa1 = variance_proportionality_d1,
+            variance_proportionality_taxa2 = variance_proportionality_d2
           )
       }
       
