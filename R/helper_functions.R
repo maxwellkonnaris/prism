@@ -262,7 +262,7 @@ simulate_data <- function(D, N, seq.depth) {
 #' rho_values <- calculate_proportionality_metrics(relative_abundances)
 #' print(rho_values)
 #' @export
-calculate_proportionality_metrics <- function(data) {
+calculate_proportionality <- function(data) {
   # Check for zeros in the data
   if (any(data == 0)) {
     stop("Data contains zero values. Please remove or replace zeros before calculating proportionality metrics.")
