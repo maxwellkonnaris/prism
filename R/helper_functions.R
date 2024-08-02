@@ -269,24 +269,17 @@ calculate_proportionality <- function(data) {
   }
   
   # Define a function to calculate the rho proportionality metric
-  rho_proportionality <- function(x, y) {
+  proportionality <- function(x, y) {
     log_ratio <- log(x / y)
     var_log_ratio <- var(log_ratio, na.rm = TRUE)
-    var_x <- var(log(x), na.rm = TRUE)
-    var_y <- var(log(y), na.rm = TRUE)
-    
-    if (var_x + var_y == 0) {
-      return(NA)
-    }
-    
-    rho <- var_log_ratio / (var_x + var_y)
-    return(rho)
+
+    return(var_log_ratio)
   }
   
   # Calculate rho for each pair of taxa
   taxa_pairs <- combn(names(data), 2, simplify = FALSE)
   rho_values <- sapply(taxa_pairs, function(pair) {
-    rho_proportionality(data[[pair[1]]], data[[pair[2]]])
+    proportionality(data[[pair[1]]], data[[pair[2]]])
   })
   
   # Convert rho values to a named vector
