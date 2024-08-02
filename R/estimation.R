@@ -178,15 +178,15 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -0.9, upperrhobo
           for (n in 1:N) {
             rWpara[, n] <- MCMCpack::rdirichlet(1, Yboot[, n] + alpha)
           }
-          # # Calculate proportionality metrics
-          # rho_values <- calculate_proportionality(as.data.frame(t(rWpara)))
+          # Calculate proportionality metrics
+          rho_values <- calculate_proportionality(as.data.frame(t(rWpara)))
 
-          # # Extract proportionality metrics and take the variance
-          # proportionality_d1 <- rho_values[grep(paste0("^", rownames(Y)[d1], "-|-", rownames(Y)[d1], "$"), names(rho_values))]
-          # proportionality_d2 <- rho_values[grep(paste0("^", rownames(Y)[d2], "-|-", rownames(Y)[d2], "$"), names(rho_values))]
+          # Extract proportionality metrics and take the variance
+          proportionality_d1 <- rho_values[grep(paste0("^", d1, "-|-", d1, "$"), names(rho_values))]
+          proportionality_d2 <- rho_values[grep(paste0("^", d2, "-|-", d2, "$"), names(rho_values))]
 
-          # variance_proportionality_d1 <- var(proportionality_d1, na.rm = TRUE)
-          # variance_proportionality_d2 <- var(proportionality_d2, na.rm = TRUE)
+          variance_proportionality_d1 <- var(proportionality_d1, na.rm = TRUE)
+          variance_proportionality_d2 <- var(proportionality_d2, na.rm = TRUE)
 
           # log transform relative abundances
           rWpara <- log(rWpara)
