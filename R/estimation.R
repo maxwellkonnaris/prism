@@ -590,21 +590,21 @@ estimate_covariance_convergence <- function(Y, S=c(100, 500, 1000, 2000, 5000, 1
   # Modify the first plot to show ranges and add CI, grouped by comparison with flipped axes and categorical bootstrap samples
   convergencediagnostics_plot <- ggplot(combined_results, aes(y = factor(S))) +
     geom_errorbarh(aes(xmin = minsigma_absolute_minimum_covariance, xmax = maxsigma_absolute_maximum_covariance, color = "Covariance Range"), height = 0.2) +
-    geom_errorbarh(aes(xmin = ninetyfive_ci_lower, xmax = ninetyfive_ci_upper, color = ifelse(ninetyfive_ci_lower <= 0 & ninetyfive_ci_upper >= 0, "Covers Zero", "Does Not Cover Zero")), height = 0.2) +
+    geom_errorbarh(aes(xmin = ninetyfive_ci_lower, xmax = ninetyfive_ci_upper, color = ifelse(ninetyfive_ci_lower <= 0 & ninetyfive_ci_upper >= 0, "95% CI Covers Zero", "95% CI Does Not Covers Zero")), height = 0.2) +
     facet_wrap(~ comparison, scales = "free_x") +
     labs(title = "Bootstrap Convergence Diagnostics",
          y = "Number of Bootstrap Samples",
-         x = "Estimate (with Confidence Interval)") +
+         x = "Covariance Set Estimate (with Confidence Interval)") +
     scale_color_manual(values = c("Covariance Range" = "black", 
-                                  "Covers Zero" = "red",
-                                  "Does Not Cover Zero" = "green"),
+                                  "95% CI Covers Zero" = "red",
+                                  "95% CI Does Not Cover Zero" = "green"),
                        name = "Legend") +
     theme_bw() +
     theme(plot.background = element_rect(fill = "white"),
           strip.text = element_text(size = 8))  # Adjust facet label size for readability
   
   # Save the plot as JPG
-  ggsave(convergencediagnostics_plot, filename = "convergence_diagnostics_facet.jpg", width = 15, height = 15)
+  ggsave(convergencediagnostics_plot, filename = "convergence_diagnostics_facet.jpg", width = 30, height = 20)
   
   # Print the plot
   print(convergencediagnostics_plot)
