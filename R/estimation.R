@@ -601,7 +601,7 @@ estimate_covariance_convergence <- function(Y, S=c(100, 500, 1000, 2000, 5000, 1
                        name = "Legend") +
     theme_bw() +
     theme(plot.background = element_rect(fill = "white"),
-          strip.text = element_text(size = 8))  # Adjust facet label size for readability
+          strip.text = element_text(size = 6))  # Adjust facet label size for readability
   
   # Save the plot as JPG
   ggsave(convergencediagnostics_plot, filename = "convergence_diagnostics_facet.jpg", width = 30, height = 20)
