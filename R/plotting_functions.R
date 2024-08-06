@@ -136,7 +136,7 @@ forest_plot <- function(data, bg = "white", save = NULL, filename = NULL, dir_pa
 #' @import ggplot2
 #' @import gridExtra
 #' @import grid
-#' @import ggpairs
+#' @import GGally
 #' @examples
 #' # Example usage:
 #' # Assuming 'results' is the output from estimate_covariance function
