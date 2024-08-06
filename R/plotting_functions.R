@@ -136,6 +136,7 @@ forest_plot <- function(data, bg = "white", save = NULL, filename = NULL, dir_pa
 #' @import ggplot2
 #' @import gridExtra
 #' @import grid
+#' @import ggpairs
 #' @examples
 #' # Example usage:
 #' # Assuming 'results' is the output from estimate_covariance function
@@ -268,11 +269,25 @@ sigmaplot <- function(all_inner_results, bg="white", filename = NULL, save = NUL
   facet_histogram_rho2 <- create_facet_histogram(all_inner_results, "minsigma_correlation_relativetaxa2_scale", "maxsigma_correlation_relativetaxa2_scale", "Relativetaxa1_scale_correlation")
   facet_histogram_x <- create_facet_histogram(all_inner_results, "minsigma_scale_variance", "maxsigma_scale_variance", "Scale Variance")
 
-  # Plot the facet histograms
-  print(facet_histogram_sigma)
-  print(facet_histogram_rho1)
-  print(facet_histogram_rho2)
-  print(facet_histogram_x)
+    # Create bivariate plot grid
+  bivariate_plot <- ggpairs(all_inner_results, columns = c("minsigma_correlation_relativetaxa1_scale", 
+                                                           "maxsigma_correlation_relativetaxa1_scale", 
+                                                           "minsigma_correlation_relativetaxa2_scale", 
+                                                           "maxsigma_correlation_relativetaxa2_scale", 
+                                                           "minsigma_scale_variance", library(GGally)
+                                                           "maxsigma_scale_variance", 
+                                                           "minsigma_absolute_minimum_covariance", 
+                                                           "maxsigma_absolute_maximum_covariance"), 
+                            aes(color = comparison), 
+                            title = "Bivariate Plot")
+  
+  # Print the bivariate plot grid
+  print(bivariate_plot)
+  
+  # Save the plot if needed
+  if (!is.null(filename)) {
+    ggsave(filename = file.path(dir_path, filename), plot = bivariate_plot, width = 15, height = 15, units = "in", bg = bg)
+  }
   
   # Save plots to files if save_format is specified
   if (!is.null(save)) {
