@@ -68,16 +68,6 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
   # Get the number of columns (N) and rows (D) in the input matrix Y
   N <- ncol(Y)
   D <- nrow(Y)
-
-  # Create a sequence for alpha, rho1, rho2, and scale st deviation based on the given bounds
-  alpha = rep(alpha, D)
-  taxa1scalecorrelation <- seq(lowerrhobound, upperrhobound, by = 0.05)
-  taxa2scalecorrelation <- seq(lowerrhobound, upperrhobound, by = 0.05)
-  scalestdev <- seq(lowerscalestdev, upperscalestdev, by = 0.01)
-  
-  # Generate all combinations of rho1, rho2, and x
-  pars <- expand.grid(taxa1scalecorrelation, taxa2scalecorrelation, scalestdev)
-  colnames(pars) <- c("Taxa1-Scale Correlation", "Taxa2-Scale Correlation", "Scale Variance")
   
   # Print priors
   cat("Priors used for the analysis:\n")
@@ -87,12 +77,6 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
   print(paste0(lowerrhobound,":",upperrhobound))
   cat("Scale standard deviation bounds:\n")
   print(paste0(lowerscalestdev,":",upperscalestdev))
-  # Print the head of the data frame
-  cat("Head of the parameter grid:\n")
-  print(head(pars))
-  # Print the tail of the data frame
-  cat("Tail of the parameter grid:\n")
-  print(tail(pars))
   cat("Dimensions of supplied matrix:\n")
   print(dim(Y))
   cat("Bootstrap sample size (S):\n")
@@ -199,10 +183,10 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
           relativecovariance <- cov(rWpara[d1, ], rWpara[d2, ])
           
           # Find the minimum sigma
-          res_min <- optim(par = c(0, 0, 0.15), taxa1relativesd = taxa1relativesd, taxa2relativesd = taxa2relativesd, relativecorrelation = relativecorrelation, fn = objective_function, method = "L-BFGS-B", lower = c(lowerrhobound, lowerrhobound, lowerscalestdev), upper = c(upperrhobound, upperrhobound, upperscalestdev))
+          res_min <- optim(par = c(0, 0, 0.5), taxa1relativesd = taxa1relativesd, taxa2relativesd = taxa2relativesd, relativecorrelation = relativecorrelation, fn = objective_function, method = "L-BFGS-B", lower = c(lowerrhobound, lowerrhobound, lowerscalestdev), upper = c(upperrhobound, upperrhobound, upperscalestdev))
           
           # Find the maximum sigma by negating the objective function
-          res_max <- optim(par = c(0, 0, 0.15), taxa1relativesd = taxa1relativesd, taxa2relativesd = taxa2relativesd, relativecorrelation = relativecorrelation, fn = function(params, taxa1relativesd, taxa2relativesd, relativecorrelation) {-objective_function(params, taxa1relativesd, taxa2relativesd, relativecorrelation)}, method = "L-BFGS-B", lower = c(lowerrhobound, lowerrhobound, lowerscalestdev), upper = c(upperrhobound, upperrhobound, upperscalestdev))
+          res_max <- optim(par = c(0, 0, 0.5), taxa1relativesd = taxa1relativesd, taxa2relativesd = taxa2relativesd, relativecorrelation = relativecorrelation, fn = function(params, taxa1relativesd, taxa2relativesd, relativecorrelation) {-objective_function(params, taxa1relativesd, taxa2relativesd, relativecorrelation)}, method = "L-BFGS-B", lower = c(lowerrhobound, lowerrhobound, lowerscalestdev), upper = c(upperrhobound, upperrhobound, upperscalestdev))
           
           data.frame(
             d1 = d1,
@@ -377,16 +361,6 @@ estimate_covariance_convergence <- function(Y, S=c(100, 500, 1000, 2000, 5000, 1
   N <- ncol(Y)
   D <- nrow(Y)
 
-  # Create a sequence for alpha, rho1, rho2, and scale st deviation based on the given bounds
-  alpha = rep(alpha, D)
-  taxa1scalecorrelation <- seq(lowerrhobound, upperrhobound, by = 0.05)
-  taxa2scalecorrelation <- seq(lowerrhobound, upperrhobound, by = 0.05)
-  scalestdev <- seq(lowerscalestdev, upperscalestdev, by = 0.01)
-  
-  # Generate all combinations of rho1, rho2, and x
-  pars <- expand.grid(taxa1scalecorrelation, taxa2scalecorrelation, scalestdev)
-  colnames(pars) <- c("Taxa1-Scale Correlation", "Taxa2-Scale Correlation", "Scale Variance")
-  
   # Print priors
   cat("Priors used for the analysis:\n")
   cat("Alpha:\n")
@@ -395,12 +369,6 @@ estimate_covariance_convergence <- function(Y, S=c(100, 500, 1000, 2000, 5000, 1
   print(paste0(lowerrhobound,":",upperrhobound))
   cat("Scale standard deviation bounds:\n")
   print(paste0(lowerscalestdev,":",upperscalestdev))
-  # Print the head of the data frame
-  cat("Head of the parameter grid:\n")
-  print(head(pars))
-  # Print the tail of the data frame
-  cat("Tail of the parameter grid:\n")
-  print(tail(pars))
   cat("Dimensions of supplied matrix:\n")
   print(dim(Y))
   cat("Bootstrap sample size (S):\n")
