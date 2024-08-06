@@ -7,8 +7,8 @@
 #' @param lowerrhobound A numeric value specifying the lower bound for the \code{lowerrhobound} parameter. Defaults to -1.0.
 #' @param upperrhobound A numeric value specifying the upper bound for the \code{upperrhobound} parameter. Defaults to 0.6.
 #' @param S An integer specifying the number of bootstrap samples. Increase to reduce Monte Carlo error. Defaults to 1000.
-#' @param lowerscalestdev A numeric value specifying the lower bound of the variance of the scale. Defaults to 0.475.
-#' @param upperscalestdev A numeric value specifying the upper bound of the variance of the scale. Defaults to 0.525.
+#' @param lowerscalestdev A numeric value specifying the lower bound of the variance of the scale. Defaults to 0.49.
+#' @param upperscalestdev A numeric value specifying the upper bound of the variance of the scale. Defaults to 0.51.
 #' @return A list of dataframes containing the results of the analysis including estimated 95% confidence intervals, minimum and maximum values for estimated absolute covariance, and parameters. \code{final_results} contains the data intended for forest_plot() and \code{all_inner_results} contains the data intended for sigmaplot().
 #' @import progress
 #' @import progressr
@@ -25,7 +25,7 @@
 #' results <- estimate_covariance(Y)
 #' @export
 
-estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobound = 0.6, S = 1000, lowerscalestdev = .475, upperscalestdev = .525) {
+estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobound = 0.6, S = 1000, lowerscalestdev = .49, upperscalestdev = .51) {
 
   # Record the start time for profiling
   start_time <- Sys.time()
