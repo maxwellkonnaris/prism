@@ -4,9 +4,11 @@
 #'
 #' @param Y A matrix of data with observations in columns and variables in rows.
 #' @param alpha A numeric vector of priors for the Dirichlet distribution. Defaults to a vector of zeros.
-#' @param rhobound A numeric value specifying the bound for the \code{rho1} and \code{rho2} parameters. Defaults to 0.9.
+#' @param lowerrhobound A numeric value specifying the lower bound for the \code{lowerrhobound} parameter. Defaults to -1.0.
+#' @param upperrhobound A numeric value specifying the upper bound for the \code{upperrhobound} parameter. Defaults to 0.6.
 #' @param S An integer specifying the number of bootstrap samples. Increase to reduce Monte Carlo error. Defaults to 1000.
-#' @param upperscalestdev A numeric value specifying the upper bound of the variance of the scale. Defaults to 1.0.
+#' @param lowerscalestdev A numeric value specifying the lower bound of the variance of the scale. Defaults to 0.2.
+#' @param upperscalestdev A numeric value specifying the upper bound of the variance of the scale. Defaults to 0.3.
 #' @return A list of dataframes containing the results of the analysis including estimated 95% confidence intervals, minimum and maximum values for estimated absolute covariance, and parameters. \code{final_results} contains the data intended for forest_plot() and \code{all_inner_results} contains the data intended for sigmaplot().
 #' @import progress
 #' @import progressr
@@ -23,7 +25,7 @@
 #' results <- estimate_covariance(Y)
 #' @export
 
-estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -0.9, upperrhobound = 0.9, S = 1000, lowerscalestdev=0.15, upperscalestdev = 0.5) {
+estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobound = 0.6, S = 1000, lowerscalestdev=0.2, upperscalestdev = 0.3) {
 
   # Record the start time for profiling
   start_time <- Sys.time()
@@ -307,9 +309,11 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -0.9, upperrhobo
 #'
 #' @param Y A matrix of data with observations in columns and variables in rows.
 #' @param alpha A numeric vector of priors for the Dirichlet distribution. Defaults to a vector of zeros.
-#' @param rhobound A numeric value specifying the bound for the \code{rho1} and \code{rho2} parameters. Defaults to 0.9.
-#' @param S An integer specifying the initial number of bootstrap samples. Defaults to 1000.
-#' @param upperscalestdev A numeric value specifying the upper bound of the variance of the scale. Defaults to 1.0.
+#' @param lowerrhobound A numeric value specifying the lower bound for the \code{lowerrhobound} parameter. Defaults to -1.0.
+#' @param upperrhobound A numeric value specifying the upper bound for the \code{upperrhobound} parameter. Defaults to 0.6.
+#' @param S A vector of numeric integers specifying the number of bootstrap samples to be iterated across. Increase to reduce Monte Carlo error. Defaults to \code{c(100, 500, 1000, 2000, 5000, 10000)}.
+#' @param lowerscalestdev A numeric value specifying the lower bound of the variance of the scale. Defaults to 0.2.
+#' @param upperscalestdev A numeric value specifying the upper bound of the variance of the scale. Defaults to 0.3.
 #' @return A list containing:
 #' \item{convergence_results}{A list of results for each incrementally increased number of bootstrap samples (100, 500, 1000, 2000, 5000, 10000), including estimated 95% confidence intervals, minimum and maximum values for estimated absolute covariance, and parameters.}
 #' \item{combined_results}{A dataframe combining the results from all the incremental bootstrap samples, used for plotting convergence diagnostics.}
@@ -339,7 +343,7 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -0.9, upperrhobo
 #' Y <- matrix(rnorm(1000), nrow = 10)
 #' results <- estimate_covariance_convergence(Y)
 #' @export
-estimate_covariance_convergence <- function(Y, S=c(100, 500, 1000, 2000, 5000, 10000), alpha = 0.5, lowerrhobound = -0.9, upperrhobound = 0.9, lowerscalestdev=0.15, upperscalestdev = 0.5) {
+estimate_covariance_convergence <- function(Y, S=c(100, 500, 1000, 2000, 5000, 10000), alpha = 0.5, lowerrhobound = -1, upperrhobound = 0.6, lowerscalestdev=0.2, upperscalestdev = 0.3) {
   # Record the start time for profiling
   start_time <- Sys.time()
 
