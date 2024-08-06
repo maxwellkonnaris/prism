@@ -274,7 +274,7 @@ sigmaplot <- function(all_inner_results, bg="white", filename = NULL, save = NUL
                                                            "maxsigma_correlation_relativetaxa1_scale", 
                                                            "minsigma_correlation_relativetaxa2_scale", 
                                                            "maxsigma_correlation_relativetaxa2_scale", 
-                                                           "minsigma_scale_variance", library(GGally)
+                                                           "minsigma_scale_variance", 
                                                            "maxsigma_scale_variance", 
                                                            "minsigma_absolute_minimum_covariance", 
                                                            "maxsigma_absolute_maximum_covariance"), 
