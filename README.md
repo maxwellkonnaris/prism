@@ -1,4 +1,4 @@
-# PRISM
+# PRISM (Laika)
 
 **Partial Rho Identification through Scale Modeling: Robust Covariance and Correlation Analysis**
 
