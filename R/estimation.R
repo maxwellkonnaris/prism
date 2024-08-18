@@ -176,6 +176,8 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
 
           # log transform relative abundances
           rWpara <- log(rWpara)
+
+          rWpara = rWpara[c(d1,d2), ]
           
           taxa1relativesd <- sd(rWpara[d1, ])
           taxa2relativesd <- sd(rWpara[d2, ])
