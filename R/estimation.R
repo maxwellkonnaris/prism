@@ -159,6 +159,8 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
                                           
   # Run the analysis
   cat("Running sigma estimation")
+
+  initialparameters = c(((upperrhobound-lowerrhobound)/2), ((upperrhobound-lowerrhobound)/2), ((upperscalestdev - lowerscalestdev)/2))
                                            
   results_list <- foreach(pair = pair_indices, .packages = c('stats', 'MCMCpack'), .options.snow = opts) %dopar% {
       d1 <- pair[1]
@@ -196,10 +198,10 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
           relativecovariance <- cov(rWpara[1, ], rWpara[2, ])
           
           # Find the minimum sigma
-          res_min <- optim(par = c(((upperrhobound-lowerrhobound)/2), ((upperrhobound-lowerrhobound)/2), ((upperscalestdev - lowerscalestdev)/2)), taxa1relativesd = taxa1relativesd, taxa2relativesd = taxa2relativesd, relativecorrelation = relativecorrelation, fn = objective_function, method = "L-BFGS-B", lower = c(lowerrhobound, lowerrhobound, lowerscalestdev), upper = c(upperrhobound, upperrhobound, upperscalestdev))
+          res_min <- optim(par = initialparameters, taxa1relativesd = taxa1relativesd, taxa2relativesd = taxa2relativesd, relativecorrelation = relativecorrelation, fn = objective_function, method = "L-BFGS-B", lower = c(lowerrhobound, lowerrhobound, lowerscalestdev), upper = c(upperrhobound, upperrhobound, upperscalestdev))
           
           # Find the maximum sigma by negating the objective function
-          res_max <- optim(par = c(((upperrhobound-lowerrhobound)/2), ((upperrhobound-lowerrhobound)/2), ((upperscalestdev - lowerscalestdev)/2)), taxa1relativesd = taxa1relativesd, taxa2relativesd = taxa2relativesd, relativecorrelation = relativecorrelation, fn = function(params, taxa1relativesd, taxa2relativesd, relativecorrelation) {-objective_function(params, taxa1relativesd, taxa2relativesd, relativecorrelation)}, method = "L-BFGS-B", lower = c(lowerrhobound, lowerrhobound, lowerscalestdev), upper = c(upperrhobound, upperrhobound, upperscalestdev))
+          res_max <- optim(par = initialparameters, taxa1relativesd = taxa1relativesd, taxa2relativesd = taxa2relativesd, relativecorrelation = relativecorrelation, fn = function(params, taxa1relativesd, taxa2relativesd, relativecorrelation) {-objective_function(params, taxa1relativesd, taxa2relativesd, relativecorrelation)}, method = "L-BFGS-B", lower = c(lowerrhobound, lowerrhobound, lowerscalestdev), upper = c(upperrhobound, upperrhobound, upperscalestdev))
           
           data.frame(
             d1 = d1,
