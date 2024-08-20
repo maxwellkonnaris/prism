@@ -188,13 +188,12 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
 
           # log transform relative abundances
           rWpara <- log(rWpara)
-
           rWpara = rWpara[c(d1,d2), ]
           
-          taxa1relativesd <- sd(rWpara[d1, ])
-          taxa2relativesd <- sd(rWpara[d2, ])
-          relativecorrelation <- cor(rWpara[d1, ], rWpara[d2, ])
-          relativecovariance <- cov(rWpara[d1, ], rWpara[d2, ])
+          taxa1relativesd <- sd(rWpara[1, ])
+          taxa2relativesd <- sd(rWpara[2, ])
+          relativecorrelation <- cor(rWpara[1, ], rWpara[2, ])
+          relativecovariance <- cov(rWpara[1, ], rWpara[2, ])
           
           # Find the minimum sigma
           res_min <- optim(par = c(0, 0, 0.5), taxa1relativesd = taxa1relativesd, taxa2relativesd = taxa2relativesd, relativecorrelation = relativecorrelation, fn = objective_function, method = "L-BFGS-B", lower = c(lowerrhobound, lowerrhobound, lowerscalestdev), upper = c(upperrhobound, upperrhobound, upperscalestdev))
