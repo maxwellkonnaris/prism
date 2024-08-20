@@ -99,11 +99,6 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
     
     sigma <- taxa1relativesd * taxa2relativesd * relativecorrelation + taxa1relativesd * scalestdev * taxa1scalecorrelation + taxa2relativesd * scalestdev * taxa2scalecorrelation + scalestdev^2
 
-    # Check if the matrix is SPSD
-    if (!checkSPSD(sigma)) {
-      return(1e10)
-    }
-
     return(sigma)
   }
 
@@ -217,6 +212,10 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
           
           # Find the maximum sigma by negating the objective function
           res_max <- optim(par = initialparameters, taxa1relativesd = taxa1relativesd, taxa2relativesd = taxa2relativesd, relativecorrelation = relativecorrelation, fn = objective_function, gr = gradient_function, method = "L-BFGS-B", lower = c(lowerrhobound, lowerrhobound, lowerscalestdev), upper = c(upperrhobound, upperrhobound, upperscalestdev), control = list(maxit = 1000000,factr=1e5, fnscale = -1))
+
+          sigma_min <- matrix(c(variances[1], res_min$value,
+                       res_min$value, variances[2]), 
+                     nrow = 2, ncol = 2)
           
           data.frame(
             d1 = d1,
