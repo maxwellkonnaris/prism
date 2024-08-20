@@ -84,6 +84,12 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
   
   # Initialize a results matrix to store the results for each pair
   results <- matrix(list(), D, D)
+
+  # Function to check if a matrix is SPSD
+  checkSPSD <- function(matrix) {
+    eigenvalues <- eigen(matrix, only.values = TRUE)$values
+    return(all(eigenvalues >= 0))
+  }
   
   # Define the objective function used in the optimization
   objective_function <- function(params, taxa1relativesd, taxa2relativesd, relativecorrelation) {
@@ -92,6 +98,12 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
     scalestdev <- params[3]
     
     sigma <- taxa1relativesd * taxa2relativesd * relativecorrelation + taxa1relativesd * scalestdev * taxa1scalecorrelation + taxa2relativesd * scalestdev * taxa2scalecorrelation + scalestdev^2
+
+    # Check if the matrix is SPSD
+    if (!checkSPSD(sigma)) {
+      return(Inf)  # Penalize non-SPSD matrices by returning Inf
+    }
+
     return(sigma)
   }
 
@@ -202,6 +214,12 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
             maxsigma_correlation_relativetaxa1_scale = res_max$par[1],
             maxsigma_correlation_relativetaxa2_scale = res_max$par[2],
             maxsigma_scale_variance = res_max$par[3],
+            minsigma_convergence = res_min$convergence[1],
+            maxsigma_convergence = res_max$convergence[1],
+            minsigma_message = res_min$message[1],
+            maxsigma_message = res_max$message[1],
+            #minsigma_SPSD = min_SPSD,
+            #maxsigma_SPSD = max_SPSD,
             taxa1relativesd = taxa1relativesd,
             taxa2relativesd = taxa2relativesd,
             relativecorrelation = relativecorrelation,
