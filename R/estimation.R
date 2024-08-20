@@ -91,7 +91,7 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
     return(all(eigenvalues >= 0))
   }
   
-  # Define the objective function used in the optimization
+  # Objective function used to optimize the covariance whether minimum or maximum
   objective_function <- function(params, taxa1relativesd, taxa2relativesd, relativecorrelation) {
     taxa1scalecorrelation <- params[1]
     taxa2scalecorrelation <- params[2]
@@ -99,12 +99,27 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
     
     sigma <- taxa1relativesd * taxa2relativesd * relativecorrelation + taxa1relativesd * scalestdev * taxa1scalecorrelation + taxa2relativesd * scalestdev * taxa2scalecorrelation + scalestdev^2
 
-    # # Check if the matrix is SPSD
+    # Check if the matrix is SPSD
     # if (!checkSPSD(sigma)) {
     #   return(1e10)
     # }
 
     return(sigma)
+  }
+
+  # Gradient function for covariance
+  gradient_function <- function(params, taxa1relativesd, taxa2relativesd) {
+    taxa1scalecorrelation <- params[1]
+    taxa2scalecorrelation <- params[2]
+    scalestdev <- params[3]
+    
+    # Calculate partial derivatives
+    grad_rho1 <- taxa1relativesd * scalestdev
+    grad_rho2 <- taxa2relativesd * scalestdev
+    grad_x <- taxa1relativesd * taxa1scalecorrelation + taxa2relativesd * taxa2scalecorrelation + 2 * scalestdev
+    
+    # Return the gradient as a vector
+    return(c(grad_rho1, grad_rho2, grad_x))
   }
 
   # Register the parallel backend
@@ -198,17 +213,17 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
           relativecovariance <- cov(rWpara[1, ], rWpara[2, ])
           
           # Find the minimum sigma
-          res_min <- optim(par = initialparameters, taxa1relativesd = taxa1relativesd, taxa2relativesd = taxa2relativesd, relativecorrelation = relativecorrelation, fn = objective_function, method = "L-BFGS-B", lower = c(lowerrhobound, lowerrhobound, lowerscalestdev), upper = c(upperrhobound, upperrhobound, upperscalestdev))
+          res_min <- optim(par = initialparameters, taxa1relativesd = taxa1relativesd, taxa2relativesd = taxa2relativesd, relativecorrelation = relativecorrelation, fn = objective_function, gr = function(params) gradient_function(params, taxa1relativesd, taxa2relativesd, relativecorrelation), method = "L-BFGS-B", lower = c(lowerrhobound, lowerrhobound, lowerscalestdev), upper = c(upperrhobound, upperrhobound, upperscalestdev))
           
           # Find the maximum sigma by negating the objective function
-          res_max <- optim(par = initialparameters, taxa1relativesd = taxa1relativesd, taxa2relativesd = taxa2relativesd, relativecorrelation = relativecorrelation, fn = function(params, taxa1relativesd, taxa2relativesd, relativecorrelation) {-objective_function(params, taxa1relativesd, taxa2relativesd, relativecorrelation)}, method = "L-BFGS-B", lower = c(lowerrhobound, lowerrhobound, lowerscalestdev), upper = c(upperrhobound, upperrhobound, upperscalestdev))
+          res_max <- optim(par = initialparameters, taxa1relativesd = taxa1relativesd, taxa2relativesd = taxa2relativesd, relativecorrelation = relativecorrelation, fn = objective_function, gr = function(params) gradient_function(params, taxa1relativesd, taxa2relativesd, relativecorrelation), method = "L-BFGS-B", lower = c(lowerrhobound, lowerrhobound, lowerscalestdev), upper = c(upperrhobound, upperrhobound, upperscalestdev), control = list(fnscale = -1))
           
           data.frame(
             d1 = d1,
             d2 = d2,
             s = s,
             minsigma_absolute_minimum_covariance = res_min$value,
-            maxsigma_absolute_maximum_covariance = -res_max$value,
+            maxsigma_absolute_maximum_covariance = res_max$value,
             minsigma_correlation_relativetaxa1_scale = res_min$par[1],
             minsigma_correlation_relativetaxa2_scale = res_min$par[2],
             minsigma_scale_variance = res_min$par[3],
