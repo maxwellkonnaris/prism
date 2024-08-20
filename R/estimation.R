@@ -108,7 +108,7 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
   }
 
   # Gradient function for covariance
-  gradient_function <- function(params, taxa1relativesd, taxa2relativesd) {
+  gradient_function <- function(params, taxa1relativesd, taxa2relativesd, relativecorrelation) {
     taxa1scalecorrelation <- params[1]
     taxa2scalecorrelation <- params[2]
     scalestdev <- params[3]
