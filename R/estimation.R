@@ -101,7 +101,7 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
 
     # Check if the matrix is SPSD
     if (!checkSPSD(sigma)) {
-      return(Inf)  # Penalize non-SPSD matrices by returning Inf
+      return(1e10)
     }
 
     return(sigma)
