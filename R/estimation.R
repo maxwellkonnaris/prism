@@ -5,7 +5,7 @@
 #' @param Y A matrix of data with observations in columns and variables in rows.
 #' @param alpha A numeric vector of priors for the Dirichlet distribution. Defaults to a vector of zeros.
 #' @param lowerrhobound A numeric value specifying the lower bound for the \code{lowerrhobound} parameter. Defaults to -1.0.
-#' @param upperrhobound A numeric value specifying the upper bound for the \code{upperrhobound} parameter. Defaults to 0.6.
+#' @param upperrhobound A numeric value specifying the upper bound for the \code{upperrhobound} parameter. Defaults to 1.0.
 #' @param S An integer specifying the number of bootstrap samples. Increase to reduce Monte Carlo error. Defaults to 1000.
 #' @param lowerscalestdev A numeric value specifying the lower bound of the variance of the scale. Defaults to 0.49.
 #' @param upperscalestdev A numeric value specifying the upper bound of the variance of the scale. Defaults to 0.51.
@@ -25,7 +25,7 @@
 #' results <- estimate_covariance(Y)
 #' @export
 
-estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobound = 0.6, S = 1000, lowerscalestdev = .49, upperscalestdev = .51) {
+estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobound = 1.0, S = 1000, lowerscalestdev = .49, upperscalestdev = .51) {
 
   # Record the start time for profiling
   start_time <- Sys.time()
