@@ -100,9 +100,9 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
     sigma <- taxa1relativesd * taxa2relativesd * relativecorrelation + taxa1relativesd * scalestdev * taxa1scalecorrelation + taxa2relativesd * scalestdev * taxa2scalecorrelation + scalestdev^2
 
     # Check if the matrix is SPSD
-    # if (!checkSPSD(sigma)) {
-    #   return(1e10)
-    # }
+    if (!checkSPSD(sigma)) {
+      return(1e10)
+    }
 
     return(sigma)
   }
