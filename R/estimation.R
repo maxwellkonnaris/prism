@@ -212,18 +212,6 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
           
           # Find the maximum sigma by negating the objective function
           res_max <- optim(par = initialparameters, taxa1relativesd = taxa1relativesd, taxa2relativesd = taxa2relativesd, relativecorrelation = relativecorrelation, fn = objective_function, gr = gradient_function, method = "L-BFGS-B", lower = c(lowerrhobound, lowerrhobound, lowerscalestdev), upper = c(upperrhobound, upperrhobound, upperscalestdev), control = list(maxit = 1000000,factr=1e5, fnscale = -1))
-
-          sigma_min <- matrix(c(taxa1relativesd^2, res_min$value,
-                       res_min$value, taxa2relativesd^2), 
-                     nrow = 2, ncol = 2)
-
-          min_SPSD = checkSPSD(sigma_min)
-        
-          sigma_max <- matrix(c(taxa1relativesd^2, res_max$value,
-                       res_max$value, taxa2relativesd^2), 
-                     nrow = 2, ncol = 2)
-
-          max_SPSD = checkSPSD(sigma_max)
         
           data.frame(
             d1 = d1,
