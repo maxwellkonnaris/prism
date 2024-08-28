@@ -151,22 +151,6 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
     return(c(grad_taxa1scalecorrelation, grad_taxa2scalecorrelation, grad_scalestdev))
   }
 
-  objective_wrapper <- function(params) {
-    objective_function(params, taxa1relativesd, taxa2relativesd, relativecorrelation)
-  }
-  
-  gradient_wrapper <- function(params) {
-    gradient_function(params, taxa1relativesd, taxa2relativesd, relativecorrelation)
-  }
-  
-  constraint_wrapper <- function(params) {
-    constraint_function(params, taxa1relativesd, taxa2relativesd, relativecovariance)
-  }
-
-  constraint_gradient_wrapper <- function(params) {
-    constraint_gradient_function(params, taxa1relativesd, taxa2relativesd, relativecovariance)
-  }
-
   ## END OPTIMIZATION FUNCTIONS
 
   # Register the parallel backend
@@ -259,6 +243,22 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
           relativecorrelation <- cor(rWpara[1, ], rWpara[2, ])
           relativecovariance <- cov(rWpara[1, ], rWpara[2, ])
 
+          objective_wrapper <- function(params) {
+            objective_function(params, taxa1relativesd, taxa2relativesd, relativecorrelation)
+          }
+          
+          gradient_wrapper <- function(params) {
+            gradient_function(params, taxa1relativesd, taxa2relativesd, relativecorrelation)
+          }
+          
+          constraint_wrapper <- function(params) {
+            constraint_function(params, taxa1relativesd, taxa2relativesd, relativecovariance)
+          }
+        
+          constraint_gradient_wrapper <- function(params) {
+            constraint_gradient_function(params, taxa1relativesd, taxa2relativesd, relativecovariance)
+          }
+        
           # Find the minimum sigma using nloptr
           res_min <- nloptr(
             x0 = initialparameters,
