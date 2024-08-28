@@ -86,6 +86,8 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
   # Initialize a results matrix to store the results for each pair
   results <- matrix(list(), D, D)
 
+  ## OPTIMIZATION FUNCTIONS
+
   # Function to check if a matrix is SPSD
   checkSPSD <- function(matrix) {
     eigenvalues <- eigen(matrix, only.values = TRUE)$values
@@ -121,21 +123,51 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
   # Symmetric Positive Semi-Definite case constraint
   constraint_function <- function(params, taxa1relativesd, taxa2relativesd, relativecovariance) {
 
-  taxa1scalecorrelation <- params[1]
-  taxa2scalecorrelation <- params[2]
-  scalestdev <- params[3]  
-  
-  term1 <- taxa1relativesd*taxa1scalecorrelation + taxa2relativesd*taxa2scalecorrelation
-  term2 <- sqrt(2) * sqrt(((taxa1relativesd^2 * taxa1scalecorrelation^2) + (taxa2relativesd^2 * taxa2scalecorrelation^2)))
-                          
-  term3 <- (1 / (2 * scalestdev)) * ((taxa1relativesd^2 + taxa2relativesd^2) 
-          - sqrt((taxa1relativesd^2 - taxa2relativesd^2)^2 + 4 * relativecovariance^2) 
-          + 4 * scalestdev^2)
-  
-  g_7 <- term1 - term2 + term3
-  
-  return(g_7)
+    taxa1scalecorrelation <- params[1]
+    taxa2scalecorrelation <- params[2]
+    scalestdev <- params[3]  
+    
+    term1 <- taxa1relativesd*taxa1scalecorrelation + taxa2relativesd*taxa2scalecorrelation
+    term2 <- sqrt(2) * sqrt(((taxa1relativesd^2 * taxa1scalecorrelation^2) + (taxa2relativesd^2 * taxa2scalecorrelation^2)))
+                            
+    term3 <- (1 / (2 * scalestdev)) * ((taxa1relativesd^2 + taxa2relativesd^2) 
+            - sqrt((taxa1relativesd^2 - taxa2relativesd^2)^2 + 4 * relativecovariance^2) 
+            + 4 * scalestdev^2)
+    
+    g_7 <- term1 - term2 + term3
+    
+    return(g_7)
   }
+
+  constraint_gradient_function <- function(params, taxa1relativesd, taxa2relativesd, relativecovariance) {
+
+    taxa1scalecorrelation <- params[1]
+    taxa2scalecorrelation <- params[2]
+    scalestdev <- params[3]
+      
+    grad_taxa1scalecorrelation <- taxa1relativesd - sqrt(2) * (taxa1relativesd^2 * taxa1scalecorrelation) / sqrt(taxa1relativesd^2 * taxa1scalecorrelation^2 + taxa2relativesd^2 * taxa2scalecorrelation^2)  # Partial derivative of g_7 with respect to taxa1scalecorrelation
+    grad_taxa2scalecorrelation <- taxa2relativesd - sqrt(2) * (taxa2relativesd^2 * taxa2scalecorrelation) / sqrt(taxa2relativesd^2 * taxa1scalecorrelation^2 + taxa2relativesd^2 * taxa2scalecorrelation^2) # Partial derivative of g_7 with respect to taxa2scalecorrelation
+    grad_scalestdev <- -1 / (2 * scalestdev^2) * ((taxa1relativesd^2 + taxa2relativesd^2) - sqrt((taxa1relativesd^2 - taxa2relativesd^2)^2 + 4 * relativecovariance^2)) + 2 * scalestdev  # Partial derivative of g_7 with respect to scalestdev
+    return(c(grad_taxa1scalecorrelation, grad_taxa2scalecorrelation, grad_scalestdev))
+  }
+
+  objective_wrapper <- function(params) {
+    objective_function(params, taxa1relativesd, taxa2relativesd, relativecorrelation)
+  }
+  
+  gradient_wrapper <- function(params) {
+    gradient_function(params, taxa1relativesd, taxa2relativesd, relativecorrelation)
+  }
+  
+  constraint_wrapper <- function(params) {
+    constraint_function(params, taxa1relativesd, taxa2relativesd, relativecovariance)
+  }
+
+  constraint_gradient_wrapper <- function(params) {
+    constraint_gradient_function(params, taxa1relativesd, taxa2relativesd, relativecovariance)
+  }
+
+  ## END OPTIMIZATION FUNCTIONS
 
   # Register the parallel backend
   num_cores <- parallel::detectCores() - 1
@@ -227,24 +259,13 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
           relativecorrelation <- cor(rWpara[1, ], rWpara[2, ])
           relativecovariance <- cov(rWpara[1, ], rWpara[2, ])
 
-          objective_wrapper <- function(params) {
-            objective_function(params, taxa1relativesd, taxa2relativesd, relativecorrelation)
-          }
-          
-          gradient_wrapper <- function(params) {
-            gradient_function(params, taxa1relativesd, taxa2relativesd, relativecorrelation)
-          }
-          
-          constraint_wrapper <- function(params) {
-            constraint_function(params, taxa1relativesd, taxa2relativesd, relativecovariance)
-          }
-
           # Find the minimum sigma using nloptr
           res_min <- nloptr(
             x0 = initialparameters,
             eval_f = objective_wrapper,
             eval_grad_f = gradient_wrapper,
             eval_g_ineq = constraint_wrapper,
+            eval_jac_g_ineq = constraint_gradient_wrapper,
             lb = c(lowerrhobound, lowerrhobound, lowerscalestdev),
             ub = c(upperrhobound, upperrhobound, upperscalestdev),
             opts = list("algorithm" = "NLOPT_LD_MMA", "maxeval" = 1000000, "ftol_rel" = 1e-5)
@@ -256,6 +277,7 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
             eval_f = function(params) -objective_wrapper(params),
             eval_grad_f = function(params) -gradient_wrapper(params),
             eval_g_ineq = constraint_wrapper,
+            eval_jac_g_ineq = constraint_gradient_wrapper,
             lb = c(lowerrhobound, lowerrhobound, lowerscalestdev),
             ub = c(upperrhobound, upperrhobound, upperscalestdev),
             opts = list("algorithm" = "NLOPT_LD_MMA", "maxeval" = 1000000, "ftol_rel" = 1e-5)
