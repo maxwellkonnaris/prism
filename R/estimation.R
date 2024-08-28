@@ -289,37 +289,6 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
             #variance_proportionality_taxa2 = variance_proportionality_d2
           )
           
-          # # Find the minimum sigma
-          # res_min <- optim(par = initialparameters, taxa1relativesd = taxa1relativesd, taxa2relativesd = taxa2relativesd, relativecorrelation = relativecorrelation, relativecovariance = relativecovariance, fn = objective_function, gr = gradient_function, method = "L-BFGS-B", lower = c(lowerrhobound, lowerrhobound, lowerscalestdev), upper = c(upperrhobound, upperrhobound, upperscalestdev), control = list(maxit = 1000000, factr=1e5))
-          
-          # # Find the maximum sigma by negating the objective function
-          # res_max <- optim(par = initialparameters, taxa1relativesd = taxa1relativesd, taxa2relativesd = taxa2relativesd, relativecorrelation = relativecorrelation, relativecovariance = relativecovariance, fn = objective_function, gr = gradient_function, method = "L-BFGS-B", lower = c(lowerrhobound, lowerrhobound, lowerscalestdev), upper = c(upperrhobound, upperrhobound, upperscalestdev), control = list(maxit = 1000000,factr=1e5, fnscale = -1))
-
-          # data.frame(
-          #   d1 = d1,
-          #   d2 = d2,
-          #   s = s,
-          #   minsigma_absolute_minimum_covariance = res_min$value,
-          #   maxsigma_absolute_maximum_covariance = res_max$value,
-          #   minsigma_correlation_relativetaxa1_scale = res_min$par[1],
-          #   minsigma_correlation_relativetaxa2_scale = res_min$par[2],
-          #   minsigma_scale_variance = res_min$par[3],
-          #   maxsigma_correlation_relativetaxa1_scale = res_max$par[1],
-          #   maxsigma_correlation_relativetaxa2_scale = res_max$par[2],
-          #   maxsigma_scale_variance = res_max$par[3],
-          #   minsigma_convergence = res_min$convergence[1],
-          #   maxsigma_convergence = res_max$convergence[1],
-          #   minsigma_message = res_min$message[1],
-          #   maxsigma_message = res_max$message[1],
-          #   minsigma_SPSD = min_SPSD,
-          #   maxsigma_SPSD = max_SPSD,
-          #   taxa1relativesd = taxa1relativesd,
-          #   taxa2relativesd = taxa2relativesd,
-          #   relativecorrelation = relativecorrelation,
-          #   relativecovariance = relativecovariance#,
-          #   #variance_proportionality_taxa1 = variance_proportionality_d1,
-          #   #variance_proportionality_taxa2 = variance_proportionality_d2
-          # )
       }
       
       # Gather the min and max optimized sigmas
