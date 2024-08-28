@@ -140,16 +140,23 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
   }
 
   constraint_gradient_function <- function(params, taxa1relativesd, taxa2relativesd, relativecovariance) {
-
     taxa1scalecorrelation <- params[1]
     taxa2scalecorrelation <- params[2]
     scalestdev <- params[3]
-      
-    grad_taxa1scalecorrelation <- taxa1relativesd - sqrt(2) * (taxa1relativesd^2 * taxa1scalecorrelation) / sqrt(taxa1relativesd^2 * taxa1scalecorrelation^2 + taxa2relativesd^2 * taxa2scalecorrelation^2)  # Partial derivative of g_7 with respect to taxa1scalecorrelation
-    grad_taxa2scalecorrelation <- taxa2relativesd - sqrt(2) * (taxa2relativesd^2 * taxa2scalecorrelation) / sqrt(taxa2relativesd^2 * taxa1scalecorrelation^2 + taxa2relativesd^2 * taxa2scalecorrelation^2) # Partial derivative of g_7 with respect to taxa2scalecorrelation
-    grad_scalestdev <- -1 / (2 * scalestdev^2) * ((taxa1relativesd^2 + taxa2relativesd^2) - sqrt((taxa1relativesd^2 - taxa2relativesd^2)^2 + 4 * relativecovariance^2)) + 2 * scalestdev  # Partial derivative of g_7 with respect to scalestdev
+    
+    # Add a small epsilon to avoid division by zero
+    epsilon <- 1e-8
+    
+    denominator1 <- sqrt(taxa1relativesd^2 * taxa1scalecorrelation^2 + taxa2relativesd^2 * taxa2scalecorrelation^2 + epsilon)
+    denominator2 <- sqrt(taxa2relativesd^2 * taxa1scalecorrelation^2 + taxa2relativesd^2 * taxa2scalecorrelation^2 + epsilon)
+    
+    grad_taxa1scalecorrelation <- taxa1relativesd - sqrt(2) * (taxa1relativesd^2 * taxa1scalecorrelation) / denominator1
+    grad_taxa2scalecorrelation <- taxa2relativesd - sqrt(2) * (taxa2relativesd^2 * taxa2scalecorrelation) / denominator2
+    grad_scalestdev <- -1 / (2 * (scalestdev + epsilon)^2) * ((taxa1relativesd^2 + taxa2relativesd^2) - sqrt((taxa1relativesd^2 - taxa2relativesd^2)^2 + 4 * relativecovariance^2)) + 2 * scalestdev
+    
     return(c(grad_taxa1scalecorrelation, grad_taxa2scalecorrelation, grad_scalestdev))
   }
+
 
   ## END OPTIMIZATION FUNCTIONS
 
