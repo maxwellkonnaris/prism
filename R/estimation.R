@@ -190,7 +190,7 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
   # Run the analysis
   cat("Running sigma estimation")
 
-  initialparameters = c(((upperrhobound-lowerrhobound)/2), ((upperrhobound-lowerrhobound)/2), ((upperscalestdev - lowerscalestdev)/2))
+  initialparameters = c(((upperrhobound+lowerrhobound)/2), ((upperrhobound+lowerrhobound)/2), ((upperscalestdev+lowerscalestdev)/2))
                                            
   results_list <- foreach(pair = pair_indices, .packages = c('stats', 'MCMCpack'), .options.snow = opts) %dopar% {
       d1 <- pair[1]
