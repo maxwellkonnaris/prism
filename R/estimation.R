@@ -129,7 +129,7 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
   term2 <- sqrt(2) * sqrt(((taxa1relativesd^2 * taxa1scalecorrelation^2) + (taxa2relativesd^2 * taxa2scalecorrelation^2)))
                           
   term3 <- (1 / (2 * scalestdev)) * ((taxa1relativesd^2 + taxa2relativesd^2) 
-          - sqrt((taxa1relativesd^2 - taxa2relativesd^2)^2 + 4 * relativecovariation^2) 
+          - sqrt((taxa1relativesd^2 - taxa2relativesd^2)^2 + 4 * relativecovariance^2) 
           + 4 * scalestdev^2)
   
   g_7 <- term1 - term2 + term3
