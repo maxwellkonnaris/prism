@@ -281,8 +281,6 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
             opts = list("algorithm" = "NLOPT_LD_MMA", "maxeval" = 1000000, "ftol_rel" = 1e-5)
           )
 
-          browser()
-
           data.frame(
             d1 = d1,
             d2 = d2,
