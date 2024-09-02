@@ -258,7 +258,7 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
           
           taxa1relativesd <- sd(rWpara[1, ])
           taxa2relativesd <- sd(rWpara[2, ])
-          relativecorrelation <- corr(rWpara[1, ], rWpara[2, ])
+          relativecorrelation <- cor(rWpara[1, ], rWpara[2, ])
           relativecovariance <- cov(rWpara[1, ], rWpara[2, ])
 
           res_min <- NULL
