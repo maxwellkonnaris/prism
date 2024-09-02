@@ -252,17 +252,23 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
               eval_g_ineq = constraint_function,
               lb = c(lowerrhobound, lowerrhobound, lowerscalestdev),
               ub = c(upperrhobound, upperrhobound, upperscalestdev),
-              opts = list("algorithm"="NLOPT_LN_COBYLA", "maxeval" = 1000000, "xtol_rel" = 1e-5)
+              opts = list("algorithm"="NLOPT_LN_COBYLA", "maxeval" = 1000000, "xtol_rel" = 1e-5),
+              taxa1relativesd = taxa1relativesd, 
+              taxa2relativesd = taxa2relativesd, 
+              relativecovariance = relativecovariance
             )
 
             # Find the maximum sigma by negating the objective function using COBYLA
             res_max <- nloptr(
               x0 = initialparameters,
-              eval_f = function(params) -objective_function(params, taxa1relativesd, taxa2relativesd, relativecovariance),
+              eval_f = function(params) -objective_function(params),
               eval_g_ineq = constraint_function,
               lb = c(lowerrhobound, lowerrhobound, lowerscalestdev),
               ub = c(upperrhobound, upperrhobound, upperscalestdev),
-              opts = list("algorithm"="NLOPT_LN_COBYLA", "maxeval" = 1000000, "xtol_rel" = 1e-5)
+              opts = list("algorithm"="NLOPT_LN_COBYLA", "maxeval" = 1000000, "xtol_rel" = 1e-5),
+              taxa1relativesd = taxa1relativesd, 
+              taxa2relativesd = taxa2relativesd, 
+              relativecovariance = relativecovariance
             )
         
           } else if (algorithm == "MMA") {
@@ -276,19 +282,25 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
               eval_jac_g_ineq = constraint_gradient_function,
               lb = c(lowerrhobound, lowerrhobound, lowerscalestdev),
               ub = c(upperrhobound, upperrhobound, upperscalestdev),
-              opts = list("algorithm"="NLOPT_LD_MMA", "maxeval" = 1000000, "ftol_rel" = 1e-5)
+              opts = list("algorithm"="NLOPT_LD_MMA", "maxeval" = 1000000, "ftol_rel" = 1e-5),
+              taxa1relativesd = taxa1relativesd, 
+              taxa2relativesd = taxa2relativesd, 
+              relativecovariance = relativecovariance
             )
             
             # Find the maximum sigma by negating the objective function
             res_max <- nloptr(
               x0 = initialparameters,
-              eval_f = function(params) -objective_function(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-              eval_grad_f = function(params) -gradient_function(params, taxa1relativesd, taxa2relativesd, relativecovariance),
+              eval_f = function(params) -objective_function(params),
+              eval_grad_f = function(params) -gradient_function(params),
               eval_g_ineq = constraint_function,
               eval_jac_g_ineq = constraint_gradient_function,
               lb = c(lowerrhobound, lowerrhobound, lowerscalestdev),
               ub = c(upperrhobound, upperrhobound, upperscalestdev),
-              opts = list("algorithm"="NLOPT_LD_MMA", "maxeval" = 1000000, "ftol_rel" = 1e-5)
+              opts = list("algorithm"="NLOPT_LD_MMA", "maxeval" = 1000000, "ftol_rel" = 1e-5),
+              taxa1relativesd = taxa1relativesd, 
+              taxa2relativesd = taxa2relativesd, 
+              relativecovariance = relativecovariance
             )
           }
 
