@@ -215,7 +215,7 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
 
   initialparameters = c(((upperrhobound+lowerrhobound)/2), ((upperrhobound+lowerrhobound)/2), ((upperscalestdev+lowerscalestdev)/2))
                                            
-  results_list <- foreach(pair = pair_indices, .packages = c('stats', 'MCMCpack'), .options.snow = opts) %dopar% {
+  results_list <- tryCatch({ foreach(pair = pair_indices, .packages = c('stats', 'MCMCpack'), .options.snow = opts) %dopar% {
       d1 <- pair[1]
       d2 <- pair[2]
       comparison <- paste(rownames(Y)[d1], rownames(Y)[d2], sep = ":")
@@ -224,7 +224,7 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
       maxsigma_values <- numeric(S)
       
       # Use parallel foreach for the inner loop
-      results_inner <- foreach(s = 1:S, .combine = 'rbind', .packages = c('stats', 'MCMCpack'), .options.snow = opts) %dopar% {
+      results_inner <- tryCatch({ foreach(s = 1:S, .combine = 'rbind', .packages = c('stats', 'MCMCpack'), .options.snow = opts) %dopar% {
           Yboot <- Y[, bootstrap_samples[[s]]]
           
           rWpara <- matrix(NA, D, N)
@@ -239,73 +239,75 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
           taxa1relativesd <- sd(rWpara[1, ])
           taxa2relativesd <- sd(rWpara[2, ])
           relativecovariance <- cov(rWpara[1, ], rWpara[2, ])
-          tryCatch({
-            if (algorithm == "COBYLA") {
-  
-              # Find the minimum sigma using nloptr with COBYLA
-              res_min <- nloptr(
-                x0 = initialparameters,
-                eval_f = objective_function,
-                eval_g_ineq = constraint_function,
-                lb = c(lowerrhobound, lowerrhobound, lowerscalestdev),
-                ub = c(upperrhobound, upperrhobound, upperscalestdev),
-                opts = list("algorithm"="NLOPT_LN_COBYLA", "maxeval" = 1000000, "xtol_rel" = 1e-5),
-                taxa1relativesd = taxa1relativesd, 
-                taxa2relativesd = taxa2relativesd, 
-                relativecovariance = relativecovariance
-              )
-  
-              # Find the maximum sigma by negating the objective function using COBYLA
-              res_max <- nloptr(
-                x0 = initialparameters,
-                eval_f = function(params) -objective_function(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-                eval_g_ineq = constraint_function,
-                lb = c(lowerrhobound, lowerrhobound, lowerscalestdev),
-                ub = c(upperrhobound, upperrhobound, upperscalestdev),
-                opts = list("algorithm"="NLOPT_LN_COBYLA", "maxeval" = 1000000, "xtol_rel" = 1e-5),
-                taxa1relativesd = taxa1relativesd, 
-                taxa2relativesd = taxa2relativesd, 
-                relativecovariance = relativecovariance
-              )
-          
-            } else if (algorithm == "MMA") {
-  
-              # Find the minimum sigma using nloptr
-              res_min <- nloptr(
-                x0 = initialparameters,
-                eval_f = objective_function,
-                eval_grad_f = gradient_function,
-                eval_g_ineq = constraint_function,
-                eval_jac_g_ineq = constraint_gradient_function,
-                lb = c(lowerrhobound, lowerrhobound, lowerscalestdev),
-                ub = c(upperrhobound, upperrhobound, upperscalestdev),
-                opts = list("algorithm"="NLOPT_LD_MMA", "maxeval" = 1000000, "ftol_rel" = 1e-5),
-                taxa1relativesd = taxa1relativesd, 
-                taxa2relativesd = taxa2relativesd, 
-                relativecovariance = relativecovariance
-              )
-              
-              # Find the maximum sigma by negating the objective function
-              res_max <- nloptr(
-                x0 = initialparameters,
-                eval_f = function(params) -objective_function(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-                eval_grad_f = function(params) -gradient_function(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-                eval_g_ineq = constraint_function,
-                eval_jac_g_ineq = constraint_gradient_function,
-                lb = c(lowerrhobound, lowerrhobound, lowerscalestdev),
-                ub = c(upperrhobound, upperrhobound, upperscalestdev),
-                opts = list("algorithm"="NLOPT_LD_MMA", "maxeval" = 1000000, "ftol_rel" = 1e-5),
-                taxa1relativesd = taxa1relativesd, 
-                taxa2relativesd = taxa2relativesd, 
-                relativecovariance = relativecovariance
-              )
-            }
-          }, error = function(e) {
-            # Stop the execution and show the error message
-            stop("Error in optimization: ", e$message)
-          })
 
+          res_min <- NULL
+          res_max <- NULL
         
+          if (algorithm == "COBYLA") {
+
+            # Find the minimum sigma using nloptr with COBYLA
+            res_min <- nloptr(
+              x0 = initialparameters,
+              eval_f = objective_function,
+              eval_g_ineq = constraint_function,
+              lb = c(lowerrhobound, lowerrhobound, lowerscalestdev),
+              ub = c(upperrhobound, upperrhobound, upperscalestdev),
+              opts = list("algorithm"="NLOPT_LN_COBYLA", "maxeval" = 1000000, "xtol_rel" = 1e-5),
+              taxa1relativesd = taxa1relativesd, 
+              taxa2relativesd = taxa2relativesd, 
+              relativecovariance = relativecovariance
+            )
+
+            # Find the maximum sigma by negating the objective function using COBYLA
+            res_max <- nloptr(
+              x0 = initialparameters,
+              eval_f = function(params) -objective_function(params, taxa1relativesd, taxa2relativesd, relativecovariance),
+              eval_g_ineq = constraint_function,
+              lb = c(lowerrhobound, lowerrhobound, lowerscalestdev),
+              ub = c(upperrhobound, upperrhobound, upperscalestdev),
+              opts = list("algorithm"="NLOPT_LN_COBYLA", "maxeval" = 1000000, "xtol_rel" = 1e-5),
+              taxa1relativesd = taxa1relativesd, 
+              taxa2relativesd = taxa2relativesd, 
+              relativecovariance = relativecovariance
+            )
+        
+          } else if (algorithm == "MMA") {
+
+            # Find the minimum sigma using nloptr
+            res_min <- nloptr(
+              x0 = initialparameters,
+              eval_f = objective_function,
+              eval_grad_f = gradient_function,
+              eval_g_ineq = constraint_function,
+              eval_jac_g_ineq = constraint_gradient_function,
+              lb = c(lowerrhobound, lowerrhobound, lowerscalestdev),
+              ub = c(upperrhobound, upperrhobound, upperscalestdev),
+              opts = list("algorithm"="NLOPT_LD_MMA", "maxeval" = 1000000, "ftol_rel" = 1e-5),
+              taxa1relativesd = taxa1relativesd, 
+              taxa2relativesd = taxa2relativesd, 
+              relativecovariance = relativecovariance
+            )
+            
+            # Find the maximum sigma by negating the objective function
+            res_max <- nloptr(
+              x0 = initialparameters,
+              eval_f = function(params) -objective_function(params, taxa1relativesd, taxa2relativesd, relativecovariance),
+              eval_grad_f = function(params) -gradient_function(params, taxa1relativesd, taxa2relativesd, relativecovariance),
+              eval_g_ineq = constraint_function,
+              eval_jac_g_ineq = constraint_gradient_function,
+              lb = c(lowerrhobound, lowerrhobound, lowerscalestdev),
+              ub = c(upperrhobound, upperrhobound, upperscalestdev),
+              opts = list("algorithm"="NLOPT_LD_MMA", "maxeval" = 1000000, "ftol_rel" = 1e-5),
+              taxa1relativesd = taxa1relativesd, 
+              taxa2relativesd = taxa2relativesd, 
+              relativecovariance = relativecovariance
+            )
+          }
+
+          if (is.null(res_min) || is.null(res_max)) {
+          stop("Optimization failed for task.")
+          }
+
           data.frame(
             d1 = d1,
             d2 = d2,
@@ -330,9 +332,12 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
             relativecovariance = relativecovariance#,
             #variance_proportionality_taxa1 = variance_proportionality_d1,
             #variance_proportionality_taxa2 = variance_proportionality_d2
-          )
-          
-      }
+          )    
+        }
+      }, error = function(e) {
+            # Stop the execution and show the error message
+            stop("Error in optimization: ", e$message)
+      })
       
       # Gather the min and max optimized sigmas
       minsigma_values <- results_inner$minsigma_absolute_minimum_covariance
@@ -389,6 +394,11 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
         )
       )
   }
+  }, error = function(e) {
+        # Handle the error and stop all parallel tasks
+        stopCluster(cl)
+        stop("Error in parallel computation: ", e$message)
+  })
   
   # Combine the results into a data frame, transpose it, remove row names
   final_results <- do.call(rbind, lapply(results_list, function(x) x$results))
