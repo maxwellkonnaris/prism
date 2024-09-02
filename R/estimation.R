@@ -258,7 +258,7 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
             # Find the maximum sigma by negating the objective function using COBYLA
             res_max <- nloptr(
               x0 = initialparameters,
-              eval_f = -objective_function,
+              eval_f = function(params) -objective_function(params, taxa1relativesd, taxa2relativesd, relativecovariance),
               eval_g_ineq = constraint_function,
               lb = c(lowerrhobound, lowerrhobound, lowerscalestdev),
               ub = c(upperrhobound, upperrhobound, upperscalestdev),
@@ -288,8 +288,8 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
             # Find the maximum sigma by negating the objective function
             res_max <- nloptr(
               x0 = initialparameters,
-              eval_f = -objective_function,
-              eval_grad_f = -gradient_function,
+              eval_f = function(params) -objective_function(params, taxa1relativesd, taxa2relativesd, relativecovariance),
+              eval_grad_f = function(params) -gradient_function(params, taxa1relativesd, taxa2relativesd, relativecovariance),
               eval_g_ineq = constraint_function,
               eval_jac_g_ineq = constraint_gradient_function,
               lb = c(lowerrhobound, lowerrhobound, lowerscalestdev),
