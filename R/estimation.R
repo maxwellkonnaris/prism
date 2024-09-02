@@ -241,125 +241,93 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
           relativecorrelation <- cor(rWpara[1, ], rWpara[2, ])
           relativecovariance <- cov(rWpara[1, ], rWpara[2, ])
 
-          objective_wrapper <- function(params) {
-            objective_function(params, taxa1relativesd, taxa2relativesd, relativecorrelation)
-          }
-          
-          gradient_wrapper <- function(params) {
-            gradient_function(params, taxa1relativesd, taxa2relativesd, relativecorrelation)
-          }
-          
-          constraint_wrapper <- function(params) {
-            constraint_function(params, taxa1relativesd, taxa2relativesd, relativecovariance)
-          }
-        
-          constraint_gradient_wrapper <- function(params) {
-            constraint_gradient_function(params, taxa1relativesd, taxa2relativesd, relativecovariance)
-          }
-
           if (algorithm == "COBYLA") {
 
             # Find the minimum sigma using nloptr with COBYLA
-            res_min <- nloptr::cobyla(
+            res_min <- nloptr(
               x0 = initialparameters,
-              fn = objective_wrapper,
-              hin = constraint_wrapper,
-              nl.info = FALSE,
-              lower = c(lowerrhobound, lowerrhobound, lowerscalestdev),
-              upper = c(upperrhobound, upperrhobound, upperscalestdev),
-              control = list("maxeval" = 1000000, "xtol_rel" = 1e-5)
+              eval_f = objective_function,
+              eval_g_ineq = constraint_function,
+              lb = c(lowerrhobound, lowerrhobound, lowerscalestdev),
+              ub = c(upperrhobound, upperrhobound, upperscalestdev),
+              opts = list("algorithm"="NLOPT_LN_COBYLA", "maxeval" = 1000000, "xtol_rel" = 1e-5),
+              taxa1relativesd = taxa1relativesd, 
+              taxa2relativesd = taxa2relativesd, 
+              relativecorrelation = relativecorrelation
             )
 
             # Find the maximum sigma by negating the objective function using COBYLA
-            res_max <- nloptr::cobyla(
+            res_max <- nloptr(
               x0 = initialparameters,
-              fn = function(params) -objective_wrapper(params),
-              hin = constraint_wrapper,
-              nl.info = FALSE,
-              lower = c(lowerrhobound, lowerrhobound, lowerscalestdev),
-              upper = c(upperrhobound, upperrhobound, upperscalestdev),
-              control = list("algorithm" = "NLOPT_LN_COBYLA", "maxeval" = 1000000, "xtol_rel" = 1e-5)
+              eval_f = -objective_function,
+              eval_g_ineq = constraint_function,
+              lb = c(lowerrhobound, lowerrhobound, lowerscalestdev),
+              ub = c(upperrhobound, upperrhobound, upperscalestdev),
+              opts = list("algorithm"="NLOPT_LN_COBYLA", "maxeval" = 1000000, "xtol_rel" = 1e-5),
+              taxa1relativesd = taxa1relativesd, 
+              taxa2relativesd = taxa2relativesd, 
+              relativecorrelation = relativecorrelation
             )
         
-            data.frame(
-              d1 = d1,
-              d2 = d2,
-              s = s,
-              minsigma_absolute_minimum_covariance = res_min$value,
-              minsigma_correlation_relativetaxa1_scale = res_min$par[1],
-              minsigma_correlation_relativetaxa2_scale = res_min$par[2],
-              minsigma_scale_variance = res_min$par[3],
-              minsigma_convergence = res_min$convergence,
-              minsigma_message = res_min$message,
-              minsigma_iterations = res_min$iter,
-              maxsigma_absolute_maximum_covariance = res_max$value,
-              maxsigma_correlation_relativetaxa1_scale = res_max$par[1],
-              maxsigma_correlation_relativetaxa2_scale = res_max$par[2],
-              maxsigma_scale_variance = res_max$par[3],
-              maxsigma_convergence = res_max$convergence,
-              maxsigma_message = res_max$message,
-              maxsigma_iterations = res_max$iter,
-              taxa1relativesd = taxa1relativesd,
-              taxa2relativesd = taxa2relativesd,
-              relativecorrelation = relativecorrelation,
-              relativecovariance = relativecovariance#,
-              #variance_proportionality_taxa1 = variance_proportionality_d1,
-              #variance_proportionality_taxa2 = variance_proportionality_d2
-            )
           } else if (algorithm == "MMA") {
 
             # Find the minimum sigma using nloptr
-            res_min <- nloptr::mma(
+            res_min <- nloptr(
               x0 = initialparameters,
-              eval_f = objective_wrapper,
-              eval_grad_f = gradient_wrapper,
-              eval_g_ineq = constraint_wrapper,
-              eval_jac_g_ineq = constraint_gradient_wrapper,
+              eval_f = objective_function,
+              eval_grad_f = gradient_function,
+              eval_g_ineq = constraint_function,
+              eval_jac_g_ineq = constraint_gradient_function,
               lb = c(lowerrhobound, lowerrhobound, lowerscalestdev),
               ub = c(upperrhobound, upperrhobound, upperscalestdev),
-              opts = list("maxeval" = 1000000, "ftol_rel" = 1e-5)
+              opts = list("algorithm"="NLOPT_LD_MMA", "maxeval" = 1000000, "ftol_rel" = 1e-5),
+              taxa1relativesd = taxa1relativesd, 
+              taxa2relativesd = taxa2relativesd, 
+              relativecorrelation = relativecorrelation
             )
             
             # Find the maximum sigma by negating the objective function
-            res_max <- nloptr::mma(
+            res_max <- nloptr(
               x0 = initialparameters,
-              eval_f = function(params) -objective_wrapper(params),
-              eval_grad_f = function(params) -gradient_wrapper(params),
-              eval_g_ineq = constraint_wrapper,
-              eval_jac_g_ineq = constraint_gradient_wrapper,
+              eval_f = -objective_function,
+              eval_grad_f = -gradient_function,
+              eval_g_ineq = constraint_function,
+              eval_jac_g_ineq = constraint_gradient_function,
               lb = c(lowerrhobound, lowerrhobound, lowerscalestdev),
               ub = c(upperrhobound, upperrhobound, upperscalestdev),
-              opts = list( "maxeval" = 1000000, "ftol_rel" = 1e-5)
-            )
-  
-            data.frame(
-              d1 = d1,
-              d2 = d2,
-              s = s,
-              minsigma_absolute_minimum_covariance = res_min$objective,
-              minsigma_correlation_relativetaxa1_scale = res_min$solution[1],
-              minsigma_correlation_relativetaxa2_scale = res_min$solution[2],
-              minsigma_scale_variance = res_min$solution[3],
-              minsigma_convergence = res_min$converged,
-              minsigma_message = res_min$message,
-              minsigma_status = res_min$status,
-              minsigma_iterations = res_min$iterations,
-              maxsigma_absolute_maximum_covariance = res_max$objective,
-              maxsigma_correlation_relativetaxa1_scale = res_max$solution[1],
-              maxsigma_correlation_relativetaxa2_scale = res_max$solution[2],
-              maxsigma_scale_variance = res_max$solution[3],
-              maxsigma_convergence = res_max$converged,
-              maxsigma_message = res_max$message,
-              maxsigma_status = res_max$status,
-              maxsigma_iterations = res_max$iterations,
-              taxa1relativesd = taxa1relativesd,
-              taxa2relativesd = taxa2relativesd,
-              relativecorrelation = relativecorrelation,
-              relativecovariance = relativecovariance#,
-              #variance_proportionality_taxa1 = variance_proportionality_d1,
-              #variance_proportionality_taxa2 = variance_proportionality_d2
+              opts = list("algorithm"="NLOPT_LD_MMA", "maxeval" = 1000000, "ftol_rel" = 1e-5),
+              taxa1relativesd = taxa1relativesd, 
+              taxa2relativesd = taxa2relativesd, 
+              relativecorrelation = relativecorrelation
             )
           }
+        
+          data.frame(
+            d1 = d1,
+            d2 = d2,
+            s = s,
+            minsigma_absolute_minimum_covariance = res_min$objective,
+            minsigma_correlation_relativetaxa1_scale = res_min$solution[1],
+            minsigma_correlation_relativetaxa2_scale = res_min$solution[2],
+            minsigma_scale_variance = res_min$solution[3],
+            minsigma_message = res_min$message,
+            minsigma_status = res_min$status,
+            minsigma_iterations = res_min$iterations,
+            maxsigma_absolute_maximum_covariance = res_max$objective,
+            maxsigma_correlation_relativetaxa1_scale = res_max$solution[1],
+            maxsigma_correlation_relativetaxa2_scale = res_max$solution[2],
+            maxsigma_scale_variance = res_max$solution[3],
+            maxsigma_message = res_max$message,
+            maxsigma_status = res_max$status,
+            maxsigma_iterations = res_max$iterations,
+            taxa1relativesd = taxa1relativesd,
+            taxa2relativesd = taxa2relativesd,
+            relativecorrelation = relativecorrelation,
+            relativecovariance = relativecovariance#,
+            #variance_proportionality_taxa1 = variance_proportionality_d1,
+            #variance_proportionality_taxa2 = variance_proportionality_d2
+          )
+          
       }
       
       # Gather the min and max optimized sigmas
