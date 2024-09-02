@@ -257,21 +257,21 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
             constraint_gradient_function(params, taxa1relativesd, taxa2relativesd, relativecovariance)
           }
 
-          if (algorithm == "NLOPT_LN_COBYLA") {
+          if (algorithm == "COBYLA") {
 
             # Find the minimum sigma using nloptr with COBYLA
-            res_min <- nloptr(
+            res_min <- nloptr::cobyla(
               x0 = initialparameters,
               fn = objective_wrapper,
               hin = constraint_wrapper,
               nl.info = FALSE,
               lower = c(lowerrhobound, lowerrhobound, lowerscalestdev),
               upper = c(upperrhobound, upperrhobound, upperscalestdev),
-              control = list("algorithm" = "NLOPT_LN_COBYLA", "maxeval" = 1000000, "xtol_rel" = 1e-5)
+              control = list("maxeval" = 1000000, "xtol_rel" = 1e-5)
             )
 
             # Find the maximum sigma by negating the objective function using COBYLA
-            res_max <- nloptr(
+            res_max <- nloptr::cobyla(
               x0 = initialparameters,
               fn = function(params) -objective_wrapper(params),
               hin = constraint_wrapper,
@@ -306,10 +306,10 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
               #variance_proportionality_taxa1 = variance_proportionality_d1,
               #variance_proportionality_taxa2 = variance_proportionality_d2
             )
-          } else if (algorithm == "NLOPT_LD_MMA") {
+          } else if (algorithm == "MMA") {
 
             # Find the minimum sigma using nloptr
-            res_min <- nloptr(
+            res_min <- nloptr::mma(
               x0 = initialparameters,
               eval_f = objective_wrapper,
               eval_grad_f = gradient_wrapper,
@@ -317,11 +317,11 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
               eval_jac_g_ineq = constraint_gradient_wrapper,
               lb = c(lowerrhobound, lowerrhobound, lowerscalestdev),
               ub = c(upperrhobound, upperrhobound, upperscalestdev),
-              opts = list("algorithm" = "NLOPT_LD_MMA") #, "maxeval" = 1000000, "ftol_rel" = 1e-5)
+              opts = list("maxeval" = 1000000, "ftol_rel" = 1e-5)
             )
             
             # Find the maximum sigma by negating the objective function
-            res_max <- nloptr(
+            res_max <- nloptr::mma(
               x0 = initialparameters,
               eval_f = function(params) -objective_wrapper(params),
               eval_grad_f = function(params) -gradient_wrapper(params),
@@ -329,7 +329,7 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
               eval_jac_g_ineq = constraint_gradient_wrapper,
               lb = c(lowerrhobound, lowerrhobound, lowerscalestdev),
               ub = c(upperrhobound, upperrhobound, upperscalestdev),
-              opts = list("algorithm" = "NLOPT_LD_MMA") #, "maxeval" = 1000000, "ftol_rel" = 1e-5)
+              opts = list( "maxeval" = 1000000, "ftol_rel" = 1e-5)
             )
   
             data.frame(
