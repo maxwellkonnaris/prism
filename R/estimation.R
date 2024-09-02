@@ -253,7 +253,8 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
               opts = list("algorithm"="NLOPT_LN_COBYLA", "maxeval" = 1000000, "xtol_rel" = 1e-5),
               taxa1relativesd = taxa1relativesd, 
               taxa2relativesd = taxa2relativesd, 
-              relativecorrelation = relativecorrelation
+              relativecorrelation = relativecorrelation,
+              relativecovariance = relativecovariance
             )
 
             # Find the maximum sigma by negating the objective function using COBYLA
@@ -266,7 +267,8 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
               opts = list("algorithm"="NLOPT_LN_COBYLA", "maxeval" = 1000000, "xtol_rel" = 1e-5),
               taxa1relativesd = taxa1relativesd, 
               taxa2relativesd = taxa2relativesd, 
-              relativecorrelation = relativecorrelation
+              relativecorrelation = relativecorrelation,
+              relativecovariance = relativecovariance
             )
         
           } else if (algorithm == "MMA") {
@@ -283,7 +285,8 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
               opts = list("algorithm"="NLOPT_LD_MMA", "maxeval" = 1000000, "ftol_rel" = 1e-5),
               taxa1relativesd = taxa1relativesd, 
               taxa2relativesd = taxa2relativesd, 
-              relativecorrelation = relativecorrelation
+              relativecorrelation = relativecorrelation,
+              relativecovariance = relativecovariance
             )
             
             # Find the maximum sigma by negating the objective function
@@ -298,7 +301,8 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
               opts = list("algorithm"="NLOPT_LD_MMA", "maxeval" = 1000000, "ftol_rel" = 1e-5),
               taxa1relativesd = taxa1relativesd, 
               taxa2relativesd = taxa2relativesd, 
-              relativecorrelation = relativecorrelation
+              relativecorrelation = relativecorrelation,
+              relativecovariance = relativecovariance
             )
           }
         
