@@ -95,18 +95,18 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
   }
   
   # Objective function used to optimize the covariance whether minimum or maximum
-  objective_function <- function(params, taxa1relativesd, taxa2relativesd, relativecorrelation) {
+  objective_function <- function(params, taxa1relativesd, taxa2relativesd, relativecovariance) {
     taxa1scalecorrelation <- params[1]
     taxa2scalecorrelation <- params[2]
     scalestdev <- params[3]
     
-    sigma <- taxa1relativesd * taxa2relativesd * relativecorrelation + taxa1relativesd * scalestdev * taxa1scalecorrelation + taxa2relativesd * scalestdev * taxa2scalecorrelation + scalestdev^2
+    sigma <- relativecovariance + scalestdev * taxa1relativesd * taxa1scalecorrelation + scalestdev * taxa2relativesd * taxa2scalecorrelation + scalestdev^2
 
     return(sigma)
   }
 
   # Gradient function for covariance
-  gradient_function <- function(params, taxa1relativesd, taxa2relativesd, relativecorrelation) {
+  gradient_function <- function(params, taxa1relativesd, taxa2relativesd, relativecovariance) {
     taxa1scalecorrelation <- params[1]
     taxa2scalecorrelation <- params[2]
     scalestdev <- params[3]
@@ -253,7 +253,6 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
               opts = list("algorithm"="NLOPT_LN_COBYLA", "maxeval" = 1000000, "xtol_rel" = 1e-5),
               taxa1relativesd = taxa1relativesd, 
               taxa2relativesd = taxa2relativesd, 
-              relativecorrelation = relativecorrelation,
               relativecovariance = relativecovariance
             )
 
@@ -267,7 +266,6 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
               opts = list("algorithm"="NLOPT_LN_COBYLA", "maxeval" = 1000000, "xtol_rel" = 1e-5),
               taxa1relativesd = taxa1relativesd, 
               taxa2relativesd = taxa2relativesd, 
-              relativecorrelation = relativecorrelation,
               relativecovariance = relativecovariance
             )
         
@@ -285,7 +283,6 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
               opts = list("algorithm"="NLOPT_LD_MMA", "maxeval" = 1000000, "ftol_rel" = 1e-5),
               taxa1relativesd = taxa1relativesd, 
               taxa2relativesd = taxa2relativesd, 
-              relativecorrelation = relativecorrelation,
               relativecovariance = relativecovariance
             )
             
@@ -301,7 +298,6 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
               opts = list("algorithm"="NLOPT_LD_MMA", "maxeval" = 1000000, "ftol_rel" = 1e-5),
               taxa1relativesd = taxa1relativesd, 
               taxa2relativesd = taxa2relativesd, 
-              relativecorrelation = relativecorrelation,
               relativecovariance = relativecovariance
             )
           }
