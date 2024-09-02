@@ -317,7 +317,7 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
               eval_jac_g_ineq = constraint_gradient_wrapper,
               lb = c(lowerrhobound, lowerrhobound, lowerscalestdev),
               ub = c(upperrhobound, upperrhobound, upperscalestdev),
-              opts = list("algorithm" = "NLOPT_LD_MMA", "maxeval" = 1000000, "ftol_rel" = 1e-5)
+              opts = list("algorithm" = "NLOPT_LD_MMA") #, "maxeval" = 1000000, "ftol_rel" = 1e-5)
             )
             
             # Find the maximum sigma by negating the objective function
@@ -329,7 +329,7 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
               eval_jac_g_ineq = constraint_gradient_wrapper,
               lb = c(lowerrhobound, lowerrhobound, lowerscalestdev),
               ub = c(upperrhobound, upperrhobound, upperscalestdev),
-              opts = list("algorithm" = "NLOPT_LD_MMA", "maxeval" = 1000000, "ftol_rel" = 1e-5)
+              opts = list("algorithm" = "NLOPT_LD_MMA") #, "maxeval" = 1000000, "ftol_rel" = 1e-5)
             )
   
             data.frame(
