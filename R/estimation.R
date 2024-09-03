@@ -328,7 +328,7 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
             minsigma_message = res_min$message,
             minsigma_status = res_min$status,
             minsigma_iterations = res_min$iterations,
-            maxsigma_absolute_maximum_covariance = res_max$objective,
+            maxsigma_absolute_maximum_covariance = -res_max$objective,
             maxsigma_correlation_relativetaxa1_scale = res_max$solution[1],
             maxsigma_correlation_relativetaxa2_scale = res_max$solution[2],
             maxsigma_scale_variance = res_max$solution[3],
