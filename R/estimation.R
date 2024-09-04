@@ -323,7 +323,9 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
               res_min <- nloptr(
                 x0 = initialparameters,
                 eval_f = function(params) objective_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
+                eval_grad_f = function(params) gradient_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
                 eval_g_ineq = function(params) constraint_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
+                eval_jac_g_ineq = function(params) constraint_gradient_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
                 lb = c(lowerrhobound, lowerrhobound, lowerscalestdev),
                 ub = c(upperrhobound, upperrhobound, upperscalestdev),
                 opts = list(
@@ -342,7 +344,9 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
               res_max <- nloptr(
                 x0 = initialparameters,
                 eval_f = function(params) -objective_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
+                eval_grad_f = function(params) -gradient_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
                 eval_g_ineq = function(params) constraint_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
+                eval_jac_g_ineq = function(params) constraint_gradient_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
                 lb = c(lowerrhobound, lowerrhobound, lowerscalestdev),
                 ub = c(upperrhobound, upperrhobound, upperscalestdev),
                 opts = list(
@@ -365,7 +369,9 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
               res_min <- nloptr(
                 x0 = initialparameters,
                 eval_f = function(params) objective_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
+                eval_grad_f = function(params) gradient_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
                 eval_g_ineq = function(params) constraint_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
+                eval_jac_g_ineq = function(params) constraint_gradient_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
                 lb = c(lowerrhobound, lowerrhobound, lowerscalestdev),
                 ub = c(upperrhobound, upperrhobound, upperscalestdev),
                 opts = list(
@@ -384,7 +390,9 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
               res_max <- nloptr(
                 x0 = initialparameters,
                 eval_f = function(params) -objective_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
+                eval_grad_f = function(params) -gradient_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
                 eval_g_ineq = function(params) constraint_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
+                eval_jac_g_ineq = function(params) constraint_gradient_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
                 lb = c(lowerrhobound, lowerrhobound, lowerscalestdev),
                 ub = c(upperrhobound, upperrhobound, upperscalestdev),
                 opts = list(
@@ -407,7 +415,9 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
               res_min <- nloptr(
                 x0 = initialparameters,
                 eval_f = function(params) objective_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
+                eval_grad_f = function(params) gradient_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
                 eval_g_ineq = function(params) constraint_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
+                eval_jac_g_ineq = function(params) constraint_gradient_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
                 lb = c(lowerrhobound, lowerrhobound, lowerscalestdev),
                 ub = c(upperrhobound, upperrhobound, upperscalestdev),
                 opts = list(
@@ -426,7 +436,9 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
               res_max <- nloptr(
                 x0 = initialparameters,
                 eval_f = function(params) -objective_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
+                eval_grad_f = function(params) -gradient_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
                 eval_g_ineq = function(params) constraint_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
+                eval_jac_g_ineq = function(params) constraint_gradient_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
                 lb = c(lowerrhobound, lowerrhobound, lowerscalestdev),
                 ub = c(upperrhobound, upperrhobound, upperscalestdev),
                 opts = list(
@@ -449,7 +461,9 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
               res_min <- nloptr(
                 x0 = initialparameters,
                 eval_f = function(params) objective_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
+                eval_grad_f = function(params) gradient_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
                 eval_g_ineq = function(params) constraint_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
+                eval_jac_g_ineq = function(params) constraint_gradient_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
                 lb = c(lowerrhobound, lowerrhobound, lowerscalestdev),
                 ub = c(upperrhobound, upperrhobound, upperscalestdev),
                 opts = list(
@@ -468,7 +482,9 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
               res_max <- nloptr(
                 x0 = initialparameters,
                 eval_f = function(params) -objective_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
+                eval_grad_f = function(params) -gradient_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
                 eval_g_ineq = function(params) constraint_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
+                eval_jac_g_ineq = function(params) constraint_gradient_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
                 lb = c(lowerrhobound, lowerrhobound, lowerscalestdev),
                 ub = c(upperrhobound, upperrhobound, upperscalestdev),
                 opts = list(
