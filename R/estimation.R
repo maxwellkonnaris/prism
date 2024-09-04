@@ -489,8 +489,8 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
             stop("Invalid algorithm selected") # Default case if no match is found
           )
 
-          res_min = results$res_min
-          res_max = results$res_max
+          res_min = result$res_min
+          res_max = result$res_max
 
           if (is.null(res_min) || is.null(res_max)) {
           stop("Optimization failed for task.")
