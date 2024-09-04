@@ -521,30 +521,57 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
 
             "GRID_SEARCH" = {
 
-              rpars <- pars %>%
-                mutate(sigma = relativecovariance + scalestdevstep * taxa1relativesd * rho1 + scalestdevstep * taxa1relativesd * rho2 + scalestdevstep^2) %>%
-                rowwise() %>%
-                mutate(SPSD = constraint_function(params=c(rho1,rho2,scalestdevstep), taxa1relativesd, taxa2relativesd, relativecovariance)) %>%
-                filter(SPSD >= 0) %>%
-                ungroup()
-
-              # Get the row corresponding to minimum sigma
-              res_min <- rpars %>%
-                slice(which.min(sigma)) #%>%
-                # mutate(objective = sigma,
-                #        solution = c(rho1,rho2,scalestdevstep),
-                #        message = "GRIDSEARCH",
-                #        status = "GRIDSEARCH",
-                #        iterations = iterations)
+              # First tryCatch: Calculate sigma and filter based on SPSD
+              rpars <- tryCatch({
+                pars %>%
+                  mutate(sigma = relativecovariance + scalestdevstep * taxa1relativesd * rho1 + scalestdevstep * taxa1relativesd * rho2 + scalestdevstep^2) %>%
+                  rowwise() %>%
+                  mutate(SPSD = constraint_function(params = c(rho1, rho2, scalestdevstep), 
+                                                    taxa1relativesd, 
+                                                    taxa2relativesd, 
+                                                    relativecovariance)) %>%
+                  filter(SPSD >= 0) %>%
+                  ungroup()
+              }, error = function(e) {
+                message("Error occurred during sigma calculation or SPSD filtering: ", e$message)
+                stop("Stopping execution due to error in sigma calculation or SPSD filtering.")
+              })
               
-              # Get the row corresponding to maximum sigma
-              res_max <- rpars %>%
-                slice(which.max(sigma)) #%>%
-                # mutate(objective = -sigma,
-                #        solution = c(rho1,rho2,scalestdevstep),
-                #        message = "GRIDSEARCH",
-                #        status = "GRIDSEARCH",
-                #        iterations = iterations)
+              # Second tryCatch: Find the row corresponding to minimum sigma
+              res_min <- tryCatch({
+                if (nrow(rpars) > 0) {
+                  rpars %>%
+                    slice(which.min(sigma)) %>%
+                    mutate(objective = sigma,
+                           solution = list(c(rho1, rho2, scalestdevstep)),  # Use list for multi-dimensional values
+                           message = "GRIDSEARCH",
+                           status = "GRIDSEARCH",
+                           iterations = iterations)
+                } else {
+                  stop("No rows remaining after filtering based on SPSD constraints.")
+                }
+              }, error = function(e) {
+                message("Error occurred while finding the row with minimum sigma: ", e$message)
+                stop("Stopping execution due to error in finding minimum sigma.")
+              })
+              
+              # Third tryCatch: Find the row corresponding to maximum sigma
+              res_max <- tryCatch({
+                if (nrow(rpars) > 0) {
+                  rpars %>%
+                    slice(which.max(sigma)) %>%
+                    mutate(objective = -sigma,
+                           solution = list(c(rho1, rho2, scalestdevstep)),  # Use list for multi-dimensional values
+                           message = "GRIDSEARCH",
+                           status = "GRIDSEARCH",
+                           iterations = iterations)
+                } else {
+                  stop("No rows remaining after filtering based on SPSD constraints.")
+                }
+              }, error = function(e) {
+                message("Error occurred while finding the row with maximum sigma: ", e$message)
+                stop("Stopping execution due to error in finding maximum sigma.")
+              })
               
               list(res_min = res_min, res_max = res_max)
             },
