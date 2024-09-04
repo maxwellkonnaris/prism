@@ -531,9 +531,7 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
                 filter(sigma == min(sigma)) %>%
                 slice(1) %>%
                 mutate(objective = sigma,
-                       solution1 = rho1,
-                       solution2 = rho2,
-                       solution3 = scalestdevstep,
+                       solution = c(rho1,rho2,scalestdevstep),
                        message = "GRIDSEARCH",
                        status = "GRIDSEARCH",
                        iterations = iterations)
@@ -542,10 +540,8 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
               res_max <- rpars %>%
                 filter(sigma == max(sigma)) %>%
                 slice(1) %>%
-                mutate(objective = sigma,
-                       solution1 = rho1,
-                       solution2 = rho2,
-                       solution3 = scalestdevstep,
+                mutate(objective = -sigma,
+                       solution = c(rho1,rho2,scalestdevstep),
                        message = "GRIDSEARCH",
                        status = "GRIDSEARCH",
                        iterations = iterations)
