@@ -528,6 +528,8 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
                 filter(SPSD >= 0) %>%
                 ungroup()
 
+              cat(paste0(rpars))
+
                  # Get the row corresponding to minimum sigma
               res_min <- rpars %>%
                 filter(sigma == min(sigma)) %>%
@@ -537,7 +539,8 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
                        message = "GRIDSEARCH",
                        status = "GRIDSEARCH",
                        iterations = iterations)
-          
+              
+              cat(paste0(res_min))
               # Get the row corresponding to maximum sigma
               res_max <- rpars %>%
                 filter(sigma == max(sigma)) %>%
@@ -547,6 +550,8 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
                        message = "GRIDSEARCH",
                        status = "GRIDSEARCH",
                        iterations = iterations)
+
+              cat(paste0(res_max))
               
               list(res_min = res_min, res_max = res_max)
             },
