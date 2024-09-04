@@ -26,7 +26,7 @@
 #' results <- estimate_covariance(Y)
 #' @export
 
-estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobound = 1.0, S = 1000, lowerscalestdev = .49, upperscalestdev = .51, algorithm="COBYLA") {
+estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobound = 1.0, S = 1000, lowerscalestdev = .49, upperscalestdev = .51, algorithm="COBYLA", scalestep=0.005) {
 
   # Record the start time for profiling
   start_time <- Sys.time()
@@ -82,6 +82,18 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
   print(dim(Y))
   cat("Bootstrap sample size (S):\n")
   print(S)
+
+  if (algorithm == "GRID_SEARCH") {
+
+    # Define parameter steps
+    rho1 <- seq(lowerrhobound, upperrhobound, by=0.05)
+    rho2 <- seq(lowerrhobound, upperrhobound, by=0.05)
+    scalestdevstep <- seq(lowerscalestdev, upperscalestdev, scalestep)
+    
+    # Create the grid of parameters
+    pars <- expand.grid(rho1, rho2, scalestdevstep)
+    
+  }
   
   # Initialize a results matrix to store the results for each pair
   results <- matrix(list(), D, D)
@@ -134,9 +146,9 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
             - sqrt((taxa1relativesd^2 - taxa2relativesd^2)^2 + 4 * relativecovariance^2) 
             + 4 * scalestdev^2)
     
-    g_7 <- term1 - term2 + term3
+    g_1 <- term1 - term2 + term3
     
-    return(g_7)
+    return(g_1)
   }
 
   constraint_gradient_function <- function(params, taxa1relativesd, taxa2relativesd, relativecovariance) {
@@ -500,6 +512,16 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
               )
               
               list(res_min = res_min, res_max = res_max)
+            },
+
+            "GRID_SEARCH" = {
+
+              rpars <- pars %>%
+                mutate(sigma = relativecovariance + scalestdevstep * taxa1relativesd * rho1 + scalestdevstep * taxa1relativesd * rho2 + scalestdevstep^2) %>%
+                
+
+              
+              list(res_min = , res_max = )
             },
           
             stop("Invalid algorithm selected") # Default case if no match is found
