@@ -522,7 +522,7 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
             "GRID_SEARCH" = {
 
               rpars <- pars %>%
-                mutate(sigma = relativecovariance + scalestdevstep * taxa1relativesd * rho1 + scalestdevstep * taxa1relativesd * rho2 + scalestdevstep^2) %>%
+                mutate(sigma = relativecovariance + scalestdevstep * taxa1relativesd * rho1 + scalestdevstep * taxa1relativesd * rho2 + scalestdevstep^2) #%>%
                 #rowwise() %>%
                 #mutate(SPSD = constraint_function(params=c(rho1,rho2,scalestdevstep), taxa1relativesd, taxa2relativesd, relativecovariance)) %>%
                 #filter(SPSD >= 0) %>%
