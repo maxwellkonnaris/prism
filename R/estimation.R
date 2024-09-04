@@ -522,16 +522,15 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
             "GRID_SEARCH" = {
 
               rpars <- pars %>%
-                mutate(sigma = relativecovariance + scalestdevstep * taxa1relativesd * rho1 + scalestdevstep * taxa1relativesd * rho2 + scalestdevstep^2) #%>%
-                #rowwise() %>%
-                #mutate(SPSD = constraint_function(params=c(rho1,rho2,scalestdevstep), taxa1relativesd, taxa2relativesd, relativecovariance)) %>%
-                #filter(SPSD >= 0) %>%
-                #ungroup()
+                mutate(sigma = relativecovariance + scalestdevstep * taxa1relativesd * rho1 + scalestdevstep * taxa1relativesd * rho2 + scalestdevstep^2) %>%
+                rowwise() %>%
+                mutate(SPSD = constraint_function(params=c(rho1,rho2,scalestdevstep), taxa1relativesd, taxa2relativesd, relativecovariance)) %>%
+                filter(SPSD >= 0) %>%
+                ungroup()
 
-                 # Get the row corresponding to minimum sigma
+              # Get the row corresponding to minimum sigma
               res_min <- rpars %>%
-                filter(sigma == min(sigma)) %>%
-                slice(1) %>%
+                slice(which.min(sigma)) %>%
                 mutate(objective = sigma,
                        solution = c(rho1,rho2,scalestdevstep),
                        message = "GRIDSEARCH",
@@ -540,8 +539,7 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
               
               # Get the row corresponding to maximum sigma
               res_max <- rpars %>%
-                filter(sigma == max(sigma)) %>%
-                slice(1) %>%
+                slice(which.max(sigma)) %>%
                 mutate(objective = -sigma,
                        solution = c(rho1,rho2,scalestdevstep),
                        message = "GRIDSEARCH",
