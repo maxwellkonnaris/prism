@@ -523,8 +523,10 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
 
               rpars <- pars %>%
                 mutate(sigma = relativecovariance + scalestdevstep * taxa1relativesd * rho1 + scalestdevstep * taxa1relativesd * rho2 + scalestdevstep^2) %>%
+                rowwise() %>%
                 mutate(SPSD = constraint_function(params=c(rho1,rho2,scalestdevstep), taxa1relativesd, taxa2relativesd, relativecovariance)) %>%
-                filter(SPSD >= 0)
+                filter(SPSD >= 0) %>%
+                ungroup()
 
                  # Get the row corresponding to minimum sigma
               res_min <- rpars %>%
