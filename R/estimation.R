@@ -530,21 +530,21 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
 
               # Get the row corresponding to minimum sigma
               res_min <- rpars %>%
-                slice(which.min(sigma)) %>%
-                mutate(objective = sigma,
-                       solution = c(rho1,rho2,scalestdevstep),
-                       message = "GRIDSEARCH",
-                       status = "GRIDSEARCH",
-                       iterations = iterations)
+                slice(which.min(sigma)) #%>%
+                # mutate(objective = sigma,
+                #        solution = c(rho1,rho2,scalestdevstep),
+                #        message = "GRIDSEARCH",
+                #        status = "GRIDSEARCH",
+                #        iterations = iterations)
               
               # Get the row corresponding to maximum sigma
               res_max <- rpars %>%
-                slice(which.max(sigma)) %>%
-                mutate(objective = -sigma,
-                       solution = c(rho1,rho2,scalestdevstep),
-                       message = "GRIDSEARCH",
-                       status = "GRIDSEARCH",
-                       iterations = iterations)
+                slice(which.max(sigma)) #%>%
+                # mutate(objective = -sigma,
+                #        solution = c(rho1,rho2,scalestdevstep),
+                #        message = "GRIDSEARCH",
+                #        status = "GRIDSEARCH",
+                #        iterations = iterations)
               
               list(res_min = res_min, res_max = res_max)
             },
