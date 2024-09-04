@@ -264,54 +264,233 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
           res_min <- NULL
           res_max <- NULL
         
-          if (algorithm == "COBYLA") {
+          result <- switch(algorithm,
+  
+            "COBYLA" = {
+              # Find the minimum sigma using nloptr with COBYLA
+              res_min <- nloptr(
+                x0 = initialparameters,
+                eval_f = function(params) objective_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
+                eval_g_ineq = function(params) constraint_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
+                lb = c(lowerrhobound, lowerrhobound, lowerscalestdev),
+                ub = c(upperrhobound, upperrhobound, upperscalestdev),
+                opts = list("algorithm"="NLOPT_LN_COBYLA", "maxeval" = 1000000, "xtol_rel" = 1e-5)
+              )
+              
+              # Find the maximum sigma by negating the objective function using COBYLA
+              res_max <- nloptr(
+                x0 = initialparameters,
+                eval_f = function(params) -objective_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
+                eval_g_ineq = function(params) constraint_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
+                lb = c(lowerrhobound, lowerrhobound, lowerscalestdev),
+                ub = c(upperrhobound, upperrhobound, upperscalestdev),
+                opts = list("algorithm"="NLOPT_LN_COBYLA", "maxeval" = 1000000, "xtol_rel" = 1e-5)
+              )
+              
+              list(res_min = res_min, res_max = res_max)
+            },
           
-            # Find the minimum sigma using nloptr with COBYLA
-            res_min <- nloptr(
-              x0 = initialparameters,
-              eval_f = function(params) objective_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-              eval_g_ineq = function(params) constraint_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-              lb = c(lowerrhobound, lowerrhobound, lowerscalestdev),
-              ub = c(upperrhobound, upperrhobound, upperscalestdev),
-              opts = list("algorithm"="NLOPT_LN_COBYLA", "maxeval" = 1000000, "xtol_rel" = 1e-5)
-            )
+            "MMA" = {
+              # Find the minimum sigma using nloptr with MMA
+              res_min <- nloptr(
+                x0 = initialparameters,
+                eval_f = function(params) objective_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
+                eval_grad_f = function(params) gradient_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
+                eval_g_ineq = function(params) constraint_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
+                eval_jac_g_ineq = function(params) constraint_gradient_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
+                lb = c(lowerrhobound, lowerrhobound, lowerscalestdev),
+                ub = c(upperrhobound, upperrhobound, upperscalestdev),
+                opts = list("algorithm"="NLOPT_LD_MMA", "maxeval" = 1000000, "ftol_rel" = 1e-5)
+              )
+              
+              # Find the maximum sigma by negating the objective function using MMA
+              res_max <- nloptr(
+                x0 = initialparameters,
+                eval_f = function(params) -objective_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
+                eval_grad_f = function(params) -gradient_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
+                eval_g_ineq = function(params) constraint_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
+                eval_jac_g_ineq = function(params) constraint_gradient_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
+                lb = c(lowerrhobound, lowerrhobound, lowerscalestdev),
+                ub = c(upperrhobound, upperrhobound, upperscalestdev),
+                opts = list("algorithm"="NLOPT_LD_MMA", "maxeval" = 1000000, "ftol_rel" = 1e-5)
+              )
+              
+              list(res_min = res_min, res_max = res_max)
+            },
           
-            # Find the maximum sigma by negating the objective function using COBYLA
-            res_max <- nloptr(
-              x0 = initialparameters,
-              eval_f = function(params) -objective_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-              eval_g_ineq = function(params) constraint_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-              lb = c(lowerrhobound, lowerrhobound, lowerscalestdev),
-              ub = c(upperrhobound, upperrhobound, upperscalestdev),
-              opts = list("algorithm"="NLOPT_LN_COBYLA", "maxeval" = 1000000, "xtol_rel" = 1e-5)
-            )
+            "AUGLAG_COBYLA" = {
+              # Find the minimum sigma using AUGLAG with COBYLA as the inner algorithm
+              res_min <- nloptr(
+                x0 = initialparameters,
+                eval_f = function(params) objective_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
+                eval_g_ineq = function(params) constraint_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
+                lb = c(lowerrhobound, lowerrhobound, lowerscalestdev),
+                ub = c(upperrhobound, upperrhobound, upperscalestdev),
+                opts = list(
+                  "algorithm" = "NLOPT_LD_AUGLAG",
+                  "local_opts" = list(
+                    "algorithm" = "NLOPT_LN_COBYLA",
+                    "xtol_rel" = 1e-5,
+                    "maxeval" = 1000000
+                  ),
+                  "maxeval" = 1000000,
+                  "ftol_rel" = 1e-5
+                )
+              )
+              
+              # Find the maximum sigma using AUGLAG with COBYLA as the inner algorithm
+              res_max <- nloptr(
+                x0 = initialparameters,
+                eval_f = function(params) -objective_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
+                eval_g_ineq = function(params) constraint_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
+                lb = c(lowerrhobound, lowerrhobound, lowerscalestdev),
+                ub = c(upperrhobound, upperrhobound, upperscalestdev),
+                opts = list(
+                  "algorithm" = "NLOPT_LD_AUGLAG",
+                  "local_opts" = list(
+                    "algorithm" = "NLOPT_LN_COBYLA",
+                    "xtol_rel" = 1e-5,
+                    "maxeval" = 1000000
+                  ),
+                  "maxeval" = 1000000,
+                  "ftol_rel" = 1e-5
+                )
+              )
+              
+              list(res_min = res_min, res_max = res_max)
+            },
           
-          } else if (algorithm == "MMA") {
+            "AUGLAG_MMA" = {
+              # Find the minimum sigma using AUGLAG with MMA as the inner algorithm
+              res_min <- nloptr(
+                x0 = initialparameters,
+                eval_f = function(params) objective_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
+                eval_g_ineq = function(params) constraint_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
+                lb = c(lowerrhobound, lowerrhobound, lowerscalestdev),
+                ub = c(upperrhobound, upperrhobound, upperscalestdev),
+                opts = list(
+                  "algorithm" = "NLOPT_LD_AUGLAG",
+                  "local_opts" = list(
+                    "algorithm" = "NLOPT_LD_MMA",
+                    "xtol_rel" = 1e-5,
+                    "maxeval" = 1000000
+                  ),
+                  "maxeval" = 1000000,
+                  "ftol_rel" = 1e-5
+                )
+              )
+              
+              # Find the maximum sigma using AUGLAG with MMA as the inner algorithm
+              res_max <- nloptr(
+                x0 = initialparameters,
+                eval_f = function(params) -objective_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
+                eval_g_ineq = function(params) constraint_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
+                lb = c(lowerrhobound, lowerrhobound, lowerscalestdev),
+                ub = c(upperrhobound, upperrhobound, upperscalestdev),
+                opts = list(
+                  "algorithm" = "NLOPT_LD_AUGLAG",
+                  "local_opts" = list(
+                    "algorithm" = "NLOPT_LD_MMA",
+                    "xtol_rel" = 1e-5,
+                    "maxeval" = 1000000
+                  ),
+                  "maxeval" = 1000000,
+                  "ftol_rel" = 1e-5
+                )
+              )
+              
+              list(res_min = res_min, res_max = res_max)
+            },
           
-            # Find the minimum sigma using nloptr
-            res_min <- nloptr(
-              x0 = initialparameters,
-              eval_f = function(params) objective_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-              eval_grad_f = function(params) gradient_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-              eval_g_ineq = function(params) constraint_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-              eval_jac_g_ineq = function(params) constraint_gradient_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-              lb = c(lowerrhobound, lowerrhobound, lowerscalestdev),
-              ub = c(upperrhobound, upperrhobound, upperscalestdev),
-              opts = list("algorithm"="NLOPT_LD_MMA", "maxeval" = 1000000, "ftol_rel" = 1e-5)
-            )
+            "AUGLAG_SLSQP" = {
+              # Find the minimum sigma using AUGLAG with SLSQP as the inner algorithm
+              res_min <- nloptr(
+                x0 = initialparameters,
+                eval_f = function(params) objective_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
+                eval_g_ineq = function(params) constraint_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
+                lb = c(lowerrhobound, lowerrhobound, lowerscalestdev),
+                ub = c(upperrhobound, upperrhobound, upperscalestdev),
+                opts = list(
+                  "algorithm" = "NLOPT_LD_AUGLAG",
+                  "local_opts" = list(
+                    "algorithm" = "NLOPT_LD_SLSQP",
+                    "xtol_rel" = 1e-5,
+                    "maxeval" = 1000000
+                  ),
+                  "maxeval" = 1000000,
+                  "ftol_rel" = 1e-5
+                )
+              )
+              
+              # Find the maximum sigma using AUGLAG with SLSQP as the inner algorithm
+              res_max <- nloptr(
+                x0 = initialparameters,
+                eval_f = function(params) -objective_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
+                eval_g_ineq = function(params) constraint_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
+                lb = c(lowerrhobound, lowerrhobound, lowerscalestdev),
+                ub = c(upperrhobound, upperrhobound, upperscalestdev),
+                opts = list(
+                  "algorithm" = "NLOPT_LD_AUGLAG",
+                  "local_opts" = list(
+                    "algorithm" = "NLOPT_LD_SLSQP",
+                    "xtol_rel" = 1e-5,
+                    "maxeval" = 1000000
+                  ),
+                  "maxeval" = 1000000,
+                  "ftol_rel" = 1e-5
+                )
+              )
+              
+              list(res_min = res_min, res_max = res_max)
+            },
           
-            # Find the maximum sigma by negating the objective function
-            res_max <- nloptr(
-              x0 = initialparameters,
-              eval_f = function(params) -objective_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-              eval_grad_f = function(params) -gradient_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-              eval_g_ineq = function(params) constraint_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-              eval_jac_g_ineq = function(params) constraint_gradient_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-              lb = c(lowerrhobound, lowerrhobound, lowerscalestdev),
-              ub = c(upperrhobound, upperrhobound, upperscalestdev),
-              opts = list("algorithm"="NLOPT_LD_MMA", "maxeval" = 1000000, "ftol_rel" = 1e-5)
-            )
-          }
+            "AUGLAG_LBFGS" = {
+              # Find the minimum sigma using AUGLAG with LBFGS as the inner algorithm
+              res_min <- nloptr(
+                x0 = initialparameters,
+                eval_f = function(params) objective_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
+                eval_g_ineq = function(params) constraint_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
+                lb = c(lowerrhobound, lowerrhobound, lowerscalestdev),
+                ub = c(upperrhobound, upperrhobound, upperscalestdev),
+                opts = list(
+                  "algorithm" = "NLOPT_LD_AUGLAG",
+                  "local_opts" = list(
+                    "algorithm" = "NLOPT_LD_LBFGS",
+                    "xtol_rel" = 1e-5,
+                    "maxeval" = 1000000
+                  ),
+                  "maxeval" = 1000000,
+                  "ftol_rel" = 1e-5
+                )
+              )
+              
+              # Find the maximum sigma using AUGLAG with LBFGS as the inner algorithm
+              res_max <- nloptr(
+                x0 = initialparameters,
+                eval_f = function(params) -objective_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
+                eval_g_ineq = function(params) constraint_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
+                lb = c(lowerrhobound, lowerrhobound, lowerscalestdev),
+                ub = c(upperrhobound, upperrhobound, upperscalestdev),
+                opts = list(
+                  "algorithm" = "NLOPT_LD_AUGLAG",
+                  "local_opts" = list(
+                    "algorithm" = "NLOPT_LD_LBFGS",
+                    "xtol_rel" = 1e-5,
+                    "maxeval" = 1000000
+                  ),
+                  "maxeval" = 1000000,
+                  "ftol_rel" = 1e-5
+                )
+              )
+              
+              list(res_min = res_min, res_max = res_max)
+            },
+          
+            stop("Invalid algorithm selected") # Default case if no match is found
+          )
+
+          res_min = results$res_min
+          res_max = results$res_max
 
           if (is.null(res_min) || is.null(res_max)) {
           stop("Optimization failed for task.")
