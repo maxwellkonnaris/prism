@@ -28,6 +28,7 @@
 
 estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobound = 1.0, S = 1000, lowerscalestdev = .49, upperscalestdev = .51, algorithm="COBYLA", scalestep=0.005) {
 
+  ## COMPUTATIONAL TIME -------------------------------------------------------------------------------------------------------------------------
   # Record the start time for profiling
   start_time <- Sys.time()
 
@@ -57,10 +58,10 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
     
     return(paste(result, collapse = ", "))
   }
-
-  # Define global handlers for progress bars
-  handlers(global = TRUE)
-
+  
+  ## END COMPUTATIONAL TIME SETUP ---------------------------------------------------------------------------------------------------------------
+  
+  ## SETUP --------------------------------------------------------------------------------------------------------------------------------------
   # Check if Y is a matrix, dataframe, or tibble, and has appropriate dimensions
   if (!(is.matrix(Y) || is.data.frame(Y) || inherits(Y, "tbl_df")) || nrow(Y) < 2 || ncol(Y) < 2) {
     stop("Y must be a matrix, dataframe, or tibble with at least 2 rows and 2 columns.")
@@ -83,12 +84,16 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
   cat("Bootstrap sample size (S):\n")
   print(S)
 
+  # Definine the initial parameters for the Optimization                                      
+  initialparameters = c(((upperrhobound+lowerrhobound)/2), ((upperrhobound+lowerrhobound)/2), ((upperscalestdev+lowerscalestdev)/2))
+
   if (algorithm == "GRID_SEARCH") {
 
     # Define parameter steps
     rho1 <- seq(lowerrhobound, upperrhobound, by=0.05)
     rho2 <- seq(lowerrhobound, upperrhobound, by=0.05)
     scalestdevstep <- seq(lowerscalestdev, upperscalestdev, scalestep)
+    iterations <- length(rho1) * length(rho2) * length(scalestdevstep)
     
     # Create the grid of parameters
     pars <- expand.grid(rho1, rho2, scalestdevstep)
@@ -97,15 +102,9 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
   
   # Initialize a results matrix to store the results for each pair
   results <- matrix(list(), D, D)
+  ## END SETUP -----------------------------------------------------------------------------------------------------------------------------------
 
-  ## OPTIMIZATION FUNCTIONS
-
-  # Function to check if a matrix is SPSD
-  checkSPSD <- function(matrix) {
-    eigenvalues <- eigen(matrix, only.values = TRUE)$values
-    return(all(eigenvalues >= 0))
-  }
-  
+  ## OPTIMIZATION FUNCTIONS ----------------------------------------------------------------------------------------------------------------------
   # Objective function used to optimize the covariance whether minimum or maximum
   objective_function <- function(params, taxa1relativesd, taxa2relativesd, relativecovariance) {
     taxa1scalecorrelation <- params[1]
@@ -189,9 +188,9 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
   constraint_gradient_function_wrapper <- function(params, taxa1relativesd, taxa2relativesd, relativecovariance) {
     constraint_gradient_function(params, taxa1relativesd, taxa2relativesd, relativecovariance)
   }
+  ## END OPTIMIZATION FUNCTIONS -----------------------------------------------------------------------------------------------------------------------------
 
-  ## END OPTIMIZATION FUNCTIONS
-
+  ## CLUSTER RESOURCES --------------------------------------------------------------------------------------------------------------------------------------
   # Register the parallel backend
   num_cores <- parallel::detectCores() - 1
   cl <- parallel::makeCluster(num_cores)
@@ -207,6 +206,11 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
     # Check the number of workers
     cat("Number of workers/cpus: ", foreach::getDoParWorkers(), "\n")
   }
+  ## END CLUSTER RESOURCES ----------------------------------------------------------------------------------------------------------------------------------
+
+  ## PROGRESS BARS ------------------------------------------------------------------------------------------------------------------------------------------
+  # Define global handlers for progress bars
+  handlers(global = TRUE)
   
   # Initialize progress bars
   total_pairs <- D * (D - 1) / 2
@@ -225,7 +229,9 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
   # Options for foreach to include progress updates
   opts_precomp <- list(progress = progress_precomp)
   opts <- list(progress = progress)
-
+  ## END PROGRESS BARS -------------------------------------------------------------------------------------------------------------------------------------
+  
+  ## BOOTSTRAP PRECOMPUTE ----------------------------------------------------------------------------------------------------------------------------------
   # Parallelize bootstrap precomputation
   bootstrap_samples <- foreach(s = 1:S, .combine = 'c', .options.snow = opts_precomp) %dopar% {
     sample(1:N, replace = TRUE)
@@ -233,7 +239,9 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
   
   # Reshape bootstrap_samples into a list of vectors
   bootstrap_samples <- split(bootstrap_samples, rep(1:S, each = N))
+  ## END BOOTSTRAP PRECOMPUTE ------------------------------------------------------------------------------------------------------------------------------
   
+  ## SIGMA ESTIMATION --------------------------------------------------------------------------------------------------------------------------------------
   # Generate all pairs of indices and add diagonal pairs
   pair_indices <- combn(D, 2, simplify = FALSE)
 
@@ -241,12 +249,9 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
   if (length(pair_indices) == 0) {
     stop("Error: pair_indices is not populated correctly. Aborting analysis.")
   }
-                                          
+
   # Run the analysis
   cat("Running sigma estimation")
-
-  initialparameters = c(((upperrhobound+lowerrhobound)/2), ((upperrhobound+lowerrhobound)/2), ((upperscalestdev+lowerscalestdev)/2))
-                                           
   results_list <- tryCatch({ foreach(pair = pair_indices, .packages = c('stats', 'MCMCpack'), .options.snow = opts) %dopar% {
       d1 <- pair[1]
       d2 <- pair[2]
@@ -518,10 +523,34 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
 
               rpars <- pars %>%
                 mutate(sigma = relativecovariance + scalestdevstep * taxa1relativesd * rho1 + scalestdevstep * taxa1relativesd * rho2 + scalestdevstep^2) %>%
-                
+                mutate(SPSD = constraint_function(params=c(rho1,rho2,scalestdevstep), taxa1relativesd, taxa2relativesd, relativecovariance) %>%
+                filter(SPSD >= 0)
 
+                 # Get the row corresponding to minimum sigma
+              res_min <- rpars %>%
+                filter(sigma == min(sigma)) %>%
+                slice(1) %>%
+                mutate(objective = sigma,
+                       solution1 = rho1,
+                       solution2 = rho2,
+                       solution3 = scalestdevstep,
+                       message = "GRIDSEARCH",
+                       status = "GRIDSEARCH",
+                       iterations = iterations)
+          
+              # Get the row corresponding to maximum sigma
+              res_max <- rpars %>%
+                filter(sigma == max(sigma)) %>%
+                slice(1) %>%
+                mutate(objective = sigma,
+                       solution1 = rho1,
+                       solution2 = rho2,
+                       solution3 = scalestdevstep,
+                       message = "GRIDSEARCH",
+                       status = "GRIDSEARCH",
+                       iterations = iterations)
               
-              list(res_min = , res_max = )
+              list(res_min = res_min, res_max = res_max)
             },
           
             stop("Invalid algorithm selected") # Default case if no match is found
