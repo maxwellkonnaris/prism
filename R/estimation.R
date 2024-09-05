@@ -96,7 +96,7 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
     iterations <- length(rho1) * length(rho2) * length(scalestdevstep)
     
     # Create the grid of parameters
-    pars <- expand.grid(rho1, rho2, scalestdevstep)
+    pars <- expand.grid(rho1 = rho1, rho2 = rho2, scalestdevstep = scalestdevstep)
     
   }
   
