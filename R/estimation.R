@@ -520,40 +520,15 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
             },
 
             "GRID_SEARCH" = {
-              # Initialize an empty list to store results
-              results_spsd <- data.frame(rho1 = numeric(), rho2 = numeric(), scalestdevstep = numeric(), sigma = numeric(), SPSD = numeric(), iterations = numeric())
-              
-              # Loop through each row of 'pars'
-              for (i in 1:nrow(pars)) {
-                  # Extract the current row as a temporary dataframe (1 row)
-                  row <- pars[i, ]
-                  
-                  # Perform the sigma calculation for the current row
-                  sigma <- relativecovariance + row$scalestdevstep * taxa1relativesd * row$rho1 + row$scalestdevstep * taxa2relativesd * row$rho2 + row$scalestdevstep^2
-                          
-                  # Apply the constraint function for the current row
-                  SPSD <- constraint_function(
-                    params = c(row$rho1, row$rho2, row$scalestdevstep),
-                    taxa1relativesd, 
-                    taxa2relativesd, 
-                    relativecovariance
-                  )
 
-                  # Combine the row, sigma, and SPSD into a dataframe row
-                  combined_row <- data.frame(rho1 = row$rho1, rho2 = row$rho2,scalestdevstep = row$scalestdevstep, sigma = sigma, SPSD = SPSD, iterations = row$iterations)
-                  
-                  # Append this row to the results dataframe
-                  results_spsd <- rbind(results_spsd, combined_row)
-                  
-              }
+              rpars <- pars %>%
+                dplyr::mutate(SPSD = constraint_function(params = c(rho1, rho2, scalestdevstep),taxa1relativesd, taxa2relativesd, relativecovariance)) %>%
+                dplyr::filter(SPSD >= 0) %>%  # Filter rows where SPSD is >= 0
+                dplyr::mutate(sigma = relativecovariance + scalestdevstep * taxa1relativesd * rho1 + scalestdevstep * taxa2relativesd * rho2 + scalestdevstep^2)
 
-              # Filter rows where SPSD constraint is satisfied
-              valid_results <- results_spsd[results_spsd$SPSD >= 0, ]
-              
-              # Find rows with minimum and maximum sigma values
-              min_sigma_row <- valid_results[which.min(valid_results$sigma), , drop = FALSE]
-              max_sigma_row <- valid_results[which.max(valid_results$sigma), , drop = FALSE]
-              
+              min_sigma_row <- rpars[which.min(rpars$sigma), , drop = FALSE]
+              max_sigma_row <- rpars[which.max(rpars$sigma), , drop = FALSE]
+                
               # Finalize the result for the minimum sigma row
               res_min <- min_sigma_row %>%
                     dplyr::mutate(objective = sigma,
