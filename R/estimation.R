@@ -520,76 +520,107 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
             },
 
             "GRID_SEARCH" = {
+              # Initialize an empty list to store results
+              results_spsd <- list()
+              
+              # Loop through each row of 'pars'
+              for (i in 1:nrow(pars)) {
+                tryCatch({
+                  # Extract the current row as a temporary dataframe (1 row)
+                  row <- pars[i, ]
+                  
+                  # Perform the sigma calculation for the current row
+                  sigma <- relativecovariance + row$scalestdevstep * taxa1relativesd * row$rho1 +
+                           row$scalestdevstep * taxa2relativesd * row$rho2 + row$scalestdevstep^2
+                  
+                  # Apply the constraint function for the current row
+                  SPSD <- constraint_function(
+                    params = c(row$rho1, row$rho2, row$scalestdevstep),
+                    taxa1relativesd, 
+                    taxa2relativesd, 
+                    relativecovariance
+                  )
+                  
+                  # Only store the row if the SPSD constraint is met (SPSD >= 0)
+                  if (SPSD >= 0) {
+                    results_spsd[[length(results_spsd) + 1]] <- cbind(row, sigma = sigma, SPSD = SPSD)
+                  }
+                }, error = function(e) {
+                  # Print a message if an error occurs and continue with the next iteration
+                  message(paste("Error occurred in row", i, ":", e$message))
+                })
+              }
 
-              # Step 1: Calculate sigma with tryCatch
-              result_sigma <- tryCatch({
-                pars %>%
-                  dplyr::mutate(sigma = relativecovariance + scalestdevstep * taxa1relativesd * rho1 +
-                           scalestdevstep * taxa1relativesd * rho2 + scalestdevstep^2)
-              }, error = function(e) {
-                message("Error occurred during sigma calculation: ", e$message)
-                stop("Stopping execution due to error in sigma calculation.")
-              })
+               # Assuming results_spsd contains valid data, and it's a list of rows or dataframes
+              rpars <- do.call(rbind, results_spsd)
               
-              # Step 2: Apply rowwise() and compute SPSD with tryCatch
-              result_spsd <- tryCatch({
-                result_sigma %>%
-                  rowwise() %>%
-                  mutate(SPSD = constraint_function(params = c(rho1, rho2, scalestdevstep), 
-                                                    taxa1relativesd, 
-                                                    taxa2relativesd, 
-                                                    relativecovariance))
-              }, error = function(e) {
-                message("Error occurred during SPSD calculation: ", e$message)
-                stop("Stopping execution due to error in SPSD calculation.")
-              })
+              # Initialize variables to store the rows with minimum and maximum sigma
+              min_sigma_row <- NULL
+              max_sigma_row <- NULL
+              min_sigma <- Inf
+              max_sigma <- -Inf
               
-              # Step 3: Filter rows based on SPSD with tryCatch
-              result_filtered <- tryCatch({
-                result_spsd %>%
-                  filter(SPSD >= 0) %>%
-                  ungroup()
-              }, error = function(e) {
-                message("Error occurred during SPSD filtering: ", e$message)
-                stop("Stopping execution due to error in SPSD filtering.")
-              })
-        
-              # Second tryCatch: Find the row corresponding to minimum sigma
+              # Loop through each row in rpars to find min and max sigma
+              for (i in 1:nrow(rpars)) {
+                tryCatch({
+                  # Extract the current row
+                  row <- rpars[i, ]
+                  
+                  # Check if 'sigma' column exists
+                  if (!"sigma" %in% colnames(row)) {
+                    stop("Column 'sigma' does not exist in the row.")
+                  }
+              
+                  # Find the row with the minimum sigma
+                  if (row$sigma < min_sigma) {
+                    min_sigma <- row$sigma
+                    min_sigma_row <- row
+                  }
+              
+                  # Find the row with the maximum sigma
+                  if (row$sigma > max_sigma) {
+                    max_sigma <- row$sigma
+                    max_sigma_row <- row
+                  }
+                }, error = function(e) {
+                  message("Error occurred while processing row ", i, ": ", e$message)
+                })
+              }
+              
+              # Finalize the result for the minimum sigma row
               res_min <- tryCatch({
-                if (nrow(rpars) > 0) {
-                  rpars %>%
-                    slice(which.min(sigma)) %>%
-                    mutate(objective = sigma,
-                           solution = list(c(rho1, rho2, scalestdevstep)),  # Use list for multi-dimensional values
-                           message = "GRIDSEARCH",
-                           status = "GRIDSEARCH",
-                           iterations = iterations)
+                if (!is.null(min_sigma_row)) {
+                  min_sigma_row %>%
+                    dplyr::mutate(objective = min_sigma,
+                                  solution = list(c(min_sigma_row$rho1, min_sigma_row$rho2, min_sigma_row$scalestdevstep)),
+                                  message = "GRIDSEARCH",
+                                  status = "GRIDSEARCH",
+                                  iterations = iterations)  # Ensure 'iterations' is defined
                 } else {
-                  stop("No rows remaining after filtering based on SPSD constraints.")
+                  stop("No rows remaining for minimum sigma.")
                 }
               }, error = function(e) {
-                message("Error occurred while finding the row with minimum sigma: ", e$message)
-                stop("Stopping execution due to error in finding minimum sigma.")
+                message("Error occurred while finalizing the row with minimum sigma: ", e$message)
+                stop("Stopping execution due to error in finalizing minimum sigma.")
               })
               
-              # Third tryCatch: Find the row corresponding to maximum sigma
+              # Finalize the result for the maximum sigma row
               res_max <- tryCatch({
-                if (nrow(rpars) > 0) {
-                  rpars %>%
-                    slice(which.max(sigma)) %>%
-                    mutate(objective = -sigma,
-                           solution = list(c(rho1, rho2, scalestdevstep)),  # Use list for multi-dimensional values
-                           message = "GRIDSEARCH",
-                           status = "GRIDSEARCH",
-                           iterations = iterations)
+                if (!is.null(max_sigma_row)) {
+                  max_sigma_row %>%
+                    dplyr::mutate(objective = -max_sigma,  # Invert for maximum sigma as per your logic
+                                  solution = list(c(max_sigma_row$rho1, max_sigma_row$rho2, max_sigma_row$scalestdevstep)),
+                                  message = "GRIDSEARCH",
+                                  status = "GRIDSEARCH",
+                                  iterations = iterations)  # Ensure 'iterations' is defined
                 } else {
-                  stop("No rows remaining after filtering based on SPSD constraints.")
+                  stop("No rows remaining for maximum sigma.")
                 }
               }, error = function(e) {
-                message("Error occurred while finding the row with maximum sigma: ", e$message)
-                stop("Stopping execution due to error in finding maximum sigma.")
+                message("Error occurred while finalizing the row with maximum sigma: ", e$message)
+                stop("Stopping execution due to error in finalizing maximum sigma.")
               })
-              
+
               list(res_min = res_min, res_max = res_max)
             },
           
