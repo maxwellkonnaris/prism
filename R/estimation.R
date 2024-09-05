@@ -532,7 +532,8 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
                   # Perform the sigma calculation for the current row
                   sigma <- relativecovariance + row$scalestdevstep * taxa1relativesd * row$rho1 +
                            row$scalestdevstep * taxa2relativesd * row$rho2 + row$scalestdevstep^2
-                  
+                  message(paste("Sigma: ",sigma)
+                          
                   # Apply the constraint function for the current row
                   SPSD <- constraint_function(
                     params = c(row$rho1, row$rho2, row$scalestdevstep),
