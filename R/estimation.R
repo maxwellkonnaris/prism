@@ -530,30 +530,24 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
 
               min_sigma_row <- rpars[which.min(rpars$sigma), , drop = FALSE]
               max_sigma_row <- rpars[which.max(rpars$sigma), , drop = FALSE]
-
-              # Writing the entire rpars dataframe as a readable output
-              write.table(rpars, file = "debug_output.txt", append = TRUE, sep = "\t", row.names = FALSE, col.names = TRUE)
-              
-              # Writing the min_sigma_row and max_sigma_row separately
-              write.table(min_sigma_row, file = "debug_output2.txt", append = TRUE, sep = "\t", row.names = FALSE, col.names = TRUE)
-              write.table(max_sigma_row, file = "debug_output3.txt", append = TRUE, sep = "\t", row.names = FALSE, col.names = TRUE)
-
                  
-              # Finalize the result for the minimum sigma row
-              res_min <- min_sigma_row %>%
-                    dplyr::mutate(objective = sigma,
-                                  solution = list(c(rho1, rho2, scalestdevstep)),
-                                  message = "GRIDSEARCH",
-                                  status = "GRIDSEARCH",
-                                  iterations = iterations) 
+              # Extract values from min_sigma_row
+              res_min <- list(
+                objective = min_sigma_row$sigma,
+                solution = c(min_sigma_row$rho1, min_sigma_row$rho2, min_sigma_row$scalestdevstep),
+                message = "GRIDSEARCH",
+                status = "GRIDSEARCH",
+                iterations = min_sigma_row$iterations
+              )
                     
-              # Finalize the result for the maximum sigma row
-              res_max <- max_sigma_row %>%
-                    dplyr::mutate(objective = -sigma,  
-                                  solution = list(c(rho1, rho2, scalestdevstep)),
-                                  message = "GRIDSEARCH",
-                                  status = "GRIDSEARCH",
-                                  iterations = iterations)  
+              # Extract values from min_sigma_row
+              res_max <- list(
+                objective = -max_sigma_row$sigma,
+                solution = c(max_sigma_row$rho1, max_sigma_row$rho2, max_sigma_row$scalestdevstep),
+                message = "GRIDSEARCH",
+                status = "GRIDSEARCH",
+                iterations = max_sigma_row$iterations
+              )
 
               list(res_min = res_min, res_max = res_max)
             },
