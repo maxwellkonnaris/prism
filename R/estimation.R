@@ -554,7 +554,6 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
               
               # Combine all rows into a dataframe
               rpars <- do.call(rbind, results_spsd)
-
               
               # Second tryCatch: Find the row corresponding to minimum sigma
               res_min <- tryCatch({
