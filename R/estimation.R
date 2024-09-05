@@ -521,7 +521,7 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
 
             "GRID_SEARCH" = {
               # Initialize an empty list to store results
-              results_spsd <- list()
+              results_spsd <- data.frame(rho1 = numeric(), rho2 = numeric(), scalestdevstep = numeric(), sigma = numeric(), SPSD = numeric(), iterations = numeric())
               
               # Loop through each row of 'pars'
               for (i in 1:nrow(pars)) {
@@ -551,8 +551,8 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
               valid_results <- results_spsd[results_spsd$SPSD >= 0, ]
               
               # Find rows with minimum and maximum sigma values
-              min_sigma_row <- valid_results[which.min(valid_results$sigma), ]
-              max_sigma_row <- valid_results[which.max(valid_results$sigma), ]
+              min_sigma_row <- valid_results[which.min(valid_results$sigma), , drop = FALSE]
+              max_sigma_row <- valid_results[which.max(valid_results$sigma), , drop = FALSE]
               
               # Finalize the result for the minimum sigma row
               res_min <- min_sigma_row %>%
