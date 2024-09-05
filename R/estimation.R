@@ -521,20 +521,37 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
 
             "GRID_SEARCH" = {
 
-              # First tryCatch: Calculate sigma and filter based on SPSD
-              rpars <- tryCatch({
+              # Step 1: Calculate sigma with tryCatch
+              result_sigma <- tryCatch({
                 pars %>%
-                  mutate(sigma = relativecovariance + scalestdevstep * taxa1relativesd * rho1 + scalestdevstep * taxa1relativesd * rho2 + scalestdevstep^2) %>%
+                  mutate(sigma = relativecovariance + scalestdevstep * taxa1relativesd * rho1 +
+                           scalestdevstep * taxa1relativesd * rho2 + scalestdevstep^2)
+              }, error = function(e) {
+                message("Error occurred during sigma calculation: ", e$message)
+                stop("Stopping execution due to error in sigma calculation.")
+              })
+              
+              # Step 2: Apply rowwise() and compute SPSD with tryCatch
+              result_spsd <- tryCatch({
+                result_sigma %>%
                   rowwise() %>%
                   mutate(SPSD = constraint_function(params = c(rho1, rho2, scalestdevstep), 
                                                     taxa1relativesd, 
                                                     taxa2relativesd, 
-                                                    relativecovariance)) %>%
+                                                    relativecovariance))
+              }, error = function(e) {
+                message("Error occurred during SPSD calculation: ", e$message)
+                stop("Stopping execution due to error in SPSD calculation.")
+              })
+              
+              # Step 3: Filter rows based on SPSD with tryCatch
+              result_filtered <- tryCatch({
+                result_spsd %>%
                   filter(SPSD >= 0) %>%
                   ungroup()
               }, error = function(e) {
-                message("Error occurred during sigma calculation or SPSD filtering: ", e$message)
-                stop("Stopping execution due to error in sigma calculation or SPSD filtering.")
+                message("Error occurred during SPSD filtering: ", e$message)
+                stop("Stopping execution due to error in SPSD filtering.")
               })
               
               # Second tryCatch: Find the row corresponding to minimum sigma
