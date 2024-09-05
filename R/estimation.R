@@ -525,7 +525,7 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
               result_sigma <- tryCatch({
                 pars %>%
                   mutate(sigma = relativecovariance + scalestdevstep * taxa1relativesd * rho1 +
-                           scalestdevstep * taxa1relativesd * rho2 + scalestdevstep^2)
+                           scalestdevstep * taxa2relativesd * rho2 + scalestdevstep^2)
               }, error = function(e) {
                 message("Error occurred during sigma calculation: ", e$message)
                 stop("Stopping execution due to error in sigma calculation.")
