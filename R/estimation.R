@@ -529,8 +529,13 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
               min_sigma_row <- rpars[which.min(rpars$sigma), , drop = FALSE]
               max_sigma_row <- rpars[which.max(rpars$sigma), , drop = FALSE]
 
-              write(paste(rpars), file = "debug_output.txt", append = TRUE)
-              write(paste(min_sigma_row), file = "debug_output2.txt", append = TRUE)
+              # Writing the entire rpars dataframe as a readable output
+              write.table(rpars, file = "debug_output.txt", append = TRUE, sep = "\t", row.names = FALSE, col.names = TRUE)
+              
+              # Writing the min_sigma_row and max_sigma_row separately
+              write.table(min_sigma_row, file = "debug_output2.txt", append = TRUE, sep = "\t", row.names = FALSE, col.names = TRUE)
+              write.table(max_sigma_row, file = "debug_output3.txt", append = TRUE, sep = "\t", row.names = FALSE, col.names = TRUE)
+
                  
               # Finalize the result for the minimum sigma row
               res_min <- min_sigma_row %>%
