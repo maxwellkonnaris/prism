@@ -252,7 +252,7 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
 
   # Run the analysis
   cat("Running sigma estimation")
-  results_list <- tryCatch({ foreach(pair = pair_indices, .packages = c('stats', 'MCMCpack'), .options.snow = opts) %dopar% {
+  results_list <- foreach(pair = pair_indices, .packages = c('stats', 'MCMCpack'), .options.snow = opts) %dopar% {
       d1 <- pair[1]
       d2 <- pair[2]
       comparison <- paste(rownames(Y)[d1], rownames(Y)[d2], sep = ":")
@@ -261,7 +261,7 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
       maxsigma_values <- numeric(S)
       
       # Use parallel foreach for the inner loop
-      results_inner <- tryCatch({ foreach(s = 1:S, .combine = 'rbind', .packages = c('stats', 'MCMCpack'), .options.snow = opts) %dopar% {
+      results_inner <- foreach(s = 1:S, .combine = 'rbind', .packages = c('stats', 'MCMCpack'), .options.snow = opts) %dopar% {
           Yboot <- Y[, bootstrap_samples[[s]]]
           
           rWpara <- matrix(NA, D, N)
@@ -574,33 +574,23 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
               }
               
               # Finalize the result for the minimum sigma row
-              res_min <- if (!is.null(min_sigma_row)) {
-                  min_sigma_row %>%
+              res_min <- min_sigma_row %>%
                     dplyr::mutate(objective = min_sigma,
                                   solution = list(c(min_sigma_row$rho1, min_sigma_row$rho2, min_sigma_row$scalestdevstep)),
                                   message = "GRIDSEARCH",
                                   status = "GRIDSEARCH",
                                   iterations = iterations)  # Ensure 'iterations' is defined
-                } else {
-                  stop("No rows remaining for minimum sigma.")
-                }
-            
-              
+                    
               # Finalize the result for the maximum sigma row
-              res_max <- if (!is.null(max_sigma_row)) {
-                  max_sigma_row %>%
+              res_max <- max_sigma_row %>%
                     dplyr::mutate(objective = -max_sigma,  # Invert for maximum sigma as per your logic
                                   solution = list(c(max_sigma_row$rho1, max_sigma_row$rho2, max_sigma_row$scalestdevstep)),
                                   message = "GRIDSEARCH",
                                   status = "GRIDSEARCH",
                                   iterations = iterations)  # Ensure 'iterations' is defined
-                } else {
-                  stop("No rows remaining for maximum sigma.")
-                }
 
               list(res_min = res_min, res_max = res_max)
             },
-          
             stop("Invalid algorithm selected") # Default case if no match is found
           )
 
@@ -636,12 +626,7 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
             #variance_proportionality_taxa1 = variance_proportionality_d1,
             #variance_proportionality_taxa2 = variance_proportionality_d2
           )    
-        }
-      }, error = function(e) {
-            # Stop the execution and show the error message
-            stop("Error in optimization: ", e$message)
-      })
-      
+      }
       # Gather the min and max optimized sigmas
       minsigma_values <- results_inner$minsigma_absolute_minimum_covariance
       maxsigma_values <- results_inner$maxsigma_absolute_maximum_covariance
@@ -697,11 +682,6 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
         )
       )
   }
-  }, error = function(e) {
-        # Handle the error and stop all parallel tasks
-        stopCluster(cl)
-        stop("Error in parallel computation: ", e$message)
-  })
   
   # Combine the results into a data frame, transpose it, remove row names
   final_results <- do.call(rbind, lapply(results_list, function(x) x$results))
