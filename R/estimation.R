@@ -528,7 +528,6 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
                            scalestdevstep * taxa1relativesd * rho2 + scalestdevstep^2)
               }, error = function(e) {
                 message("Error occurred during sigma calculation: ", e$message)
-                message("Inspecting result_sigma: ", dplyr::glimpse(result_sigma))
                 stop("Stopping execution due to error in sigma calculation.")
               })
               
