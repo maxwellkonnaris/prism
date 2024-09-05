@@ -96,7 +96,7 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
     iterations <- length(rho1) * length(rho2) * length(scalestdevstep)
     
     # Create the grid of parameters
-    pars <- expand.grid(rho1 = rho1, rho2 = rho2, scalestdevstep = scalestdevstep)
+    pars <- expand.grid(rho1 = rho1, rho2 = rho2, scalestdevstep = scalestdevstep, iterations = iterations)
     
   }
   
@@ -529,8 +529,7 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
                   row <- pars[i, ]
                   
                   # Perform the sigma calculation for the current row
-                  sigma <- relativecovariance + row$scalestdevstep * taxa1relativesd * row$rho1 +
-                           row$scalestdevstep * taxa2relativesd * row$rho2 + row$scalestdevstep^2
+                  sigma <- relativecovariance + row$scalestdevstep * taxa1relativesd * row$rho1 + row$scalestdevstep * taxa2relativesd * row$rho2 + row$scalestdevstep^2
                           
                   # Apply the constraint function for the current row
                   SPSD <- constraint_function(
@@ -539,55 +538,37 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
                     taxa2relativesd, 
                     relativecovariance
                   )
+
+                  # Combine the row, sigma, and SPSD into a dataframe row
+                  combined_row <- data.frame(rho1 = row$rho1, rho2 = row$rho2,scalestdevstep = row$scalestdevstep, sigma = sigma, SPSD = SPSD, iterations = row$iterations)
                   
-                  # Only store the row if the SPSD constraint is met (SPSD >= 0)
-                  if (SPSD >= 0) {
-                    results_spsd[[length(results_spsd) + 1]] <- cbind(row, sigma = sigma, SPSD = SPSD)
-                  }
+                  # Append this row to the results dataframe
+                  results_spsd <- rbind(results_spsd, combined_row)
+                  
               }
 
-               # Assuming results_spsd contains valid data, and it's a list of rows or dataframes
-              rpars <- do.call(rbind, results_spsd)
+              # Filter rows where SPSD constraint is satisfied
+              valid_results <- results_spsd[results_spsd$SPSD >= 0, ]
               
-              # Initialize variables to store the rows with minimum and maximum sigma
-              min_sigma_row <- NULL
-              max_sigma_row <- NULL
-              min_sigma <- Inf
-              max_sigma <- -Inf
-              
-              # Loop through each row in rpars to find min and max sigma
-              for (i in 1:nrow(rpars)) {
-                  # Extract the current row
-                  row <- rpars[i, ]
-              
-                  # Find the row with the minimum sigma
-                  if (row$sigma < min_sigma) {
-                    min_sigma <- row$sigma
-                    min_sigma_row <- row
-                  }
-              
-                  # Find the row with the maximum sigma
-                  if (row$sigma > max_sigma) {
-                    max_sigma <- row$sigma
-                    max_sigma_row <- row
-                  }
-              }
+              # Find rows with minimum and maximum sigma values
+              min_sigma_row <- valid_results[which.min(valid_results$sigma), ]
+              max_sigma_row <- valid_results[which.max(valid_results$sigma), ]
               
               # Finalize the result for the minimum sigma row
               res_min <- min_sigma_row %>%
-                    dplyr::mutate(objective = min_sigma,
-                                  solution = list(c(min_sigma_row$rho1, min_sigma_row$rho2, min_sigma_row$scalestdevstep)),
+                    dplyr::mutate(objective = sigma,
+                                  solution = list(c(rho1, rho2, scalestdevstep)),
                                   message = "GRIDSEARCH",
                                   status = "GRIDSEARCH",
-                                  iterations = iterations)  # Ensure 'iterations' is defined
+                                  iterations = iterations) 
                     
               # Finalize the result for the maximum sigma row
               res_max <- max_sigma_row %>%
-                    dplyr::mutate(objective = -max_sigma,  # Invert for maximum sigma as per your logic
-                                  solution = list(c(max_sigma_row$rho1, max_sigma_row$rho2, max_sigma_row$scalestdevstep)),
+                    dplyr::mutate(objective = -sigma,  
+                                  solution = list(c(rho1, rho2, scalestdevstep)),
                                   message = "GRIDSEARCH",
                                   status = "GRIDSEARCH",
-                                  iterations = iterations)  # Ensure 'iterations' is defined
+                                  iterations = iterations)  
 
               list(res_min = res_min, res_max = res_max)
             },
