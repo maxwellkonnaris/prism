@@ -97,8 +97,6 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
     
     # Create the grid of parameters
     pars <- expand.grid(rho1, rho2, scalestdevstep)
-
-    print(pars)
     
   }
   
@@ -523,38 +521,40 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
 
             "GRID_SEARCH" = {
 
-              # Step 1: Calculate sigma with tryCatch
-              result_sigma <- tryCatch({
-                pars %>%
-                  mutate(sigma = relativecovariance + scalestdevstep * taxa1relativesd * rho1 +
-                           scalestdevstep * taxa2relativesd * rho2 + scalestdevstep^2)
-              }, error = function(e) {
-                message("Error occurred during sigma calculation: ", e$message)
-                stop("Stopping execution due to error in sigma calculation.")
-              })
+              # Initialize an empty list to store results
+              results_spsd <- list()
               
-              # Step 2: Apply rowwise() and compute SPSD with tryCatch
-              result_spsd <- tryCatch({
-                result_sigma %>%
-                  rowwise() %>%
-                  mutate(SPSD = constraint_function(params = c(rho1, rho2, scalestdevstep), 
-                                                    taxa1relativesd, 
-                                                    taxa2relativesd, 
-                                                    relativecovariance))
-              }, error = function(e) {
-                message("Error occurred during SPSD calculation: ", e$message)
-                stop("Stopping execution due to error in SPSD calculation.")
-              })
+              # Loop through each row of 'pars'
+              for (i in 1:nrow(pars)) {
+                tryCatch({ 
+                  # Extract the current row as a temporary dataframe (1 row)
+                  row <- pars[i, ]
+                  
+                  # Perform the sigma calculation for the current row
+                  sigma <- relativecovariance + row$scalestdevstep * taxa1relativesd * row$rho1 +
+                           row$scalestdevstep * taxa2relativesd * row$rho2 + row$scalestdevstep^2
+                  
+                  # Apply the constraint function for the current row
+                  SPSD <- constraint_function(
+                    params = c(row$rho1, row$rho2, row$scalestdevstep),
+                    taxa1relativesd, 
+                    taxa2relativesd, 
+                    relativecovariance
+                  )
+                  
+                  # Only store the row if the SPSD constraint is met (SPSD >= 0)
+                  if (SPSD >= 0) {
+                    results_spsd[[length(results_spsd) + 1]] <- cbind(row, sigma = sigma, SPSD = SPSD)
+                  }
+                }, error = function(e) {
+                    # Print a message if an error occurs and continue with the next iteration
+                    message(paste("Error occurred in row", i, ":", e$message))
+                  })
+              }
               
-              # Step 3: Filter rows based on SPSD with tryCatch
-              result_filtered <- tryCatch({
-                result_spsd %>%
-                  filter(SPSD >= 0) %>%
-                  ungroup()
-              }, error = function(e) {
-                message("Error occurred during SPSD filtering: ", e$message)
-                stop("Stopping execution due to error in SPSD filtering.")
-              })
+              # Combine all rows into a dataframe
+              rpars <- do.call(rbind, results_spsd)
+
               
               # Second tryCatch: Find the row corresponding to minimum sigma
               res_min <- tryCatch({
