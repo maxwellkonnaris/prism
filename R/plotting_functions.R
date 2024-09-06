@@ -646,7 +646,7 @@ plot_and_save_surfaces <- function(data, output_directory = "plots/surfaceplots/
 #' @return This function saves the plots and returns no value.
 #' @import plotly htmlwidgets
 #' @export
-plot_and_save_3d_scatter <- function(data, output_directory = "plots/threedimscatterplots/", x_range = c(-1, 1), z_range = c(0.49, 0.51)) {
+plot_and_save_3d_scatter <- function(data, output_directory = "plots/threedimscatterplots/", correlation_relativetaxa_scale_range = c(-1, 1), scale_sd_range = c(0.49, 0.51)) {
   # Ensure output directory exists
   if (!dir.exists(output_directory)) {
     dir.create(output_directory, recursive = TRUE)
