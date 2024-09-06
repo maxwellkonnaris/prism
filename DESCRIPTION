@@ -6,7 +6,7 @@ Author: Maxwell Konnaris, Michelle Nixon, and Justin Silverman
 Maintainer: Maxwell Konnaris <Maxwellkonnaris@gmail.com>
 Description: A package for running simulations and robust covariance analysis on count data using a bootstrap scale estimation approach to solve partially identified systems.
 License: MIT + file LICENSE
-Imports: tidyverse, driver, rBeta2009, pbapply, progress, progressr, scales, utils, foreach, doSNOW, parallel, stats, MCMCpack, ggplot2, profvis, gridExtra, grid, dplyr, tidyr, coda, compositions, GGally, nloptr, plotly, htmlwidgets, geometry
+Imports: tidyverse, driver, rBeta2009, pbapply, progress, progressr, scales, utils, foreach, doSNOW, parallel, stats, MCMCpack, ggplot2, profvis, gridExtra, grid, dplyr, tidyr, coda, compositions, GGally, nloptr, plotly, htmlwidgets, alphashape3d
 RoxygenNote: 7.3.2
 Encoding: UTF-8
 
