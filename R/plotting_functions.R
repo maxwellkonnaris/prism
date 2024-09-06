@@ -625,28 +625,29 @@ plot_and_save_surfaces <- function(data, output_directory = "plots/surfaceplots/
 }
 
 
-#' Plot and Save 3D Scatter Plots for All Comparisons
+#' Plot and Save 3D Scatter Plots with Convex Hull for All Comparisons
 #'
 #' This function generates 3D scatter plots for `minsigma` and `maxsigma`
-#' across all comparisons in the dataset and saves them as HTML files.
+#' across all comparisons in the dataset and overlays a convex hull around grouped points.
+#' The plots are saved as HTML files.
 #'
 #' @param data A data frame containing the optimization results. 
 #' The data frame must contain columns named "comparison", 
 #' "minsigma_correlation_relativetaxa1_scale", 
 #' "minsigma_correlation_relativetaxa2_scale", 
-#' "minsigma_scale_sd", 
+#' "minsigma_scale_variance", 
 #' "maxsigma_correlation_relativetaxa1_scale", 
 #' "maxsigma_correlation_relativetaxa2_scale", and 
-#' "maxsigma_scale_sd". Additionally, if the data frame contains an 
+#' "maxsigma_scale_variance". Additionally, if the data frame contains an 
 #' "SPSD" column, the plot colors will reflect SPSD values.
-#' @param output_directory A string specifying the directory where the plots will be saved (default: "plots/threedimscatterplots/").
-#' The directory will be created if it does not exist.
-#' @param correlation_relativetaxa_scale_range A vector specifying the range of values for the x-axis (default: c(-1, 1)).
+#' @param output_directory A string specifying the directory where the plots will be saved.
+#' @param correlation_relativetaxa_scale_range A vector specifying the range of values for the x and y axes (default: c(-1, 1)).
 #' @param scale_sd_range A vector specifying the range of values for the z-axis (default: c(0.49, 0.51)).
 #' @return This function saves the plots and returns no value.
 #' @import plotly htmlwidgets alphashape3d
 #' @export
-plot_and_save_3d_scatter <- function(data, output_directory = "plots/threedimscatterplots/", correlation_relativetaxa_scale_range = c(-1, 1), scale_sd_range = c(0.49, 0.51)) {
+plot_and_save_3d_scatter <- function(data, output_directory = "plots/threedimscatterplots/", 
+                                     correlation_relativetaxa_scale_range = c(-1, 1), scale_sd_range = c(0.49, 0.51)) {
   # Ensure output directory exists
   if (!dir.exists(output_directory)) {
     dir.create(output_directory, recursive = TRUE)
@@ -687,8 +688,29 @@ plot_and_save_3d_scatter <- function(data, output_directory = "plots/threedimsca
     # Combine minsigma and maxsigma points for creating the convex hull
     all_points <- rbind(minsigma_points, maxsigma_points)
     
-    # Create the convex hull using alphashape3d (alpha shape is like a convex hull)
-    ashape <- ashape3d(all_points, alpha = 1)  # Adjust alpha for tighter or looser fit
+    # Remove duplicate points
+    all_points <- unique(all_points)
+    
+    # If there are fewer than 4 unique points, we can't create a 3D convex hull
+    if (nrow(all_points) < 4) {
+      message("Not enough unique points to create a convex hull for comparison: ", comparison_value)
+      next
+    }
+    
+    # Center the points by subtracting the mean (shifting the center of the points to the origin)
+    all_points_centered <- scale(all_points, center = TRUE, scale = FALSE)
+    
+    # Try to create the convex hull using alphashape3d (alpha shape is like a convex hull)
+    ashape <- tryCatch({
+      ashape3d(all_points_centered, alpha = 1)  # Adjust alpha for tighter or looser fit
+    }, error = function(e) {
+      message("Failed to create convex hull for comparison: ", comparison_value)
+      return(NULL)
+    })
+    
+    if (is.null(ashape)) {
+      next  # Skip if the convex hull failed to generate
+    }
     
     # Extract the vertices and faces for the convex hull mesh
     vertices <- ashape$alpha3d$triang
@@ -712,21 +734,20 @@ plot_and_save_3d_scatter <- function(data, output_directory = "plots/threedimsca
                   z = ~get("maxsigma_scale_variance"), 
                   marker = list(color = maxsigma_colors, size = 3), 
                   name = 'MaxSigma') %>%
-	  
+      
       # Add the convex hull mesh (ball shape around the points)
       add_mesh3d(
         x = vertices[,1], y = vertices[,2], z = vertices[,3],
         i = faces[,1] - 1, j = faces[,2] - 1, k = faces[,3] - 1, 
         color = 'lightgrey', opacity = 0.5, name = 'Convex Hull'
       ) %>%
-	  
+      
       # Set layout with custom axis ranges
       layout(scene = list(xaxis = list(title = 'Correlation RelTaxa1 Scale', range = correlation_relativetaxa_scale_range),
                           yaxis = list(title = 'Correlation RelTaxa2 Scale', range = correlation_relativetaxa_scale_range),
                           zaxis = list(title = 'Scale Variance', range = scale_sd_range)),
              title = paste("MinSigma and MaxSigma Scatter Plot for Comparison", comparison_value))
-
-	  
+    
     # Define file path for saving the plot
     output_file <- file.path(output_directory, paste0("sigma_scatter_comparison_", comparison_value, ".html"))
     
@@ -737,3 +758,4 @@ plot_and_save_3d_scatter <- function(data, output_directory = "plots/threedimsca
     message("Generated and saved scatter plot for comparison: ", comparison_value)
   }
 }
+
