@@ -532,6 +532,9 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
                   comparison = paste0(d1,":",d2) 
                 )
 
+              # Writing the entire rpars dataframe as a readable output
+              write.table(rpars, file = "full_grid.txt", append = TRUE, sep = "\t", row.names = FALSE, col.names = TRUE)
+              
               rpars <- rpars %>%
                 dplyr::filter(SPSD >= 0) %>%  # Filter rows where SPSD is >= 0
               
