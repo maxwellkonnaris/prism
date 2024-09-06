@@ -521,13 +521,20 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
 
             "GRID_SEARCH" = {
 
+              # Calculate rpars without filtering based on SPSD
               rpars <- pars %>%
                 rowwise() %>%
-                dplyr::mutate(SPSD = constraint_function(params = c_across(c(rho1, rho2, scalestdevstep)),taxa1relativesd, taxa2relativesd, relativecovariance)) %>%
+                dplyr::mutate(SPSD = constraint_function(params = c_across(c(rho1, rho2, scalestdevstep)), taxa1relativesd, taxa2relativesd, relativecovariance)) %>%
                 ungroup() %>%
-                dplyr::filter(SPSD >= 0) %>%  # Filter rows where SPSD is >= 0
-                dplyr::mutate(sigma = relativecovariance + scalestdevstep * taxa1relativesd * rho1 + scalestdevstep * taxa2relativesd * rho2 + scalestdevstep^2)
+                dplyr::mutate(
+                  sigma = relativecovariance + scalestdevstep * taxa1relativesd * rho1 + scalestdevstep * taxa2relativesd * rho2 + scalestdevstep^2,
+                  s = s,  
+                  comparison = paste0(d1,":",d2) 
+                )
 
+              rpars <- rpars %>%
+                dplyr::filter(SPSD >= 0) %>%  # Filter rows where SPSD is >= 0
+              
               min_sigma_row <- rpars[which.min(rpars$sigma), , drop = FALSE]
               max_sigma_row <- rpars[which.max(rpars$sigma), , drop = FALSE]
                  
