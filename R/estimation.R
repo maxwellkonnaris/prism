@@ -585,7 +585,7 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
             maxsigma_absolute_maximum_covariance = -res_max$objective,
             maxsigma_correlation_relativetaxa1_scale = res_max$solution[1],
             maxsigma_correlation_relativetaxa2_scale = res_max$solution[2],
-            maxsigma_scale_variance = res_max$solution[3],
+            maxsigma_scale_sd = res_max$solution[3],
             maxsigma_message = res_max$message,
             maxsigma_status = res_max$status,
             maxsigma_iterations = res_max$iterations,
@@ -617,11 +617,11 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
       
       min_rho1 <- results_inner$minsigma_correlation_relativetaxa1_scale[min_index]
       min_rho2 <- results_inner$minsigma_correlation_relativetaxa2_scale[min_index]
-      min_x <- results_inner$minsigma_scale_variance[min_index]
+      min_x <- results_inner$minsigma_scale_sd[min_index]
       
       max_rho1 <- results_inner$maxsigma_correlation_relativetaxa1_scale[max_index]
       max_rho2 <- results_inner$maxsigma_correlation_relativetaxa2_scale[max_index]
-      max_x <- results_inner$maxsigma_scale_variance[max_index]
+      max_x <- results_inner$maxsigma_scale_sd[max_index]
       
       taxa1relativesd <- results_inner$taxa1relativesd[min_index]
       taxa2relativesd <- results_inner$taxa2relativesd[min_index]
@@ -640,10 +640,10 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
           maxsigma_absolute_maximum_covariance = maxsigma,
           minsigma_correlation_relativetaxa1_scale = min_rho1,
           minsigma_correlation_relativetaxa2_scale = min_rho2,
-          minsigma_scale_variance = min_x,
+          minsigma_scale_sd = min_x,
           maxsigma_correlation_relativetaxa1_scale = max_rho1,
           maxsigma_correlation_relativetaxa2_scale = max_rho2,
-          maxsigma_scale_variance = max_x,
+          maxsigma_scale_sd = max_x,
           relative_standard_dev_taxa1 = taxa1relativesd,
           relative_standard_dev_taxa2 = taxa2relativesd,
           relative_correlation = relativecorrelation,
