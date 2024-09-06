@@ -735,12 +735,12 @@ plot_and_save_3d_scatter <- function(data, output_directory = "plots/threedimsca
                   marker = list(color = maxsigma_colors, size = 3), 
                   name = 'MaxSigma') %>%
       
-      # Add the convex hull mesh (ball shape around the points)
-      add_mesh3d(
-        x = vertices[,1], y = vertices[,2], z = vertices[,3],
-        i = faces[,1] - 1, j = faces[,2] - 1, k = faces[,3] - 1, 
-        color = 'lightgrey', opacity = 0.5, name = 'Convex Hull'
-      ) %>%
+      # Add the convex hull mesh (ball shape around the points) using mesh3d
+      add_trace(type = 'mesh3d',
+                x = vertices[,1], y = vertices[,2], z = vertices[,3],
+                i = faces[,1] - 1, j = faces[,2] - 1, k = faces[,3] - 1, 
+                facecolor = rep("lightgrey", nrow(faces)),
+                opacity = 0.5, name = 'Convex Hull') %>%
       
       # Set layout with custom axis ranges
       layout(scene = list(xaxis = list(title = 'Correlation RelTaxa1 Scale', range = correlation_relativetaxa_scale_range),
@@ -758,4 +758,5 @@ plot_and_save_3d_scatter <- function(data, output_directory = "plots/threedimsca
     message("Generated and saved scatter plot for comparison: ", comparison_value)
   }
 }
+
 
