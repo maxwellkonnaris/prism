@@ -637,10 +637,10 @@ plot_and_save_surfaces <- function(data, output_directory = "plots/surfaceplots/
 #' The data frame must contain columns named "comparison", 
 #' "minsigma_correlation_relativetaxa1_scale", 
 #' "minsigma_correlation_relativetaxa2_scale", 
-#' "minsigma_scale_variance", 
+#' "minsigma_scale_sd", 
 #' "maxsigma_correlation_relativetaxa1_scale", 
 #' "maxsigma_correlation_relativetaxa2_scale", and 
-#' "maxsigma_scale_variance". Additionally, if the data frame contains an 
+#' "maxsigma_scale_sd". Additionally, if the data frame contains an 
 #' "SPSD" column, the plot will reflect this using color.
 #' @param output_directory A string specifying the directory where the plots will be saved.
 #' @param correlation_relativetaxa_scale_range A vector specifying the range of values for the x and y axes (default: c(-1, 1)).
@@ -699,13 +699,13 @@ plot_comparisons_3d_scatter <- function(data, output_directory = "plots/",
     minsigma_points <- data.frame(
       x = data_subset$minsigma_correlation_relativetaxa1_scale,
       y = data_subset$minsigma_correlation_relativetaxa2_scale,
-      z = data_subset$minsigma_scale_variance
+      z = data_subset$minsigma_scale_sd
     )
     
     maxsigma_points <- data.frame(
       x = data_subset$maxsigma_correlation_relativetaxa1_scale,
       y = data_subset$maxsigma_correlation_relativetaxa2_scale,
-      z = data_subset$maxsigma_scale_variance
+      z = data_subset$maxsigma_scale_sd
     )
     
     # Combine minsigma and maxsigma points for creating the convex hull
@@ -744,7 +744,7 @@ plot_comparisons_3d_scatter <- function(data, output_directory = "plots/",
         add_markers(data = data_subset, 
                     x = ~minsigma_correlation_relativetaxa1_scale, 
                     y = ~minsigma_correlation_relativetaxa2_scale, 
-                    z = ~minsigma_scale_variance, 
+                    z = ~minsigma_scale_sd, 
                     marker = list(symbol = minsigma_shape, color = minsigma_colors, size = 4),
                     name = paste('MinSigma', comparison_value))
       
@@ -753,7 +753,7 @@ plot_comparisons_3d_scatter <- function(data, output_directory = "plots/",
         add_markers(data = data_subset, 
                     x = ~maxsigma_correlation_relativetaxa1_scale, 
                     y = ~maxsigma_correlation_relativetaxa2_scale, 
-                    z = ~maxsigma_scale_variance, 
+                    z = ~maxsigma_scale_sd, 
                     marker = list(symbol = maxsigma_shape, color = maxsigma_colors, size = 4),
                     name = paste('MaxSigma', comparison_value))
       
@@ -777,7 +777,7 @@ plot_comparisons_3d_scatter <- function(data, output_directory = "plots/",
         add_markers(data = data_subset, 
                     x = ~minsigma_correlation_relativetaxa1_scale, 
                     y = ~minsigma_correlation_relativetaxa2_scale, 
-                    z = ~minsigma_scale_variance, 
+                    z = ~minsigma_scale_sd, 
                     marker = list(symbol = minsigma_shape, color = minsigma_colors, size = 4),
                     name = paste('MinSigma', comparison_value)) %>%
         
@@ -785,7 +785,7 @@ plot_comparisons_3d_scatter <- function(data, output_directory = "plots/",
         add_markers(data = data_subset, 
                     x = ~maxsigma_correlation_relativetaxa1_scale, 
                     y = ~maxsigma_correlation_relativetaxa2_scale, 
-                    z = ~maxsigma_scale_variance, 
+                    z = ~maxsigma_scale_sd, 
                     marker = list(symbol = maxsigma_shape, color = maxsigma_colors, size = 4),
                     name = paste('MaxSigma', comparison_value)) 
         
@@ -802,7 +802,7 @@ plot_comparisons_3d_scatter <- function(data, output_directory = "plots/",
       comparison_plot <- comparison_plot %>%
         layout(scene = list(xaxis = list(title = 'Correlation RelTaxa1 Scale', range = correlation_relativetaxa_scale_range),
                             yaxis = list(title = 'Correlation RelTaxa2 Scale', range = correlation_relativetaxa_scale_range),
-                            zaxis = list(title = 'Scale Variance', range = scale_sd_range)),
+                            zaxis = list(title = 'Scale SD', range = scale_sd_range)),
                title = paste("MinSigma and MaxSigma Scatter Plot for Comparison", comparison_value))
       
       # Define file path for saving the plot
@@ -822,7 +822,7 @@ plot_comparisons_3d_scatter <- function(data, output_directory = "plots/",
     plot <- plot %>%
       layout(scene = list(xaxis = list(title = 'Correlation RelTaxa1 Scale', range = correlation_relativetaxa_scale_range),
                           yaxis = list(title = 'Correlation RelTaxa2 Scale', range = correlation_relativetaxa_scale_range),
-                          zaxis = list(title = 'Scale Variance', range = scale_sd_range)),
+                          zaxis = list(title = 'Scale SD', range = scale_sd_range)),
              title = "MinSigma and MaxSigma Scatter Plot for All Comparisons")
     
     # Define file path for saving the combined plot
