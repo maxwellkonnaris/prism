@@ -624,10 +624,13 @@ plot_and_save_surfaces <- function(data, output_directory = "plots/surfaceplots/
   }
 }
 
+
 #' Plot and Save 3D Scatter Plots with Convex Hull for All Comparisons
 #'
-#' This function generates 3D scatter plots for `minsigma` and `maxsigma`
-#' across all comparisons in the dataset and overlays a convex hull around grouped points.
+#' This function generates 3D scatter plots for `minsigma`, `maxsigma`,
+#' and optionally highlights `SPSD < 0` points for all comparisons in the dataset.
+#' Convex hulls are drawn around the points, and the user can choose to plot
+#' all comparisons on the same plot or create individual plots.
 #' The plots are saved as HTML files.
 #'
 #' @param data A data frame containing the optimization results. 
@@ -638,39 +641,57 @@ plot_and_save_surfaces <- function(data, output_directory = "plots/surfaceplots/
 #' "maxsigma_correlation_relativetaxa1_scale", 
 #' "maxsigma_correlation_relativetaxa2_scale", and 
 #' "maxsigma_scale_variance". Additionally, if the data frame contains an 
-#' "SPSD" column, the plot colors will reflect SPSD values.
+#' "SPSD" column, the plot will reflect this using color.
 #' @param output_directory A string specifying the directory where the plots will be saved.
 #' @param correlation_relativetaxa_scale_range A vector specifying the range of values for the x and y axes (default: c(-1, 1)).
 #' @param scale_sd_range A vector specifying the range of values for the z-axis (default: c(0.49, 0.51)).
+#' @param plot_all Logical. If TRUE, plot all comparisons on the same 3D scatter plot. 
+#' If FALSE, generate separate plots for each comparison.
+#' @param alpha_value A numeric value that controls the convex hull's tightness (default: 1).
 #' @return This function saves the plots and returns no value.
 #' @import plotly htmlwidgets alphashape3d
 #' @export
-plot_and_save_3d_scatter <- function(data, output_directory = "plots/threedimscatterplots/", 
-                                     correlation_relativetaxa_scale_range = c(-1, 1), scale_sd_range = c(0.49, 0.51), alpha_value = 1) {
+plot_comparisons_3d_scatter <- function(data, output_directory = "plots/", 
+                                        correlation_relativetaxa_scale_range = c(-1, 1), 
+                                        scale_sd_range = c(0.49, 0.51),
+                                        plot_all = TRUE,
+                                        alpha_value = 1) {
   # Ensure output directory exists
   if (!dir.exists(output_directory)) {
     dir.create(output_directory, recursive = TRUE)
   }
-  
+
   # Get unique comparisons from the data
   unique_comparisons <- unique(data$comparison)
   
+  # Assign a unique color for each comparison
+  comparison_colors <- rainbow(length(unique_comparisons))
+
+  # Initialize an empty plot if plotting all together
+  if (plot_all) {
+    plot <- plot_ly()
+  }
+
   # Loop through each comparison
-  for (comparison_value in unique_comparisons) {
+  for (i in seq_along(unique_comparisons)) {
+    comparison_value <- unique_comparisons[i]
     # Filter the data for the specific comparison
     data_subset <- subset(data, comparison == comparison_value)
     
-    # Check if SPSD column exists and assign colors based on SPSD value
+    # Marker shapes: circle for minsigma, square for maxsigma
+    minsigma_shape <- 'circle'
+    maxsigma_shape <- 'square'
+    
+    # Check if SPSD column exists and highlight points where SPSD < 0
     if ("SPSD" %in% names(data_subset)) {
-      # Red if SPSD < 0, otherwise use blue/purple for min/max
-      minsigma_colors <- ifelse(data_subset$SPSD < 0, "red", "blue")
-      maxsigma_colors <- ifelse(data_subset$SPSD < 0, "red", "purple")
+      minsigma_colors <- ifelse(data_subset$SPSD < 0, "red", comparison_colors[i])
+      maxsigma_colors <- ifelse(data_subset$SPSD < 0, "red", comparison_colors[i])
     } else {
-      # Default to blue/purple for min/max if SPSD is not available
-      minsigma_colors <- "blue"
-      maxsigma_colors <- "purple"
+      # Use comparison colors if SPSD is not available
+      minsigma_colors <- comparison_colors[i]
+      maxsigma_colors <- comparison_colors[i]
     }
-
+    
     # Get the points for both minsigma and maxsigma
     minsigma_points <- data.frame(
       x = data_subset$minsigma_correlation_relativetaxa1_scale,
@@ -691,77 +712,119 @@ plot_and_save_3d_scatter <- function(data, output_directory = "plots/threedimsca
     all_points <- unique(all_points)
     
     # If there are fewer than 4 unique points, we can't create a 3D convex hull
-    if (nrow(all_points) < 4) {
-      message("Not enough unique points to create a convex hull for comparison: ", comparison_value)
-      next
+    if (nrow(all_points) >= 4) {
+      # Center the points by subtracting the mean (shifting the center of the points to the origin)
+      all_points_centered <- scale(all_points, center = TRUE, scale = FALSE)
+      
+      # Try to create the convex hull using alphashape3d (alpha shape is like a convex hull)
+      ashape <- tryCatch({
+        ashape3d(all_points_centered, alpha = alpha_value)  # Adjust alpha for tighter or looser fit
+      }, error = function(e) {
+        message("Failed to create convex hull for comparison: ", comparison_value)
+        return(NULL)
+      })
+      
+      if (!is.null(ashape)) {
+        # Extract the vertices and faces for the convex hull mesh
+        vertices <- ashape$alpha3d$triang
+        faces <- ashape$alpha3d$facets
+      }
     }
     
-    # Center the points by subtracting the mean (shifting the center of the points to the origin)
-    all_points_centered <- scale(all_points, center = TRUE, scale = FALSE)
-    
-    # Try to create the convex hull using alphashape3d (alpha shape is like a convex hull)
-    ashape <- tryCatch({
-      ashape3d(all_points_centered, alpha = alpha_value)  # Adjust alpha for tighter or looser fit
-    }, error = function(e) {
-      message("Failed to create convex hull for comparison: ", comparison_value)
-      return(NULL)
-    })
-    
-    if (is.null(ashape)) {
-      next  # Skip if the convex hull failed to generate
-    }
-    
-    # Extract the vertices and faces for the convex hull mesh
-    vertices <- ashape$alpha3d$triang
-    faces <- ashape$alpha3d$facets
-    
-    # Create 3D scatter plots for both minsigma and maxsigma on the same plot
-    plot <- plot_ly() %>%
+    if (plot_all) {
+      # Add minsigma scatter plot with 'circle' markers to the overall plot
+      plot <- plot %>%
+        add_markers(data = data_subset, 
+                    x = ~minsigma_correlation_relativetaxa1_scale, 
+                    y = ~minsigma_correlation_relativetaxa2_scale, 
+                    z = ~minsigma_scale_variance, 
+                    marker = list(symbol = minsigma_shape, color = minsigma_colors, size = 4),
+                    name = paste('MinSigma', comparison_value))
       
-      # Add minsigma scatter plot
-      add_markers(data = data_subset, 
-                  x = ~get("minsigma_correlation_relativetaxa1_scale"), 
-                  y = ~get("minsigma_correlation_relativetaxa2_scale"), 
-                  z = ~get("minsigma_scale_variance"), 
-                  marker = list(color = minsigma_colors, size = 3), 
-                  name = 'MinSigma') %>%
+      # Add maxsigma scatter plot with 'square' markers to the overall plot
+      plot <- plot %>%
+        add_markers(data = data_subset, 
+                    x = ~maxsigma_correlation_relativetaxa1_scale, 
+                    y = ~maxsigma_correlation_relativetaxa2_scale, 
+                    z = ~maxsigma_scale_variance, 
+                    marker = list(symbol = maxsigma_shape, color = maxsigma_colors, size = 4),
+                    name = paste('MaxSigma', comparison_value))
       
-      # Add maxsigma scatter plot
-      add_markers(data = data_subset, 
-                  x = ~get("maxsigma_correlation_relativetaxa1_scale"), 
-                  y = ~get("maxsigma_correlation_relativetaxa2_scale"), 
-                  z = ~get("maxsigma_scale_variance"), 
-                  marker = list(color = maxsigma_colors, size = 3), 
-                  name = 'MaxSigma') %>%
-      
-      # Add the convex hull mesh for minsigma (ball shape around the points)
-      add_trace(type = 'mesh3d',
-                x = vertices[,1], y = vertices[,2], z = vertices[,3],
-                i = faces[,1] - 1, j = faces[,2] - 1, k = faces[,3] - 1, 
-                color = minsigma_colors, opacity = 0.5, name = 'Convex Hull (MinSigma)') %>%
-      
-      # Add the convex hull mesh for maxsigma (ball shape around the points)
-      add_trace(type = 'mesh3d',
-                x = vertices[,1], y = vertices[,2], z = vertices[,3],
-                i = faces[,1] - 1, j = faces[,2] - 1, k = faces[,3] - 1, 
-                color = maxsigma_colors, opacity = 0.5, name = 'Convex Hull (MaxSigma)') %>%
+      # Add convex hull if it was successfully created
+      if (exists("ashape") && !is.null(ashape)) {
+        plot <- plot %>%
+          add_trace(type = 'mesh3d',
+                    x = vertices[,1], y = vertices[,2], z = vertices[,3],
+                    i = faces[,1] - 1, j = faces[,2] - 1, k = faces[,3] - 1, 
+                    color = comparison_colors[i], opacity = 0.3, name = paste("Convex Hull", comparison_value))
+      }
+    } else {
+      # Generate individual plots for each comparison
+      comparison_plot <- plot_ly() %>%
+        
+        # Add minsigma scatter plot with 'circle' markers
+        add_markers(data = data_subset, 
+                    x = ~minsigma_correlation_relativetaxa1_scale, 
+                    y = ~minsigma_correlation_relativetaxa2_scale, 
+                    z = ~minsigma_scale_variance, 
+                    marker = list(symbol = minsigma_shape, color = minsigma_colors, size = 4),
+                    name = paste('MinSigma', comparison_value)) %>%
+        
+        # Add maxsigma scatter plot with 'square' markers
+        add_markers(data = data_subset, 
+                    x = ~maxsigma_correlation_relativetaxa1_scale, 
+                    y = ~maxsigma_correlation_relativetaxa2_scale, 
+                    z = ~maxsigma_scale_variance, 
+                    marker = list(symbol = maxsigma_shape, color = maxsigma_colors, size = 4),
+                    name = paste('MaxSigma', comparison_value)) 
+        
+      # Add convex hull if it was successfully created
+      if (exists("ashape") && !is.null(ashape)) {
+        comparison_plot <- comparison_plot %>%
+          add_trace(type = 'mesh3d',
+                    x = vertices[,1], y = vertices[,2], z = vertices[,3],
+                    i = faces[,1] - 1, j = faces[,2] - 1, k = faces[,3] - 1, 
+                    color = comparison_colors[i], opacity = 0.3, name = paste("Convex Hull", comparison_value))
+      }
       
       # Set layout with custom axis ranges
+      comparison_plot <- comparison_plot %>%
+        layout(scene = list(xaxis = list(title = 'Correlation RelTaxa1 Scale', range = correlation_relativetaxa_scale_range),
+                            yaxis = list(title = 'Correlation RelTaxa2 Scale', range = correlation_relativetaxa_scale_range),
+                            zaxis = list(title = 'Scale Variance', range = scale_sd_range)),
+               title = paste("MinSigma and MaxSigma Scatter Plot for Comparison", comparison_value))
+      
+      # Define file path for saving the plot
+      output_file <- file.path(output_directory, paste0("sigma_scatter_comparison_", comparison_value, ".html"))
+      
+      # Save the individual plot as an HTML file
+      htmlwidgets::saveWidget(comparison_plot, file = output_file)
+      
+      # Optionally, print a message to confirm plot generation
+      message("Generated and saved individual scatter plot for comparison: ", comparison_value)
+    }
+  }
+
+  # If plotting all comparisons together, finalize and save the plot
+  if (plot_all) {
+    # Set layout with custom axis ranges
+    plot <- plot %>%
       layout(scene = list(xaxis = list(title = 'Correlation RelTaxa1 Scale', range = correlation_relativetaxa_scale_range),
                           yaxis = list(title = 'Correlation RelTaxa2 Scale', range = correlation_relativetaxa_scale_range),
                           zaxis = list(title = 'Scale Variance', range = scale_sd_range)),
-             title = paste("MinSigma and MaxSigma Scatter Plot for Comparison", comparison_value))
+             title = "MinSigma and MaxSigma Scatter Plot for All Comparisons")
     
-    # Define file path for saving the plot
-    output_file <- file.path(output_directory, paste0("sigma_scatter_comparison_", comparison_value, ".html"))
+    # Define file path for saving the combined plot
+    output_file <- file.path(output_directory, "sigma_scatter_all_comparisons.html")
     
-    # Save the plot as an HTML file
+    # Save the combined plot as an HTML file
     htmlwidgets::saveWidget(plot, file = output_file)
     
     # Optionally, print a message to confirm plot generation
-    message("Generated and saved scatter plot for comparison: ", comparison_value)
+    message("Generated and saved combined scatter plot for all comparisons.")
   }
 }
+
 
 
 
