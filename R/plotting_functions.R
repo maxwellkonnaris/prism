@@ -836,6 +836,165 @@ plot_comparisons_3d_scatter <- function(data, output_directory = "plots/",
   }
 }
 
+#' Plot and Save 3D Scatter Plots for rpars
+#'
+#' This function generates 3D scatter plots for `sigma`, `rho1`, `rho2`, and `scalestdevstep`
+#' and optionally highlights `SPSD < 0` points for all comparisons in the dataset.
+#' Convex hulls are drawn around the points, and the user can choose to plot
+#' all comparisons on the same plot or create individual plots.
+#' The plots are saved as HTML files.
+#'
+#' @param data A data frame containing the optimization results, including `sigma`, `rho1`, `rho2`, and `scalestdevstep`.
+#' @param output_directory A string specifying the directory where the plots will be saved.
+#' @param rho_scale_range A vector specifying the range of values for `rho1` and `rho2` axes (default: c(-1, 1)).
+#' @param scalestdevstep_range A vector specifying the range of values for the `scalestdevstep` axis (default: c(0.49, 0.51)).
+#' @param plot_all Logical. If TRUE, plot all comparisons on the same 3D scatter plot. 
+#' If FALSE, generate separate plots for each comparison.
+#' @param alpha_value A numeric value that controls the convex hull's tightness (default: 1).
+#' @return This function saves the plots and returns no value.
+#' @import plotly htmlwidgets alphashape3d
+#' @export
+plot_rpars_3d_scatter <- function(data, output_directory = "plots/", rho_scale_range = c(-1, 1), scalestdevstep_range = c(0.49, 0.51), plot_all = TRUE, alpha_value = 1) {
+  # Ensure output directory exists
+  if (!dir.exists(output_directory)) {
+    dir.create(output_directory, recursive = TRUE)
+  }
+
+  # Get unique comparisons from the data
+  unique_comparisons <- unique(data$comparison)
+  
+  # Create a custom color palette excluding grey and red shades
+  all_colors <- grDevices::colors()[grep('gr(a|e)y|red', grDevices::colors(), invert = TRUE)]
+  
+  # Sample N colors for each comparison
+  color_palette <- sample(all_colors, min(length(unique_comparisons), length(all_colors)))
+
+  # Initialize an empty plot if plotting all together
+  if (plot_all) {
+    plot <- plot_ly()
+  }
+
+  # Loop through each comparison
+  for (i in seq_along(unique_comparisons)) {
+    comparison_value <- unique_comparisons[i]
+    # Filter the data for the specific comparison
+    data_subset <- subset(data, comparison == comparison_value)
+    
+    # Marker shapes: use different shapes or sizes if needed
+    marker_shape <- 'circle'
+    
+    # Check if SPSD column exists and highlight points where SPSD < 0
+    sigma_colors <- ifelse(data_subset$SPSD < 0, "red", color_palette[i])
+    
+    # Get the points for plotting
+    points <- data.frame(
+      x = data_subset$rho1,
+      y = data_subset$rho2,
+      z = data_subset$scalestdevstep
+    )
+    
+    # Remove duplicate points
+    points <- unique(points)
+    
+    # If there are fewer than 4 unique points, we can't create a 3D convex hull
+    if (nrow(points) >= 4) {
+      # Center the points by subtracting the mean (shifting the center of the points to the origin)
+      points_centered <- scale(points, center = TRUE, scale = FALSE)
+      
+      # Try to create the convex hull using alphashape3d (alpha shape is like a convex hull)
+      ashape <- tryCatch({
+        ashape3d(points_centered, alpha = alpha_value)  # Adjust alpha for tighter or looser fit
+      }, error = function(e) {
+        message("Failed to create convex hull for comparison: ", comparison_value)
+        return(NULL)
+      })
+      
+      if (!is.null(ashape)) {
+        # Extract the vertices and faces for the convex hull mesh
+        vertices <- ashape$alpha3d$triang
+        faces <- ashape$alpha3d$facets
+      }
+    }
+    
+    if (plot_all) {
+      # Add sigma scatter plot with 'circle' markers to the overall plot
+      plot <- plot %>%
+        add_markers(data = data_subset, 
+                    x = ~rho1, 
+                    y = ~rho2, 
+                    z = ~scalestdevstep, 
+                    marker = list(symbol = marker_shape, color = sigma_colors, size = 4),
+                    name = paste('Sigma', comparison_value))
+      
+      # Add convex hull if it was successfully created
+      if (exists("ashape") && !is.null(ashape)) {
+        plot <- plot %>%
+          add_trace(type = 'mesh3d',
+                    x = vertices[,1], y = vertices[,2], z = vertices[,3],
+                    i = faces[,1] - 1, j = faces[,2] - 1, k = faces[,3] - 1, 
+                    color = color_palette[i], opacity = 0.3, name = paste("Convex Hull", comparison_value))
+      }
+    } else {
+      # For individual plots
+      sigma_colors <- sample(all_colors, 1)
+      
+      # Generate individual plots for each comparison
+      comparison_plot <- plot_ly() %>%
+        
+        # Add sigma scatter plot with 'circle' markers
+        add_markers(data = data_subset, 
+                    x = ~rho1, 
+                    y = ~rho2, 
+                    z = ~scalestdevstep, 
+                    marker = list(symbol = marker_shape, color = sigma_colors, size = 4),
+                    name = paste('Sigma', comparison_value)) 
+        
+      # Add convex hull if it was successfully created
+      if (exists("ashape") && !is.null(ashape)) {
+        comparison_plot <- comparison_plot %>%
+          add_trace(type = 'mesh3d',
+                    x = vertices[,1], y = vertices[,2], z = vertices[,3],
+                    i = faces[,1] - 1, j = faces[,2] - 1, k = faces[,3] - 1, 
+                    color = sigma_colors, opacity = 0.3, name = paste("Convex Hull", comparison_value))
+      }
+      
+      # Set layout with custom axis ranges
+      comparison_plot <- comparison_plot %>%
+        layout(scene = list(xaxis = list(title = 'rho1', range = rho_scale_range),
+                            yaxis = list(title = 'rho2', range = rho_scale_range),
+                            zaxis = list(title = 'scalestdevstep', range = scalestdevstep_range)),
+               title = paste("Sigma Scatter Plot for Comparison", comparison_value))
+      
+      # Define file path for saving the plot
+      output_file <- file.path(output_directory, paste0("sigma_scatter_comparison_", comparison_value, ".html"))
+      
+      # Save the individual plot as an HTML file
+      htmlwidgets::saveWidget(comparison_plot, file = output_file)
+      
+      # Optionally, print a message to confirm plot generation
+      message("Generated and saved individual scatter plot for comparison: ", comparison_value)
+    }
+  }
+
+  # If plotting all comparisons together, finalize and save the plot
+  if (plot_all) {
+    # Set layout with custom axis ranges
+    plot <- plot %>%
+      layout(scene = list(xaxis = list(title = 'rho1', range = rho_scale_range),
+                          yaxis = list(title = 'rho2', range = rho_scale_range),
+                          zaxis = list(title = 'scalestdevstep', range = scalestdevstep_range)),
+             title = "Sigma Scatter Plot for All Comparisons")
+    
+    # Define file path for saving the combined plot
+    output_file <- file.path(output_directory, "sigma_scatter_all_comparisons.html")
+    
+    # Save the combined plot as an HTML file
+    htmlwidgets::saveWidget(plot, file = output_file)
+    
+    # Optionally, print a message to confirm plot generation
+    message("Generated and saved combined scatter plot for all comparisons.")
+  }
+}
 
 
 
