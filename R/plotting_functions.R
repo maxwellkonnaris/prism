@@ -585,15 +585,23 @@ plot_and_save_surfaces <- function(data, output_directory) {
     data_subset <- subset(data, comparison == comparison_value)
     
     # Define a helper function to plot for either minsigma or maxsigma
-    create_surface_plot <- function(metric_prefix) {
+    create_surface_plot <- function(metric_prefix, default_color) {
       # Define variables based on metric prefix
       x_var <- paste0(metric_prefix, "_correlation_relativetaxa1_scale")
       y_var <- paste0(metric_prefix, "_correlation_relativetaxa2_scale")
       z_var <- paste0(metric_prefix, "_scale_variance")
       
-      # Create a 3D surface plot using gridded data
+      # Check if SPSD column exists
+      if ("SPSD" %in% names(data_subset)) {
+        # Assign colors: red if SPSD < 0, otherwise use default_color (for min or max)
+        color_column <- ifelse(data_subset$SPSD < 0, "red", default_color)
+      } else {
+        color_column <- default_color
+      }
+      
+      # Create a 3D surface plot
       plot <- plot_ly(data = data_subset, x = ~get(x_var), y = ~get(y_var), z = ~get(z_var), 
-                      type = 'surface') %>%
+                      surfacecolor = color_column, type = 'surface') %>%
         layout(scene = list(xaxis = list(title = 'Correlation RelTaxa1 Scale'),
                             yaxis = list(title = 'Correlation RelTaxa2 Scale'),
                             zaxis = list(title = 'Scale Variance')),
@@ -602,9 +610,9 @@ plot_and_save_surfaces <- function(data, output_directory) {
       return(plot)
     }
     
-    # Create surface plots for minsigma and maxsigma
-    minsigma_plot <- create_surface_plot("minsigma")
-    maxsigma_plot <- create_surface_plot("maxsigma")
+    # Create surface plots for minsigma and maxsigma with different default colors
+    minsigma_plot <- create_surface_plot("minsigma", "blue")   # Min points in blue
+    maxsigma_plot <- create_surface_plot("maxsigma", "purple")  # Max points in green
     
     # Define file paths for saving plots
     minsigma_file <- file.path(output_directory, paste0("minsigma_comparison_", comparison_value, ".html"))
@@ -618,6 +626,7 @@ plot_and_save_surfaces <- function(data, output_directory) {
     message("Generated and saved surface plots for comparison: ", comparison_value)
   }
 }
+
 
 #' Plot and Save 3D Scatter Plots for All Comparisons
 #'
@@ -664,16 +673,24 @@ plot_and_save_3d_scatter <- function(data, output_directory) {
     data_subset <- subset(data, comparison == comparison_value)
     
     # Define a helper function to create a scatter plot for either minsigma or maxsigma
-    create_scatter_plot <- function(metric_prefix) {
+    create_scatter_plot <- function(metric_prefix, default_color) {
       # Define variables based on the metric prefix
       x_var <- paste0(metric_prefix, "_correlation_relativetaxa1_scale")
       y_var <- paste0(metric_prefix, "_correlation_relativetaxa2_scale")
       z_var <- paste0(metric_prefix, "_scale_variance")
       
-      # Create a 3D scatter plot
+      # Check if SPSD column exists
+      if ("SPSD" %in% names(data_subset)) {
+        # Assign colors: red if SPSD < 0, otherwise use default_color (for min or max)
+        color_column <- ifelse(data_subset$SPSD < 0, "red", default_color)
+      } else {
+        color_column <- default_color
+      }
+      
+      # Create a 3D scatter plot with colors based on min/max and SPSD
       plot <- plot_ly(data = data_subset, x = ~get(x_var), y = ~get(y_var), z = ~get(z_var), 
                       type = 'scatter3d', mode = 'markers',
-                      marker = list(size = 3)) %>%
+                      marker = list(size = 3, color = color_column)) %>%
         layout(scene = list(xaxis = list(title = 'Correlation RelTaxa1 Scale'),
                             yaxis = list(title = 'Correlation RelTaxa2 Scale'),
                             zaxis = list(title = 'Scale Variance')),
@@ -682,9 +699,9 @@ plot_and_save_3d_scatter <- function(data, output_directory) {
       return(plot)
     }
     
-    # Create scatter plots for minsigma and maxsigma
-    minsigma_plot <- create_scatter_plot("minsigma")
-    maxsigma_plot <- create_scatter_plot("maxsigma")
+    # Create scatter plots for minsigma and maxsigma with different default colors
+    minsigma_plot <- create_scatter_plot("minsigma", "blue")   # Min points in blue
+    maxsigma_plot <- create_scatter_plot("maxsigma", "purple")  # Max points in green
     
     # Define file paths for saving plots
     minsigma_file <- file.path(output_directory, paste0("minsigma_scatter_comparison_", comparison_value, ".html"))
@@ -698,6 +715,7 @@ plot_and_save_3d_scatter <- function(data, output_directory) {
     message("Generated and saved 3D scatter plots for comparison: ", comparison_value)
   }
 }
+
 
 
 
