@@ -649,7 +649,7 @@ plot_and_save_surfaces <- function(data, output_directory = "plots/surfaceplots/
 #' If FALSE, generate separate plots for each comparison.
 #' @param alpha_value A numeric value that controls the convex hull's tightness (default: 1).
 #' @return This function saves the plots and returns no value.
-#' @import plotly htmlwidgets alphashape3d viridis
+#' @import plotly htmlwidgets alphashape3d
 #' @export
 plot_comparisons_3d_scatter <- function(data, output_directory = "plots/", 
                                         correlation_relativetaxa_scale_range = c(-1, 1), 
@@ -664,8 +664,11 @@ plot_comparisons_3d_scatter <- function(data, output_directory = "plots/",
   # Get unique comparisons from the data
   unique_comparisons <- unique(data$comparison)
   
-  # Generate a color palette using viridis (which avoids red hues)
-  color_palette <- viridis(min(length(unique_comparisons), 100), option = "plasma")
+  # Create a custom color palette excluding grey and red shades
+  all_colors <- grDevices::colors()[grep('gr(a|e)y|red', grDevices::colors(), invert = TRUE)]
+  
+  # Sample N colors for each comparison
+  color_palette <- sample(all_colors, min(length(unique_comparisons), length(all_colors)))
 
   # Initialize an empty plot if plotting all together
   if (plot_all) {
@@ -732,6 +735,10 @@ plot_comparisons_3d_scatter <- function(data, output_directory = "plots/",
     }
     
     if (plot_all) {
+      # Use the same color for minsigma and maxsigma for the same comparison
+      minsigma_colors <- color_palette[i]
+      maxsigma_colors <- color_palette[i]
+      
       # Add minsigma scatter plot with 'circle' markers to the overall plot
       plot <- plot %>%
         add_markers(data = data_subset, 
@@ -759,6 +766,10 @@ plot_comparisons_3d_scatter <- function(data, output_directory = "plots/",
                     color = color_palette[i], opacity = 0.3, name = paste("Convex Hull", comparison_value))
       }
     } else {
+      # For individual plots, use different colors for minsigma and maxsigma
+      minsigma_colors <- sample(all_colors, 1)
+      maxsigma_colors <- sample(all_colors, 1)
+      
       # Generate individual plots for each comparison
       comparison_plot <- plot_ly() %>%
         
@@ -784,7 +795,7 @@ plot_comparisons_3d_scatter <- function(data, output_directory = "plots/",
           add_trace(type = 'mesh3d',
                     x = vertices[,1], y = vertices[,2], z = vertices[,3],
                     i = faces[,1] - 1, j = faces[,2] - 1, k = faces[,3] - 1, 
-                    color = color_palette[i], opacity = 0.3, name = paste("Convex Hull", comparison_value))
+                    color = minsigma_colors, opacity = 0.3, name = paste("Convex Hull", comparison_value))
       }
       
       # Set layout with custom axis ranges
@@ -824,6 +835,7 @@ plot_comparisons_3d_scatter <- function(data, output_directory = "plots/",
     message("Generated and saved combined scatter plot for all comparisons.")
   }
 }
+
 
 
 
