@@ -549,28 +549,19 @@ diagnose_bootstrap_convergence <- function(combined_results, convergence_results
 #' The data frame must contain columns named "comparison", 
 #' "minsigma_correlation_relativetaxa1_scale", 
 #' "minsigma_correlation_relativetaxa2_scale", 
-#' "minsigma_scale_variance", 
+#' "minsigma_scale_sd", 
 #' "maxsigma_correlation_relativetaxa1_scale", 
 #' "maxsigma_correlation_relativetaxa2_scale", and 
-#' "maxsigma_scale_variance".
-#' @param output_directory A string specifying the directory where the plots will be saved.
+#' "maxsigma_scale_sd". Additionally, if the data frame contains an 
+#' "SPSD" column, the plot colors will reflect SPSD values.
+#' @param output_directory A string specifying the directory where the plots will be saved (default: "plots/surfaceplots/").
 #' The directory will be created if it does not exist.
+#' @param correlation_relativetaxa_scale_range A vector specifying the range of values for the x-axis (default: c(-1, 1)).
+#' @param scale_sd_range A vector specifying the range of values for the z-axis (default: c(0.49, 0.51)).
 #' @return This function saves the plots and returns no value.
 #' @import plotly htmlwidgets
 #' @export
-#' @examples
-#' # Example usage:
-#' 
-#' # Load your dataset (replace with actual data path)
-#' df <- read.csv("path/to/your/data.csv")
-#' 
-#' # Specify the output directory where you want to save the plots
-#' output_dir <- "path/to/save/plots"
-#' 
-#' # Run the function to generate and save the surface plots
-#' plot_and_save_surfaces(df, output_dir)
-#'
-plot_and_save_surfaces <- function(data, output_directory) {
+plot_and_save_surfaces <- function(data, output_directory = "plots/surfaceplots/", correlation_relativetaxa_scale_range = c(-1, 1),  scale_sd_range = c(0.49, 0.51)) {
   # Ensure output directory exists
   if (!dir.exists(output_directory)) {
     dir.create(output_directory, recursive = TRUE)
@@ -584,46 +575,52 @@ plot_and_save_surfaces <- function(data, output_directory) {
     # Filter the data for the specific comparison
     data_subset <- subset(data, comparison == comparison_value)
     
-    # Define a helper function to plot for either minsigma or maxsigma
-    create_surface_plot <- function(metric_prefix, default_color) {
-      # Define variables based on metric prefix
-      x_var <- paste0(metric_prefix, "_correlation_relativetaxa1_scale")
-      y_var <- paste0(metric_prefix, "_correlation_relativetaxa2_scale")
-      z_var <- paste0(metric_prefix, "_scale_variance")
-      
-      # Check if SPSD column exists
-      if ("SPSD" %in% names(data_subset)) {
-        # Assign colors: red if SPSD < 0, otherwise use default_color (for min or max)
-        color_column <- ifelse(data_subset$SPSD < 0, "red", default_color)
-      } else {
-        color_column <- default_color
-      }
-      
-      # Create a 3D surface plot
-      plot <- plot_ly(data = data_subset, x = ~get(x_var), y = ~get(y_var), z = ~get(z_var), 
-                      surfacecolor = color_column, type = 'surface') %>%
-        layout(scene = list(xaxis = list(title = 'Correlation RelTaxa1 Scale'),
-                            yaxis = list(title = 'Correlation RelTaxa2 Scale'),
-                            zaxis = list(title = 'Scale Variance')),
-               title = paste(metric_prefix, "Surface Plot for Comparison", comparison_value))
-      
-      return(plot)
+    # Check if SPSD column exists and assign colors based on SPSD value
+    if ("SPSD" %in% names(data_subset)) {
+      # Red if SPSD < 0, otherwise use blue/purple for min/max
+      minsigma_colors <- ifelse(data_subset$SPSD < 0, "red", "blue")
+      maxsigma_colors <- ifelse(data_subset$SPSD < 0, "red", "purple")
+    } else {
+      # Default to blue/purple for min/max if SPSD is not available
+      minsigma_colors <- "blue"
+      maxsigma_colors <- "purple"
     }
     
-    # Create surface plots for minsigma and maxsigma with different default colors
-    minsigma_plot <- create_surface_plot("minsigma", "blue")   # Min points in blue
-    maxsigma_plot <- create_surface_plot("maxsigma", "purple")  # Max points in green
+    # Create 3D surface plots for both minsigma and maxsigma on the same plot
+    plot <- plot_ly() %>%
+      
+      # Add minsigma surface plot
+      add_surface(data = data_subset, 
+                  x = ~get("minsigma_correlation_relativetaxa1_scale"), 
+                  y = ~get("minsigma_correlation_relativetaxa2_scale"), 
+                  z = ~get("minsigma_scale_variance"), 
+                  surfacecolor = minsigma_colors, 
+                  showscale = FALSE, 
+                  name = 'MinSigma') %>%
+      
+      # Add maxsigma surface plot
+      add_surface(data = data_subset, 
+                  x = ~get("maxsigma_correlation_relativetaxa1_scale"), 
+                  y = ~get("maxsigma_correlation_relativetaxa2_scale"), 
+                  z = ~get("maxsigma_scale_variance"), 
+                  surfacecolor = maxsigma_colors, 
+                  showscale = FALSE, 
+                  name = 'MaxSigma') %>%
+      
+      # Set layout with custom axis ranges
+      layout(scene = list(xaxis = list(title = 'Correlation RelTaxa1 Scale', range = correlation_relativetaxa_scale_range),
+                          yaxis = list(title = 'Correlation RelTaxa2 Scale', range = correlation_relativetaxa_scale_range),
+                          zaxis = list(title = 'Scale Variance', range = scale_sd_range)),
+             title = paste("MinSigma and MaxSigma Surface Plot for Comparison", comparison_value))
     
-    # Define file paths for saving plots
-    minsigma_file <- file.path(output_directory, paste0("minsigma_comparison_", comparison_value, ".html"))
-    maxsigma_file <- file.path(output_directory, paste0("maxsigma_comparison_", comparison_value, ".html"))
+    # Define file path for saving the plot
+    output_file <- file.path(output_directory, paste0("sigma_comparison_", comparison_value, ".html"))
     
-    # Save the plots as HTML files
-    htmlwidgets::saveWidget(minsigma_plot, file = minsigma_file)
-    htmlwidgets::saveWidget(maxsigma_plot, file = maxsigma_file)
+    # Save the plot as an HTML file
+    htmlwidgets::saveWidget(plot, file = output_file)
     
     # Optionally, print a message to confirm plot generation
-    message("Generated and saved surface plots for comparison: ", comparison_value)
+    message("Generated and saved surface plot for comparison: ", comparison_value)
   }
 }
 
@@ -637,28 +634,19 @@ plot_and_save_surfaces <- function(data, output_directory) {
 #' The data frame must contain columns named "comparison", 
 #' "minsigma_correlation_relativetaxa1_scale", 
 #' "minsigma_correlation_relativetaxa2_scale", 
-#' "minsigma_scale_variance", 
+#' "minsigma_scale_sd", 
 #' "maxsigma_correlation_relativetaxa1_scale", 
 #' "maxsigma_correlation_relativetaxa2_scale", and 
-#' "maxsigma_scale_variance".
-#' @param output_directory A string specifying the directory where the plots will be saved.
+#' "maxsigma_scale_sd". Additionally, if the data frame contains an 
+#' "SPSD" column, the plot colors will reflect SPSD values.
+#' @param output_directory A string specifying the directory where the plots will be saved (default: "plots/threedimscatterplots/").
 #' The directory will be created if it does not exist.
+#' @param correlation_relativetaxa_scale_range A vector specifying the range of values for the x-axis (default: c(-1, 1)).
+#' @param scale_sd_range A vector specifying the range of values for the z-axis (default: c(0.49, 0.51)).
 #' @return This function saves the plots and returns no value.
 #' @import plotly htmlwidgets
 #' @export
-#' @examples
-#' # Example usage:
-#' 
-#' # Load your dataset (replace with actual data path)
-#' df <- read.csv("path/to/your/data.csv")
-#' 
-#' # Specify the output directory where you want to save the plots
-#' output_dir <- "path/to/save/plots"
-#' 
-#' # Run the function to generate and save the scatter plots
-#' plot_and_save_3d_scatter(df, output_dir)
-#'
-plot_and_save_3d_scatter <- function(data, output_directory) {
+plot_and_save_3d_scatter <- function(data, output_directory = "plots/threedimscatterplots/", x_range = c(-1, 1), z_range = c(0.49, 0.51)) {
   # Ensure output directory exists
   if (!dir.exists(output_directory)) {
     dir.create(output_directory, recursive = TRUE)
@@ -672,50 +660,49 @@ plot_and_save_3d_scatter <- function(data, output_directory) {
     # Filter the data for the specific comparison
     data_subset <- subset(data, comparison == comparison_value)
     
-    # Define a helper function to create a scatter plot for either minsigma or maxsigma
-    create_scatter_plot <- function(metric_prefix, default_color) {
-      # Define variables based on the metric prefix
-      x_var <- paste0(metric_prefix, "_correlation_relativetaxa1_scale")
-      y_var <- paste0(metric_prefix, "_correlation_relativetaxa2_scale")
-      z_var <- paste0(metric_prefix, "_scale_variance")
-      
-      # Check if SPSD column exists
-      if ("SPSD" %in% names(data_subset)) {
-        # Assign colors: red if SPSD < 0, otherwise use default_color (for min or max)
-        color_column <- ifelse(data_subset$SPSD < 0, "red", default_color)
-      } else {
-        color_column <- default_color
-      }
-      
-      # Create a 3D scatter plot with colors based on min/max and SPSD
-      plot <- plot_ly(data = data_subset, x = ~get(x_var), y = ~get(y_var), z = ~get(z_var), 
-                      type = 'scatter3d', mode = 'markers',
-                      marker = list(size = 3, color = color_column)) %>%
-        layout(scene = list(xaxis = list(title = 'Correlation RelTaxa1 Scale'),
-                            yaxis = list(title = 'Correlation RelTaxa2 Scale'),
-                            zaxis = list(title = 'Scale Variance')),
-               title = paste(metric_prefix, "3D Scatter Plot for Comparison", comparison_value))
-      
-      return(plot)
+    # Check if SPSD column exists and assign colors based on SPSD value
+    if ("SPSD" %in% names(data_subset)) {
+      # Red if SPSD < 0, otherwise use blue/purple for min/max
+      minsigma_colors <- ifelse(data_subset$SPSD < 0, "red", "blue")
+      maxsigma_colors <- ifelse(data_subset$SPSD < 0, "red", "purple")
+    } else {
+      # Default to blue/purple for min/max if SPSD is not available
+      minsigma_colors <- "blue"
+      maxsigma_colors <- "purple"
     }
     
-    # Create scatter plots for minsigma and maxsigma with different default colors
-    minsigma_plot <- create_scatter_plot("minsigma", "blue")   # Min points in blue
-    maxsigma_plot <- create_scatter_plot("maxsigma", "purple")  # Max points in green
+    # Create 3D scatter plots for both minsigma and maxsigma on the same plot
+    plot <- plot_ly() %>%
+      
+      # Add minsigma scatter plot
+      add_markers(data = data_subset, 
+                  x = ~get("minsigma_correlation_relativetaxa1_scale"), 
+                  y = ~get("minsigma_correlation_relativetaxa2_scale"), 
+                  z = ~get("minsigma_scale_variance"), 
+                  marker = list(color = minsigma_colors, size = 3), 
+                  name = 'MinSigma') %>%
+      
+      # Add maxsigma scatter plot
+      add_markers(data = data_subset, 
+                  x = ~get("maxsigma_correlation_relativetaxa1_scale"), 
+                  y = ~get("maxsigma_correlation_relativetaxa2_scale"), 
+                  z = ~get("maxsigma_scale_variance"), 
+                  marker = list(color = maxsigma_colors, size = 3), 
+                  name = 'MaxSigma') %>%
+      
+      # Set layout with custom axis ranges
+      layout(scene = list(xaxis = list(title = 'Correlation RelTaxa1 Scale', range = correlation_relativetaxa_scale_range),
+                          yaxis = list(title = 'Correlation RelTaxa2 Scale', range = correlation_relativetaxa_scale_range),
+                          zaxis = list(title = 'Scale Variance', range = scale_sd_range)),
+             title = paste("MinSigma and MaxSigma Scatter Plot for Comparison", comparison_value))
     
-    # Define file paths for saving plots
-    minsigma_file <- file.path(output_directory, paste0("minsigma_scatter_comparison_", comparison_value, ".html"))
-    maxsigma_file <- file.path(output_directory, paste0("maxsigma_scatter_comparison_", comparison_value, ".html"))
+    # Define file path for saving the plot
+    output_file <- file.path(output_directory, paste0("sigma_scatter_comparison_", comparison_value, ".html"))
     
-    # Save the plots as HTML files
-    htmlwidgets::saveWidget(minsigma_plot, file = minsigma_file)
-    htmlwidgets::saveWidget(maxsigma_plot, file = maxsigma_file)
+    # Save the plot as an HTML file
+    htmlwidgets::saveWidget(plot, file = output_file)
     
     # Optionally, print a message to confirm plot generation
-    message("Generated and saved 3D scatter plots for comparison: ", comparison_value)
+    message("Generated and saved scatter plot for comparison: ", comparison_value)
   }
 }
-
-
-
-
