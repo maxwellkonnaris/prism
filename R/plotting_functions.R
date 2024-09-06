@@ -619,4 +619,85 @@ plot_and_save_surfaces <- function(data, output_directory) {
   }
 }
 
+#' Plot and Save 3D Scatter Plots for All Comparisons
+#'
+#' This function generates 3D scatter plots for `minsigma` and `maxsigma`
+#' across all comparisons in the dataset and saves them as HTML files.
+#'
+#' @param data A data frame containing the optimization results. 
+#' The data frame must contain columns named "comparison", 
+#' "minsigma_correlation_relativetaxa1_scale", 
+#' "minsigma_correlation_relativetaxa2_scale", 
+#' "minsigma_scale_variance", 
+#' "maxsigma_correlation_relativetaxa1_scale", 
+#' "maxsigma_correlation_relativetaxa2_scale", and 
+#' "maxsigma_scale_variance".
+#' @param output_directory A string specifying the directory where the plots will be saved.
+#' The directory will be created if it does not exist.
+#' @return This function saves the plots and returns no value.
+#' @import plotly htmlwidgets
+#' @export
+#' @examples
+#' # Example usage:
+#' 
+#' # Load your dataset (replace with actual data path)
+#' df <- read.csv("path/to/your/data.csv")
+#' 
+#' # Specify the output directory where you want to save the plots
+#' output_dir <- "path/to/save/plots"
+#' 
+#' # Run the function to generate and save the scatter plots
+#' plot_and_save_3d_scatter(df, output_dir)
+#'
+plot_and_save_3d_scatter <- function(data, output_directory) {
+  # Ensure output directory exists
+  if (!dir.exists(output_directory)) {
+    dir.create(output_directory, recursive = TRUE)
+  }
+  
+  # Get unique comparisons from the data
+  unique_comparisons <- unique(data$comparison)
+  
+  # Loop through each comparison
+  for (comparison_value in unique_comparisons) {
+    # Filter the data for the specific comparison
+    data_subset <- subset(data, comparison == comparison_value)
+    
+    # Define a helper function to create a scatter plot for either minsigma or maxsigma
+    create_scatter_plot <- function(metric_prefix) {
+      # Define variables based on the metric prefix
+      x_var <- paste0(metric_prefix, "_correlation_relativetaxa1_scale")
+      y_var <- paste0(metric_prefix, "_correlation_relativetaxa2_scale")
+      z_var <- paste0(metric_prefix, "_scale_variance")
+      
+      # Create a 3D scatter plot
+      plot <- plot_ly(data = data_subset, x = ~get(x_var), y = ~get(y_var), z = ~get(z_var), 
+                      type = 'scatter3d', mode = 'markers',
+                      marker = list(size = 3)) %>%
+        layout(scene = list(xaxis = list(title = 'Correlation RelTaxa1 Scale'),
+                            yaxis = list(title = 'Correlation RelTaxa2 Scale'),
+                            zaxis = list(title = 'Scale Variance')),
+               title = paste(metric_prefix, "3D Scatter Plot for Comparison", comparison_value))
+      
+      return(plot)
+    }
+    
+    # Create scatter plots for minsigma and maxsigma
+    minsigma_plot <- create_scatter_plot("minsigma")
+    maxsigma_plot <- create_scatter_plot("maxsigma")
+    
+    # Define file paths for saving plots
+    minsigma_file <- file.path(output_directory, paste0("minsigma_scatter_comparison_", comparison_value, ".html"))
+    maxsigma_file <- file.path(output_directory, paste0("maxsigma_scatter_comparison_", comparison_value, ".html"))
+    
+    # Save the plots as HTML files
+    htmlwidgets::saveWidget(minsigma_plot, file = minsigma_file)
+    htmlwidgets::saveWidget(maxsigma_plot, file = maxsigma_file)
+    
+    # Optionally, print a message to confirm plot generation
+    message("Generated and saved 3D scatter plots for comparison: ", comparison_value)
+  }
+}
+
+
 
