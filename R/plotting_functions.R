@@ -644,7 +644,7 @@ plot_and_save_surfaces <- function(data, output_directory = "plots/surfaceplots/
 #' @param correlation_relativetaxa_scale_range A vector specifying the range of values for the x-axis (default: c(-1, 1)).
 #' @param scale_sd_range A vector specifying the range of values for the z-axis (default: c(0.49, 0.51)).
 #' @return This function saves the plots and returns no value.
-#' @import plotly htmlwidgets geometry
+#' @import plotly htmlwidgets alphashape3d
 #' @export
 plot_and_save_3d_scatter <- function(data, output_directory = "plots/threedimscatterplots/", correlation_relativetaxa_scale_range = c(-1, 1), scale_sd_range = c(0.49, 0.51)) {
   # Ensure output directory exists
@@ -670,6 +670,29 @@ plot_and_save_3d_scatter <- function(data, output_directory = "plots/threedimsca
       minsigma_colors <- "blue"
       maxsigma_colors <- "purple"
     }
+
+    # Get the points for both minsigma and maxsigma
+    minsigma_points <- data.frame(
+      x = data_subset$minsigma_correlation_relativetaxa1_scale,
+      y = data_subset$minsigma_correlation_relativetaxa2_scale,
+      z = data_subset$minsigma_scale_variance
+    )
+    
+    maxsigma_points <- data.frame(
+      x = data_subset$maxsigma_correlation_relativetaxa1_scale,
+      y = data_subset$maxsigma_correlation_relativetaxa2_scale,
+      z = data_subset$maxsigma_scale_variance
+    )
+    
+    # Combine minsigma and maxsigma points for creating the convex hull
+    all_points <- rbind(minsigma_points, maxsigma_points)
+    
+    # Create the convex hull using alphashape3d (alpha shape is like a convex hull)
+    ashape <- ashape3d(all_points, alpha = 1)  # Adjust alpha for tighter or looser fit
+    
+    # Extract the vertices and faces for the convex hull mesh
+    vertices <- ashape$alpha3d$triang
+    faces <- ashape$alpha3d$facets
     
     # Create 3D scatter plots for both minsigma and maxsigma on the same plot
     plot <- plot_ly() %>%
@@ -689,36 +712,20 @@ plot_and_save_3d_scatter <- function(data, output_directory = "plots/threedimsca
                   z = ~get("maxsigma_scale_variance"), 
                   marker = list(color = maxsigma_colors, size = 3), 
                   name = 'MaxSigma') %>%
-      
+	  
+      # Add the convex hull mesh (ball shape around the points)
+      add_mesh3d(
+        x = vertices[,1], y = vertices[,2], z = vertices[,3],
+        i = faces[,1] - 1, j = faces[,2] - 1, k = faces[,3] - 1, 
+        color = 'lightgrey', opacity = 0.5, name = 'Convex Hull'
+      ) %>%
+	  
       # Set layout with custom axis ranges
       layout(scene = list(xaxis = list(title = 'Correlation RelTaxa1 Scale', range = correlation_relativetaxa_scale_range),
                           yaxis = list(title = 'Correlation RelTaxa2 Scale', range = correlation_relativetaxa_scale_range),
                           zaxis = list(title = 'Scale Variance', range = scale_sd_range)),
              title = paste("MinSigma and MaxSigma Scatter Plot for Comparison", comparison_value))
-    
-    # Add convex hulls around the points (for both minsigma and maxsigma)
-    for (prefix in c("minsigma", "maxsigma")) {
-      # Extract x, y, z coordinates
-      x_vals <- data_subset[[paste0(prefix, "_correlation_relativetaxa1_scale")]]
-      y_vals <- data_subset[[paste0(prefix, "_correlation_relativetaxa2_scale")]]
-      z_vals <- data_subset[[paste0(prefix, "_scale_variance")]]
-      
-      # Compute convex hull if there are enough points
-      if (length(x_vals) >= 3) {
-        hull_indices <- convhulln(cbind(x_vals, y_vals, z_vals))
-        
-        # Extract the points forming the convex hull
-        hull_x <- x_vals[hull_indices]
-        hull_y <- y_vals[hull_indices]
-        hull_z <- z_vals[hull_indices]
-        
-        # Add the convex hull as a mesh3d plot
-        plot <- plot %>%
-          add_mesh(x = hull_x, y = hull_y, z = hull_z, opacity = 0.2,
-                   color = ifelse(prefix == "minsigma", "blue", "purple"),
-                   name = paste0(prefix, " Hull"))
-      }
-    }
+
 	  
     # Define file path for saving the plot
     output_file <- file.path(output_directory, paste0("sigma_scatter_comparison_", comparison_value, ".html"))
