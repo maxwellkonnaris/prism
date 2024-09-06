@@ -649,7 +649,7 @@ plot_and_save_surfaces <- function(data, output_directory = "plots/surfaceplots/
 #' If FALSE, generate separate plots for each comparison.
 #' @param alpha_value A numeric value that controls the convex hull's tightness (default: 1).
 #' @return This function saves the plots and returns no value.
-#' @import plotly htmlwidgets alphashape3d
+#' @import plotly htmlwidgets alphashape3d viridis
 #' @export
 plot_comparisons_3d_scatter <- function(data, output_directory = "plots/", 
                                         correlation_relativetaxa_scale_range = c(-1, 1), 
@@ -664,8 +664,8 @@ plot_comparisons_3d_scatter <- function(data, output_directory = "plots/",
   # Get unique comparisons from the data
   unique_comparisons <- unique(data$comparison)
   
-  # Assign a unique color for each comparison
-  comparison_colors <- rainbow(length(unique_comparisons))
+  # Generate a color palette using viridis (which avoids red hues)
+  color_palette <- viridis(min(length(unique_comparisons), 100), option = "plasma")
 
   # Initialize an empty plot if plotting all together
   if (plot_all) {
@@ -684,12 +684,12 @@ plot_comparisons_3d_scatter <- function(data, output_directory = "plots/",
     
     # Check if SPSD column exists and highlight points where SPSD < 0
     if ("SPSD" %in% names(data_subset)) {
-      minsigma_colors <- ifelse(data_subset$SPSD < 0, "red", comparison_colors[i])
-      maxsigma_colors <- ifelse(data_subset$SPSD < 0, "red", comparison_colors[i])
+      minsigma_colors <- ifelse(data_subset$SPSD < 0, "red", color_palette[i])
+      maxsigma_colors <- ifelse(data_subset$SPSD < 0, "red", color_palette[i])
     } else {
       # Use comparison colors if SPSD is not available
-      minsigma_colors <- comparison_colors[i]
-      maxsigma_colors <- comparison_colors[i]
+      minsigma_colors <- color_palette[i]
+      maxsigma_colors <- color_palette[i]
     }
     
     # Get the points for both minsigma and maxsigma
@@ -756,7 +756,7 @@ plot_comparisons_3d_scatter <- function(data, output_directory = "plots/",
           add_trace(type = 'mesh3d',
                     x = vertices[,1], y = vertices[,2], z = vertices[,3],
                     i = faces[,1] - 1, j = faces[,2] - 1, k = faces[,3] - 1, 
-                    color = comparison_colors[i], opacity = 0.3, name = paste("Convex Hull", comparison_value))
+                    color = color_palette[i], opacity = 0.3, name = paste("Convex Hull", comparison_value))
       }
     } else {
       # Generate individual plots for each comparison
@@ -784,7 +784,7 @@ plot_comparisons_3d_scatter <- function(data, output_directory = "plots/",
           add_trace(type = 'mesh3d',
                     x = vertices[,1], y = vertices[,2], z = vertices[,3],
                     i = faces[,1] - 1, j = faces[,2] - 1, k = faces[,3] - 1, 
-                    color = comparison_colors[i], opacity = 0.3, name = paste("Convex Hull", comparison_value))
+                    color = color_palette[i], opacity = 0.3, name = paste("Convex Hull", comparison_value))
       }
       
       # Set layout with custom axis ranges
@@ -824,6 +824,7 @@ plot_comparisons_3d_scatter <- function(data, output_directory = "plots/",
     message("Generated and saved combined scatter plot for all comparisons.")
   }
 }
+
 
 
 
