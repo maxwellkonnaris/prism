@@ -526,12 +526,15 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
                 rowwise() %>%
                 dplyr::mutate(SPSD = constraint_function(params = c_across(c(rho1, rho2, scalestdevstep)), taxa1relativesd, taxa2relativesd, relativecovariance)) %>%
                 ungroup() %>%
-                dplyr::mutate(
-                  sigma = relativecovariance + scalestdevstep * taxa1relativesd * rho1 + scalestdevstep * taxa2relativesd * rho2 + scalestdevstep^2,
-                  s = s,  
-                  comparison = paste0(d1,":",d2) 
-                )
+                dplyr::mutate(sigma = relativecovariance + scalestdevstep * taxa1relativesd * rho1 + scalestdevstep * taxa2relativesd * rho2 + scalestdevstep^2)
 
+              # Add s and comparison as new columns after rpars is created
+              rpars <- rpars %>%
+                dplyr::mutate(
+                  s = unique(s),  # Ensure 's' is the same for all rows
+                  comparison = paste0(unique(d1), ":", unique(d2))  # Ensure 'comparison' is the same for all rows
+                )
+              
               # Writing the entire rpars dataframe as a readable output
               write.table(rpars, file = "full_grid.txt", append = TRUE, sep = "\t", row.names = FALSE, col.names = TRUE)
               
