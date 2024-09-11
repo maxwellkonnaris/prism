@@ -771,13 +771,19 @@ plot_comparisons_3d_scatter <- function(data, output_directory = "plots/",
 #' @import plotly htmlwidgets alphashape3d
 #' @export
 plot_rpars_3d_scatter <- function(data, output_directory = "plots/", rho_scale_range = c(-1, 1), scalestdevstep_range = c(0.49, 0.51), plot_all = TRUE, alpha_value = 1) {
+
   # Ensure output directory exists
   if (!dir.exists(output_directory)) {
     dir.create(output_directory, recursive = TRUE)
   }
 
+  # Step 1: Group by 'comparison' and then group by the shared columns (rho1, rho2, scalestdevstep) within each comparison
+  averaged_data <- data %>%
+    group_by(comparison, rho1, rho2, scalestdevstep) %>%
+    summarise(across(everything(), mean, .names = "mean_{.col}"), .groups = 'drop')
+
   # Get unique comparisons from the data
-  unique_comparisons <- unique(data$comparison)
+  unique_comparisons <- unique(averaged_data$comparison)
   
   # Create a custom color palette excluding grey and red shades
   all_colors <- grDevices::colors()[grep('gr(a|e)y|red', grDevices::colors(), invert = TRUE)]
@@ -793,14 +799,19 @@ plot_rpars_3d_scatter <- function(data, output_directory = "plots/", rho_scale_r
   # Loop through each comparison
   for (i in seq_along(unique_comparisons)) {
     comparison_value <- unique_comparisons[i]
+    
     # Filter the data for the specific comparison
-    data_subset <- subset(data, comparison == comparison_value)
+    data_subset <- subset(averaged_data, comparison == comparison_value)
     
     # Marker shapes: use different shapes or sizes if needed
     marker_shape <- 'circle'
     
     # Check if SPSD column exists and highlight points where SPSD < 0
-    sigma_colors <- ifelse(data_subset$SPSD < 0, "red", color_palette[i])
+    if ("SPSD" %in% names(data_subset)) {
+      sigma_colors <- ifelse(data_subset$SPSD < 0, "red", color_palette[i])
+    } else {
+      sigma_colors <- color_palette[i]
+    }
     
     # Get the points for plotting
     points <- data.frame(
@@ -911,7 +922,6 @@ plot_rpars_3d_scatter <- function(data, output_directory = "plots/", rho_scale_r
     message("Generated and saved combined scatter plot for all comparisons.")
   }
 }
-
 
 
 
