@@ -634,7 +634,7 @@ plot_and_save_surfaces <- function(data, output_directory = "plots/surfaceplots/
 #' @param rho_scale_range A vector specifying the range of values for `rho1` and `rho2` axes (default: c(-1, 1)).
 #' @param scalestdevstep_range A vector specifying the range of values for the `scalestdevstep` axis (default: c(0.49, 0.51)).
 #' @return This function saves the plots and returns no value.
-#' @import plotly htmlwidgets
+#' @import plotly htmlwidgets reshape2
 #' @export
 plot_rpars_surface <- function(data, output_directory = "plots/surfaceplots/", rho_scale_range = c(-1, 1), scalestdevstep_range = c(0.49, 0.51)) {
   # Ensure output directory exists
@@ -650,22 +650,19 @@ plot_rpars_surface <- function(data, output_directory = "plots/surfaceplots/", r
     # Filter the data for the specific comparison
     data_subset <- subset(data, comparison == comparison_value)
     
-    # Check if SPSD column exists and assign colors based on SPSD value
-    surface_colors <- ifelse(data_subset$SPSD < 0, "red", "blue")
+    # Reshape data for surface plot: create matrices for rho1, rho2, and scalestdevstep
+    z_matrix <- acast(data_subset, rho1 ~ rho2, value.var = "scalestdevstep")
+    x_matrix <- acast(data_subset, rho1 ~ rho2, value.var = "rho1")
+    y_matrix <- acast(data_subset, rho1 ~ rho2, value.var = "rho2")
 
-    # Create 3D surface plot for sigma
+    # Create surface plot
     plot <- plot_ly() %>%
-      
-      # Add sigma surface plot
-      add_surface(data = data_subset, 
-                  x = ~rho1, 
-                  y = ~rho2, 
-                  z = ~scalestdevstep, 
-                  surfacecolor = surface_colors, 
-                  showscale = FALSE, 
-                  name = 'Sigma') %>%
-      
-      # Set layout with custom axis ranges
+      add_surface(x = x_matrix, 
+                  y = y_matrix, 
+                  z = z_matrix, 
+                  surfacecolor = z_matrix, 
+                  showscale = TRUE, 
+                  name = 'scalestdevstep') %>%
       layout(scene = list(xaxis = list(title = 'rho1', range = rho_scale_range),
                           yaxis = list(title = 'rho2', range = rho_scale_range),
                           zaxis = list(title = 'scalestdevstep', range = scalestdevstep_range)),
