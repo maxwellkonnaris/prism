@@ -913,44 +913,6 @@ plot_rpars_3d_scatter <- function(data, output_directory = "plots/", rho_scale_r
 }
 
 
-plot_rpars_surface <- function(data, output_directory = "plots/surfaceplots/", rho_scale_range = c(-1, 1), scalestdevstep_range = c(0.49, 0.51)) {
-  # Ensure output directory exists
-  if (!dir.exists(output_directory)) {
-    dir.create(output_directory, recursive = TRUE)
-  }
-  
-  # Get unique comparisons from the data
-  unique_comparisons <- unique(data$comparison)
-  
-  # Loop through each comparison
-  for (comparison_value in unique_comparisons) {
-    # Filter the data for the specific comparison
-    data_subset <- subset(data, comparison == comparison_value)
-    
-    # Create 3D scatter plot with SPSD as the color scale
-    plot <- plot_ly(data_subset, 
-                    x = ~rho1, 
-                    y = ~rho2, 
-                    z = ~scalestdevstep, 
-                    color = ~SPSD,  # Use SPSD for coloring
-                    colors = c("red", "blue"),  # Red for negative SPSD, blue for positive
-                    type = "scatter3d", 
-                    mode = "markers") %>%
-      layout(scene = list(xaxis = list(title = 'rho1', range = rho_scale_range),
-                          yaxis = list(title = 'rho2', range = rho_scale_range),
-                          zaxis = list(title = 'scalestdevstep', range = scalestdevstep_range)),
-             title = paste("Surface Plot for Comparison", comparison_value))
-    
-    # Define file path for saving the plot
-    output_file <- file.path(output_directory, paste0("sigma_comparison_", comparison_value, ".html"))
-    
-    # Save the plot as an HTML file
-    htmlwidgets::saveWidget(plot, file = output_file)
-    
-    # Optionally, print a message to confirm plot generation
-    message("Generated and saved surface plot for comparison: ", comparison_value)
-  }
-}
 
 
 
