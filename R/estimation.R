@@ -19,6 +19,7 @@
 #' @import stats
 #' @import utils
 #' @import nloptr
+#' @import filelock
 #' @examples
 #' # Example usage (You could also use the simulation function provided to generate sample data):
 #' set.seed(123)
@@ -26,7 +27,7 @@
 #' results <- estimate_covariance(Y)
 #' @export
 
-estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobound = 1.0, S = 1000, lowerscalestdev = .49, upperscalestdev = .51, algorithm="COBYLA") {
+estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobound = 1.0, S = 1000, lowerscalestdev = .490, upperscalestdev = .510, algorithm="COBYLA") {
 
   ## COMPUTATIONAL TIME -------------------------------------------------------------------------------------------------------------------------
   # Record the start time for profiling
@@ -102,6 +103,23 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
   
   # Initialize a results matrix to store the results for each pair
   results <- matrix(list(), D, D)
+
+  # Function to append results to a file with error handling
+  append_to_pair_file <- function(results, pair_file_name) {
+    lock_file <- paste0(pair_file_name, ".lock")
+    
+    lock <- filelock::lock(lock_file)
+    
+    tryCatch({
+      # Write data to the file in append mode
+      write.table(results, file = pair_file_name, append = TRUE, sep = "\t", row.names = FALSE, col.names = FALSE)
+    }, error = function(e) {
+      message("Error while writing to file: ", pair_file_name, "\n", e)
+    }, finally = {
+      # Release the lock in any case (success or error)
+      filelock::unlock(lock)
+    })
+  }
   ## END SETUP -----------------------------------------------------------------------------------------------------------------------------------
 
   ## OPTIMIZATION FUNCTIONS ----------------------------------------------------------------------------------------------------------------------
@@ -215,6 +233,7 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
   }
   ## END OPTIMIZATION FUNCTIONS -----------------------------------------------------------------------------------------------------------------------------
 
+  
   ## CLUSTER RESOURCES --------------------------------------------------------------------------------------------------------------------------------------
   # Register the parallel backend
   num_cores <- parallel::detectCores() - 1
@@ -557,10 +576,10 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
                   s = s,  # Ensure 's' is the same for all rows
                   comparison = paste0(d1, ":", d2)  # Ensure 'comparison' is the same for all rows
                 )
-              
-              # Writing each rpars dataframe as a temporary file for each bootstrap 's'
-              temp_file_name <- paste0("temp_full_grid_", d1, "_", d2, "_", s, "_", Sys.getpid(), ".txt")
-              write.table(rpars, file = temp_file_name, sep = "\t", row.names = FALSE, col.names = TRUE)
+
+              # Append the rpars to the file for this pair
+              pair_file_name = paste0("rpars_taxa_", d1, "_", d2, ".txt")
+              append_to_pair_file(rpars, pair_file_name)
               
               # Filter rows where SPSD is >= 0
               rpars <- rpars %>%
@@ -626,23 +645,6 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
             #variance_proportionality_taxa2 = variance_proportionality_d2
           )    
       }
-
-      if (algorithm == "GRID_SEARCH") {
-        # For a specific (d1, d2) pair, concatenate the temporary files
-        temp_files <- list.files(pattern = paste0("^temp_full_grid_", d1, "_", d2, "_"))
-        
-        # Read and concatenate all the temp files for the same d1, d2 pair
-        final_rpars <- do.call(rbind, lapply(temp_files, function(file) {
-          read.table(file, sep = "\t", header = TRUE)
-        }))
-        
-        # Now write the concatenated dataframe to a final file
-        final_file_name <- paste0("full_grid_", d1, "_", d2, ".txt")
-        write.table(final_rpars, file = final_file_name, sep = "\t", row.names = FALSE, col.names = TRUE)
-      }
-
-      # Clean up all temporary files starting with "temp_full_grid_"
-      file.remove(temp_files)
     
       # Gather the min and max optimized sigmas
       minsigma_values <- results_inner$minsigma_absolute_minimum_covariance
