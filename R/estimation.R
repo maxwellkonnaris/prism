@@ -531,13 +531,16 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
               # Add s and comparison as new columns after rpars is created
               rpars <- rpars %>%
                 dplyr::mutate(
-                  s = unique(s),  # Ensure 's' is the same for all rows
-                  comparison = paste0(unique(d1), ":", unique(d2))  # Ensure 'comparison' is the same for all rows
+                  s = s,  # Ensure 's' is the same for all rows
+                  comparison = paste0(d1, ":", d2)  # Ensure 'comparison' is the same for all rows
                 )
               
               # Writing the entire rpars dataframe as a readable output
-              write.table(rpars, file = "full_grid.txt", append = TRUE, sep = "\t", row.names = FALSE, col.names = TRUE)
-              
+              file_name <- paste0("full_grid_", d1, "_", d2, ".txt")
+
+              # Write the rpars dataframe to the uniquely named file
+              write.table(rpars, file = file_name, sep = "\t", row.names = FALSE, col.names = TRUE)
+
               rpars <- rpars %>%
                 dplyr::filter(SPSD >= 0) %>%  # Filter rows where SPSD is >= 0
               
