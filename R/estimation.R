@@ -558,15 +558,15 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
                   comparison = paste0(d1, ":", d2)  # Ensure 'comparison' is the same for all rows
                 )
               
-              # Writing the entire rpars dataframe as a readable output
-              file_name <- paste0("full_grid_", d1, "_", d2, ".txt")
-
-              # Write the rpars dataframe to the uniquely named file
-              write.table(rpars, file = file_name, sep = "\t", row.names = FALSE, col.names = TRUE)
-
-              rpars <- rpars %>%
-                dplyr::filter(SPSD >= 0) %>%  # Filter rows where SPSD is >= 0
+              # Writing each rpars dataframe as a temporary file for each bootstrap 's'
+              temp_file_name <- paste0("temp_full_grid_", d1, "_", d2, "_", s, ".txt")
+              write.table(rpars, file = temp_file_name, sep = "\t", row.names = FALSE, col.names = TRUE)
               
+              # Filter rows where SPSD is >= 0
+              rpars <- rpars %>%
+                dplyr::filter(SPSD >= 0) %>%  
+              
+              # Find min and max
               min_sigma_row <- rpars[which.min(rpars$sigma), , drop = FALSE]
               max_sigma_row <- rpars[which.max(rpars$sigma), , drop = FALSE]
                  
@@ -626,6 +626,24 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
             #variance_proportionality_taxa2 = variance_proportionality_d2
           )    
       }
+
+      if (algorithm == "GRID_SEARCH") {
+        # For a specific (d1, d2) pair, concatenate the temporary files
+        temp_files <- list.files(pattern = paste0("temp_full_grid_", d1, "_", d2, "_"))
+        
+        # Read and concatenate all the temp files for the same d1, d2 pair
+        final_rpars <- do.call(rbind, lapply(temp_files, function(file) {
+          read.table(file, sep = "\t", header = TRUE)
+        }))
+  
+        # Clean up the temporary files
+        file.remove(temp_files)
+        
+        # Now write the concatenated dataframe to a final file
+        final_file_name <- paste0("full_grid_", d1, "_", d2, ".txt")
+        write.table(final_rpars, file = final_file_name, sep = "\t", row.names = FALSE, col.names = TRUE)
+      }
+    
       # Gather the min and max optimized sigmas
       minsigma_values <- results_inner$minsigma_absolute_minimum_covariance
       maxsigma_values <- results_inner$maxsigma_absolute_maximum_covariance
