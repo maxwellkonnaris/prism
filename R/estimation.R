@@ -150,6 +150,31 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
     return(g_1)
   }
 
+  vectorized_constraint_function <- function(rho1, rho2, scalestdevstep, taxa1relativesd, taxa2relativesd, relativecovariance) {
+      
+      # Vectorize taxa1relativesd, taxa2relativesd, and relativecovariance if they are not already vectors
+      n <- length(rho1)  # Assuming rho1 is a vector, use its length to replicate the constants
+      if (length(taxa1relativesd) == 1) taxa1relativesd <- rep(taxa1relativesd, n)
+      if (length(taxa2relativesd) == 1) taxa2relativesd <- rep(taxa2relativesd, n)
+      if (length(relativecovariance) == 1) relativecovariance <- rep(relativecovariance, n)
+      
+      # Continue with the calculations
+      taxa1scalecorrelation <- rho1  # Direct mapping
+      taxa2scalecorrelation <- rho2  # Direct mapping
+      scalestdev <- scalestdevstep   # Direct mapping
+      
+      term1 <- taxa1relativesd * taxa1scalecorrelation + taxa2relativesd * taxa2scalecorrelation
+      term2 <- sqrt(2) * sqrt((taxa1relativesd^2 * taxa1scalecorrelation^2) + (taxa2relativesd^2 * taxa2scalecorrelation^2))
+                              
+      term3 <- (1 / (2 * scalestdev)) * ((taxa1relativesd^2 + taxa2relativesd^2) 
+              - sqrt((taxa1relativesd^2 - taxa2relativesd^2)^2 + 4 * relativecovariance^2) 
+              + 4 * scalestdev^2)
+      
+      g_1 <- term1 - term2 + term3
+      
+      return(g_1)
+  }
+
   constraint_gradient_function <- function(params, taxa1relativesd, taxa2relativesd, relativecovariance) {
     taxa1scalecorrelation <- params[1]
     taxa2scalecorrelation <- params[2]
@@ -523,10 +548,8 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
 
               # Calculate rpars without filtering based on SPSD
               rpars <- pars %>%
-                rowwise() %>%
-                dplyr::mutate(SPSD = constraint_function(params = c_across(c(rho1, rho2, scalestdevstep)), taxa1relativesd, taxa2relativesd, relativecovariance)) %>%
-                ungroup() %>%
-                dplyr::mutate(sigma = relativecovariance + scalestdevstep * taxa1relativesd * rho1 + scalestdevstep * taxa2relativesd * rho2 + scalestdevstep^2)
+                dplyr::mutate(SPSD = vectorized_constraint_function(rho1, rho2, scalestdevstep, taxa1relativesd, taxa2relativesd, relativecovariance),
+                              sigma = relativecovariance + scalestdevstep * taxa1relativesd * rho1 + scalestdevstep * taxa2relativesd * rho2 + scalestdevstep^2)
 
               # Add s and comparison as new columns after rpars is created
               rpars <- rpars %>%
