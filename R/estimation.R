@@ -640,6 +640,9 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
         final_file_name <- paste0("full_grid_", d1, "_", d2, ".txt")
         write.table(final_rpars, file = final_file_name, sep = "\t", row.names = FALSE, col.names = TRUE)
       }
+
+      # Clean up all temporary files starting with "temp_full_grid_"
+      file.remove(temp_files)
     
       # Gather the min and max optimized sigmas
       minsigma_values <- results_inner$minsigma_absolute_minimum_covariance
@@ -671,9 +674,6 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
       taxa2relativesd <- results_inner$taxa2relativesd[min_index]
       relativecorrelation <- results_inner$relativecorrelation[min_index]
       relativecovariance <- results_inner$relativecovariance[min_index]
-
-      # Clean up all temporary files starting with "temp_full_grid_"
-      file.remove(temp_files)
   
       list(
         resultsinner = results_inner,
