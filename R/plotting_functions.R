@@ -771,7 +771,7 @@ plot_comparisons_3d_scatter <- function(data, output_directory = "plots/",
 #' @import plotly htmlwidgets alphashape3d
 #' @export
 plot_rpars_3d_scatter <- function(data, output_directory = "plots/", rho_scale_range = c(-1, 1), scalestdevstep_range = c(0.49, 0.51), plot_all = TRUE, alpha_value = 1) {
-
+  
   # Ensure output directory exists
   if (!dir.exists(output_directory)) {
     dir.create(output_directory, recursive = TRUE)
@@ -785,12 +785,6 @@ plot_rpars_3d_scatter <- function(data, output_directory = "plots/", rho_scale_r
   # Get unique comparisons from the data
   unique_comparisons <- unique(averaged_data$comparison)
   
-  # Create a custom color palette excluding grey and red shades
-  all_colors <- grDevices::colors()[grep('gr(a|e)y|red', grDevices::colors(), invert = TRUE)]
-  
-  # Sample N colors for each comparison
-  color_palette <- sample(all_colors, min(length(unique_comparisons), length(all_colors)))
-
   # Initialize an empty plot if plotting all together
   if (plot_all) {
     plot <- plot_ly()
@@ -806,11 +800,11 @@ plot_rpars_3d_scatter <- function(data, output_directory = "plots/", rho_scale_r
     # Marker shapes: use different shapes or sizes if needed
     marker_shape <- 'circle'
     
-    # Check if SPSD column exists and highlight points where SPSD < 0
+    # Check if SPSD column exists and color points where SPSD < 0 in red, others in black
     if ("SPSD" %in% names(data_subset)) {
-      sigma_colors <- ifelse(data_subset$SPSD < 0, "red", color_palette[i])
+      sigma_colors <- ifelse(data_subset$SPSD < 0, "red", "black")
     } else {
-      sigma_colors <- color_palette[i]
+      sigma_colors <- "black"
     }
     
     # Get the points for plotting
@@ -859,11 +853,11 @@ plot_rpars_3d_scatter <- function(data, output_directory = "plots/", rho_scale_r
           add_trace(type = 'mesh3d',
                     x = vertices[,1], y = vertices[,2], z = vertices[,3],
                     i = faces[,1] - 1, j = faces[,2] - 1, k = faces[,3] - 1, 
-                    color = color_palette[i], opacity = 0.3, name = paste("Convex Hull", comparison_value))
+                    color = "gray", opacity = 0.3, name = paste("Convex Hull", comparison_value))
       }
     } else {
       # For individual plots
-      sigma_colors <- sample(all_colors, 1)
+      sigma_colors <- ifelse(data_subset$SPSD < 0, "red", "black")
       
       # Generate individual plots for each comparison
       comparison_plot <- plot_ly() %>%
@@ -882,7 +876,7 @@ plot_rpars_3d_scatter <- function(data, output_directory = "plots/", rho_scale_r
           add_trace(type = 'mesh3d',
                     x = vertices[,1], y = vertices[,2], z = vertices[,3],
                     i = faces[,1] - 1, j = faces[,2] - 1, k = faces[,3] - 1, 
-                    color = sigma_colors, opacity = 0.3, name = paste("Convex Hull", comparison_value))
+                    color = "gray", opacity = 0.3, name = paste("Convex Hull", comparison_value))
       }
       
       # Set layout with custom axis ranges
@@ -922,6 +916,7 @@ plot_rpars_3d_scatter <- function(data, output_directory = "plots/", rho_scale_r
     message("Generated and saved combined scatter plot for all comparisons.")
   }
 }
+
 
 
 
