@@ -26,7 +26,7 @@
 #' results <- estimate_covariance(Y)
 #' @export
 
-estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobound = 1.0, S = 1000, lowerscalestdev = .49, upperscalestdev = .51, algorithm="COBYLA", scalestep=0.005) {
+estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobound = 1.0, S = 1000, lowerscalestdev = .49, upperscalestdev = .51, algorithm="COBYLA") {
 
   ## COMPUTATIONAL TIME -------------------------------------------------------------------------------------------------------------------------
   # Record the start time for profiling
@@ -92,7 +92,7 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
     # Define parameter steps
     rho1 <- seq(lowerrhobound, upperrhobound, by=0.05)
     rho2 <- seq(lowerrhobound, upperrhobound, by=0.05)
-    scalestdevstep <- seq(lowerscalestdev, upperscalestdev, scalestep)
+    scalestdevstep <- seq(lowerscalestdev, upperscalestdev, by=0.005)
     iterations <- length(rho1) * length(rho2) * length(scalestdevstep)
     
     # Create the grid of parameters
