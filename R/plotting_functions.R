@@ -650,10 +650,12 @@ plot_rpars_surface <- function(data, output_directory = "plots/surfaceplots/", r
     # Filter the data for the specific comparison
     data_subset <- subset(data, comparison == comparison_value)
     
-    # Reshape data for surface plot: create matrices for rho1, rho2, scalestdevstep, and SPSD
+    # Reshape data to matrices for surface plot
     z_matrix <- acast(data_subset, rho1 ~ rho2, value.var = "scalestdevstep")
     x_matrix <- acast(data_subset, rho1 ~ rho2, value.var = "rho1")
     y_matrix <- acast(data_subset, rho1 ~ rho2, value.var = "rho2")
+    
+    # Ensure SPSD values are available and reshape for coloring
     spsd_matrix <- acast(data_subset, rho1 ~ rho2, value.var = "SPSD")
     
     # Create surface plot with SPSD as the color scale
@@ -662,9 +664,8 @@ plot_rpars_surface <- function(data, output_directory = "plots/surfaceplots/", r
                   y = y_matrix, 
                   z = z_matrix, 
                   surfacecolor = spsd_matrix,  # Color based on SPSD values
-                  showscale = TRUE, 
-                  colorscale = list(c(0, "red"), c(1, "blue")),  # Custom color scale (red for negative, blue for positive)
-                  name = 'Sigma') %>%
+                  colorscale = list(c(0, "red"), c(1, "blue")),  # Red for negative SPSD, blue for positive
+                  showscale = TRUE) %>%
       layout(scene = list(xaxis = list(title = 'rho1', range = rho_scale_range),
                           yaxis = list(title = 'rho2', range = rho_scale_range),
                           zaxis = list(title = 'scalestdevstep', range = scalestdevstep_range)),
@@ -680,7 +681,6 @@ plot_rpars_surface <- function(data, output_directory = "plots/surfaceplots/", r
     message("Generated and saved surface plot for comparison: ", comparison_value)
   }
 }
-
 
 
 #' Plot and Save 3D Scatter Plots with Convex Hull for All Comparisons
