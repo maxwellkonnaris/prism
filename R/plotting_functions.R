@@ -540,148 +540,6 @@ diagnose_bootstrap_convergence <- function(combined_results, convergence_results
   ))
 }
 
-#' Plot and Save 3D Surface Plots for All Comparisons
-#'
-#' This function generates 3D surface plots for `minsigma` and `maxsigma`
-#' across all comparisons in the dataset and saves them as HTML files.
-#'
-#' @param data A data frame containing the optimization results. 
-#' The data frame must contain columns named "comparison", 
-#' "minsigma_correlation_relativetaxa1_scale", 
-#' "minsigma_correlation_relativetaxa2_scale", 
-#' "minsigma_scale_sd", 
-#' "maxsigma_correlation_relativetaxa1_scale", 
-#' "maxsigma_correlation_relativetaxa2_scale", and 
-#' "maxsigma_scale_sd". Additionally, if the data frame contains an 
-#' "SPSD" column, the plot colors will reflect SPSD values.
-#' @param output_directory A string specifying the directory where the plots will be saved (default: "plots/surfaceplots/").
-#' The directory will be created if it does not exist.
-#' @param correlation_relativetaxa_scale_range A vector specifying the range of values for the x-axis (default: c(-1, 1)).
-#' @param scale_sd_range A vector specifying the range of values for the z-axis (default: c(0.49, 0.51)).
-#' @return This function saves the plots and returns no value.
-#' @import plotly htmlwidgets
-#' @export
-plot_and_save_surfaces <- function(data, output_directory = "plots/surfaceplots/", correlation_relativetaxa_scale_range = c(-1, 1),  scale_sd_range = c(0.49, 0.51)) {
-  # Ensure output directory exists
-  if (!dir.exists(output_directory)) {
-    dir.create(output_directory, recursive = TRUE)
-  }
-  
-  # Get unique comparisons from the data
-  unique_comparisons <- unique(data$comparison)
-  
-  # Loop through each comparison
-  for (comparison_value in unique_comparisons) {
-    # Filter the data for the specific comparison
-    data_subset <- subset(data, comparison == comparison_value)
-    
-    # Check if SPSD column exists and assign colors based on SPSD value
-    if ("SPSD" %in% names(data_subset)) {
-      # Red if SPSD < 0, otherwise use blue/purple for min/max
-      minsigma_colors <- ifelse(data_subset$SPSD < 0, "red", "blue")
-      maxsigma_colors <- ifelse(data_subset$SPSD < 0, "red", "purple")
-    } else {
-      # Default to blue/purple for min/max if SPSD is not available
-      minsigma_colors <- "blue"
-      maxsigma_colors <- "purple"
-    }
-    
-    # Create 3D surface plots for both minsigma and maxsigma on the same plot
-    plot <- plot_ly() %>%
-      
-      # Add minsigma surface plot
-      add_surface(data = data_subset, 
-                  x = ~get("minsigma_correlation_relativetaxa1_scale"), 
-                  y = ~get("minsigma_correlation_relativetaxa2_scale"), 
-                  z = ~get("minsigma_scale_variance"), 
-                  surfacecolor = minsigma_colors, 
-                  showscale = FALSE, 
-                  name = 'MinSigma') %>%
-      
-      # Add maxsigma surface plot
-      add_surface(data = data_subset, 
-                  x = ~get("maxsigma_correlation_relativetaxa1_scale"), 
-                  y = ~get("maxsigma_correlation_relativetaxa2_scale"), 
-                  z = ~get("maxsigma_scale_variance"), 
-                  surfacecolor = maxsigma_colors, 
-                  showscale = FALSE, 
-                  name = 'MaxSigma') %>%
-      
-      # Set layout with custom axis ranges
-      layout(scene = list(xaxis = list(title = 'Correlation RelTaxa1 Scale', range = correlation_relativetaxa_scale_range),
-                          yaxis = list(title = 'Correlation RelTaxa2 Scale', range = correlation_relativetaxa_scale_range),
-                          zaxis = list(title = 'Scale Variance', range = scale_sd_range)),
-             title = paste("MinSigma and MaxSigma Surface Plot for Comparison", comparison_value))
-    
-    # Define file path for saving the plot
-    output_file <- file.path(output_directory, paste0("sigma_comparison_", comparison_value, ".html"))
-    
-    # Save the plot as an HTML file
-    htmlwidgets::saveWidget(plot, file = output_file)
-    
-    # Optionally, print a message to confirm plot generation
-    message("Generated and saved surface plot for comparison: ", comparison_value)
-  }
-}
-
-#' Plot and Save 3D Surface Plots for rpars
-#'
-#' This function generates 3D surface plots for `sigma` across all comparisons in the dataset and saves them as HTML files.
-#'
-#' @param data A data frame containing the optimization results, including `rho1`, `rho2`, `scalestdevstep`, and `sigma`.
-#' @param output_directory A string specifying the directory where the plots will be saved (default: "plots/surfaceplots/").
-#' The directory will be created if it does not exist.
-#' @param rho_scale_range A vector specifying the range of values for `rho1` and `rho2` axes (default: c(-1, 1)).
-#' @param scalestdevstep_range A vector specifying the range of values for the `scalestdevstep` axis (default: c(0.49, 0.51)).
-#' @return This function saves the plots and returns no value.
-#' @import plotly htmlwidgets reshape2
-#' @export
-plot_rpars_surface <- function(data, output_directory = "plots/surfaceplots/", rho_scale_range = c(-1, 1), scalestdevstep_range = c(0.49, 0.51)) {
-  # Ensure output directory exists
-  if (!dir.exists(output_directory)) {
-    dir.create(output_directory, recursive = TRUE)
-  }
-  
-  # Get unique comparisons from the data
-  unique_comparisons <- unique(data$comparison)
-  
-  # Loop through each comparison
-  for (comparison_value in unique_comparisons) {
-    # Filter the data for the specific comparison
-    data_subset <- subset(data, comparison == comparison_value)
-    
-    # Reshape data to matrices for surface plot
-    z_matrix <- acast(data_subset, rho1 ~ rho2, value.var = "scalestdevstep")
-    x_matrix <- acast(data_subset, rho1 ~ rho2, value.var = "rho1")
-    y_matrix <- acast(data_subset, rho1 ~ rho2, value.var = "rho2")
-    
-    # Ensure SPSD values are available and reshape for coloring
-    spsd_matrix <- acast(data_subset, rho1 ~ rho2, value.var = "SPSD")
-    
-    # Create surface plot with SPSD as the color scale
-    plot <- plot_ly() %>%
-      add_surface(x = x_matrix, 
-                  y = y_matrix, 
-                  z = z_matrix, 
-                  surfacecolor = spsd_matrix,  # Color based on SPSD values
-                  colorscale = list(c(0, "red"), c(1, "blue")),  # Red for negative SPSD, blue for positive
-                  showscale = TRUE) %>%
-      layout(scene = list(xaxis = list(title = 'rho1', range = rho_scale_range),
-                          yaxis = list(title = 'rho2', range = rho_scale_range),
-                          zaxis = list(title = 'scalestdevstep', range = scalestdevstep_range)),
-             title = paste("Sigma Surface Plot for Comparison", comparison_value))
-    
-    # Define file path for saving the plot
-    output_file <- file.path(output_directory, paste0("sigma_comparison_", comparison_value, ".html"))
-    
-    # Save the plot as an HTML file
-    htmlwidgets::saveWidget(plot, file = output_file)
-    
-    # Optionally, print a message to confirm plot generation
-    message("Generated and saved surface plot for comparison: ", comparison_value)
-  }
-}
-
 
 #' Plot and Save 3D Scatter Plots with Convex Hull for All Comparisons
 #'
@@ -1054,6 +912,45 @@ plot_rpars_3d_scatter <- function(data, output_directory = "plots/", rho_scale_r
   }
 }
 
+
+plot_rpars_surface <- function(data, output_directory = "plots/surfaceplots/", rho_scale_range = c(-1, 1), scalestdevstep_range = c(0.49, 0.51)) {
+  # Ensure output directory exists
+  if (!dir.exists(output_directory)) {
+    dir.create(output_directory, recursive = TRUE)
+  }
+  
+  # Get unique comparisons from the data
+  unique_comparisons <- unique(data$comparison)
+  
+  # Loop through each comparison
+  for (comparison_value in unique_comparisons) {
+    # Filter the data for the specific comparison
+    data_subset <- subset(data, comparison == comparison_value)
+    
+    # Create 3D scatter plot with SPSD as the color scale
+    plot <- plot_ly(data_subset, 
+                    x = ~rho1, 
+                    y = ~rho2, 
+                    z = ~scalestdevstep, 
+                    color = ~SPSD,  # Use SPSD for coloring
+                    colors = c("red", "blue"),  # Red for negative SPSD, blue for positive
+                    type = "scatter3d", 
+                    mode = "markers") %>%
+      layout(scene = list(xaxis = list(title = 'rho1', range = rho_scale_range),
+                          yaxis = list(title = 'rho2', range = rho_scale_range),
+                          zaxis = list(title = 'scalestdevstep', range = scalestdevstep_range)),
+             title = paste("Surface Plot for Comparison", comparison_value))
+    
+    # Define file path for saving the plot
+    output_file <- file.path(output_directory, paste0("sigma_comparison_", comparison_value, ".html"))
+    
+    # Save the plot as an HTML file
+    htmlwidgets::saveWidget(plot, file = output_file)
+    
+    # Optionally, print a message to confirm plot generation
+    message("Generated and saved surface plot for comparison: ", comparison_value)
+  }
+}
 
 
 
