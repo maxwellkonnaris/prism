@@ -277,7 +277,7 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
 
   # Run the analysis
   cat("Running sigma estimation")
-  results_list <- foreach(pair = pair_indices, .packages = c('stats', 'MCMCpack'), .options.snow = opts) %dopar% {
+  results_list <- foreach(pair = pair_indices, .packages = c('stats', 'MCMCpack', 'dplyr'), .options.snow = opts) %dopar% {
       d1 <- pair[1]
       d2 <- pair[2]
       comparison <- paste(rownames(Y)[d1], rownames(Y)[d2], sep = ":")
@@ -286,7 +286,7 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
       maxsigma_values <- numeric(S)
       
       # Use parallel foreach for the inner loop
-      results_inner <- foreach(s = 1:S, .combine = 'rbind', .packages = c('stats', 'MCMCpack'), .options.snow = opts) %dopar% {
+      results_inner <- foreach(s = 1:S, .combine = 'rbind', .packages = c('stats', 'MCMCpack', 'nloptr', 'dplyr'), .options.snow = opts) %dopar% {
           Yboot <- Y[, bootstrap_samples[[s]]]
           
           rWpara <- matrix(NA, D, N)
@@ -559,7 +559,7 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
                 )
               
               # Writing each rpars dataframe as a temporary file for each bootstrap 's'
-              temp_file_name <- paste0("temp_full_grid_", d1, "_", d2, "_", s, ".txt")
+              temp_file_name <- paste0("temp_full_grid_", d1, "_", d2, "_", s, "_", Sys.getpid(), ".txt")
               write.table(rpars, file = temp_file_name, sep = "\t", row.names = FALSE, col.names = TRUE)
               
               # Filter rows where SPSD is >= 0
@@ -629,15 +629,12 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
 
       if (algorithm == "GRID_SEARCH") {
         # For a specific (d1, d2) pair, concatenate the temporary files
-        temp_files <- list.files(pattern = paste0("temp_full_grid_", d1, "_", d2, "_"))
+        temp_files <- list.files(pattern = paste0("^temp_full_grid_", d1, "_", d2, "_"))
         
         # Read and concatenate all the temp files for the same d1, d2 pair
         final_rpars <- do.call(rbind, lapply(temp_files, function(file) {
           read.table(file, sep = "\t", header = TRUE)
         }))
-  
-        # Clean up the temporary files
-        file.remove(temp_files)
         
         # Now write the concatenated dataframe to a final file
         final_file_name <- paste0("full_grid_", d1, "_", d2, ".txt")
@@ -674,6 +671,9 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
       taxa2relativesd <- results_inner$taxa2relativesd[min_index]
       relativecorrelation <- results_inner$relativecorrelation[min_index]
       relativecovariance <- results_inner$relativecovariance[min_index]
+
+      # Clean up all temporary files starting with "temp_full_grid_"
+      file.remove(temp_files)
   
       list(
         resultsinner = results_inner,
