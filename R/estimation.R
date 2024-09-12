@@ -576,9 +576,9 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
                   comparison = paste0(d1, ":", d2)  # Ensure 'comparison' is the same for all rows
                 )
 
-              # Append the rpars to the file for this pair
-              pair_file_name = paste0("rpars_taxa_", d1, "_", d2, ".txt")
-              append_to_pair_file(rpars, pair_file_name)
+              # # Append the rpars to the file for this pair
+              # pair_file_name = paste0("rpars_taxa_", d1, "_", d2, ".txt")
+              # append_to_pair_file(rpars, pair_file_name)
               
               # Filter rows where SPSD is >= 0
               rpars <- rpars %>%
