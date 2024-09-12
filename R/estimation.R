@@ -94,9 +94,10 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
     rho1 <- seq(lowerrhobound, upperrhobound, by=0.05)
     rho2 <- seq(lowerrhobound, upperrhobound, by=0.05)
     scalestdevstep <- seq(lowerscalestdev, upperscalestdev, by=0.001)
+    iterations <- length(rho1) * length(rho2) * length(scalestdevstep)
     
     # Create the grid of parameters
-    pars <- expand.grid(rho1 = rho1, rho2 = rho2, scalestdevstep = scalestdevstep)
+    pars <- expand.grid(rho1 = rho1, rho2 = rho2, scalestdevstep = scalestdevstep, iterations = iterations)
     print(pars)
   }
   
@@ -599,7 +600,8 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
                 objective = min_sigma_row$sigma,
                 solution = c(min_sigma_row$rho1, min_sigma_row$rho2, min_sigma_row$scalestdevstep),
                 message = "GRIDSEARCH",
-                status = "GRIDSEARCH"
+                status = "GRIDSEARCH",
+                iterations = min_sigma_row$iterations
               )
                     
               # Extract values from min_sigma_row
@@ -607,7 +609,8 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
                 objective = -max_sigma_row$sigma,
                 solution = c(max_sigma_row$rho1, max_sigma_row$rho2, max_sigma_row$scalestdevstep),
                 message = "GRIDSEARCH",
-                status = "GRIDSEARCH"
+                status = "GRIDSEARCH",
+                iterations = min_sigma_row$iterations
               )
 
               list(res_min = res_min, res_max = res_max)
