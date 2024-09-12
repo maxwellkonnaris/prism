@@ -840,16 +840,28 @@ plot_rpars_3d_scatter <- function(data, output_directory = "plots/", rho_scale_r
     
     if (plot_all) {
       # Add sigma scatter plot with 'circle' markers to the overall plot
-      plot <- plot %>%
-        add_markers(data = data_subset, 
-                    x = ~rho1, 
-                    y = ~rho2, 
-                    z = ~scalestdevstep, 
-                    marker = list(symbol = marker_shape, size = 4),
-                    color = ~color_label,  # Map color to the SPSD status
-                    colors = c("red", "black"),  # Define colors for Negative and Non-negative
-                    name = paste('Sigma', comparison_value))
-      
+	plot <- plot %>%
+	  add_markers(data = data_subset, 
+	              x = ~rho1, 
+	              y = ~rho2, 
+	              z = ~scalestdevstep, 
+	              marker = list(symbol = marker_shape, size = 4),
+	              color = ~color_label,  # Map color to the SPSD status
+	              colors = c("red", "black"),  # Define colors for Negative and Non-negative
+	              name = paste('Sigma', comparison_value),
+	              legendgroup = "SPSD",  # Add a legend group
+	              showlegend = TRUE,     # Show legend
+	              hoverinfo = "text",
+	              text = ~paste("rho1:", rho1, "<br>rho2:", rho2, "<br>scalestdevstep:", scalestdevstep, "<br>SPSD:", mean_SPSD))  # Add hover text
+
+      	plot <- plot %>%
+	  layout(scene = list(xaxis = list(title = 'rho1', range = rho_scale_range),
+			      yaxis = list(title = 'rho2', range = rho_scale_range),
+			      zaxis = list(title = 'scalestdevstep', range = scalestdevstep_range)),
+		 title = "Sigma Scatter Plot for All Comparisons",
+		 legend = list(title = list(text = 'SPSD Status')),  # Change the title of the legend
+		 showlegend = TRUE)  # Ensure the legend is shown
+
       # Add convex hull if it was successfully created
       if (exists("ashape") && !is.null(ashape)) {
         plot <- plot %>%
