@@ -803,9 +803,9 @@ plot_rpars_3d_scatter <- function(data, output_directory = "plots/", rho_scale_r
     # Check if SPSD column exists and create color_label based on SPSD values
     if ("mean_SPSD" %in% names(data_subset)) {
       # Assign color scale based on SPSD values
-      data_subset$color_label <- ifelse(data_subset$mean_SPSD < 0, "Negative", "Non-negative")
+      data_subset$color_label <- ifelse(data_subset$mean_SPSD < 0, "Not-SPSD: Negative", "SPSD: Non-negative")
     } else {
-      data_subset$color_label <- "Non-negative"  # Default if SPSD column doesn't exist
+      data_subset$color_label <- "No specification"  # Default if SPSD column doesn't exist
     }
 
     # Get the points for plotting
