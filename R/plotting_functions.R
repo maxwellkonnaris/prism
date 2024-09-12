@@ -968,7 +968,6 @@ plot_spsdparameter <- function(data, output_directory = "plots/", rho_scale_rang
                     name = "SPSD Certain",
                     hoverinfo = "text",
                     text = ~paste("rho1:", rho1, "<br>rho2:", rho2, "<br>scalestdevstep:", scalestdevstep, "<br>sigma:", mean_sigma, "<br>SPSD CI:", ci_lower_SPSD, "-", ci_upper_SPSD))
-    }
   }
 
   plot <- plot %>%
