@@ -579,12 +579,15 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
               rpars <- pars %>%
                 dplyr::mutate(sigma = relativecovariance + scalestdevstep * taxa1relativesd * rho1 + scalestdevstep * taxa2relativesd * rho2 + scalestdevstep^2,
                               s = s,  
-                              comparison = paste0(d1, ":", d2)
+                              comparison = paste0(d1, ":", d2),
+                              taxa1relativesd = taxa1relativesd, 
+                              taxa2relativesd = taxa2relativesd, 
+                              relativecovariance = relativecovariance
                              )
 
               
               # # Append the rpars to the file for this pair
-              pair_file_name = paste0("rpars_taxa_", d1, "_", d2, ".txt")
+              pair_file_name = paste0("gridresults_taxa_", d1, "_", d2, ".txt")
               append_to_pair_file(rpars, pair_file_name)
               
               # Filter rows where SPSD is >= 0
@@ -651,10 +654,15 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
             #variance_proportionality_taxa2 = variance_proportionality_d2
           )    
       }
-    
+
+      # Calculate the number of intervals where both minsigma and maxsigma do not cover zero
+      non_zero_intervals <- sum((results_inner$minsigma_absolute_minimum_covariance > 0 & results_inner$maxsigma_absolute_maximum_covariance > 0) |
+                                (results_inner$minsigma_absolute_minimum_covariance < 0 & results_inner$maxsigma_absolute_maximum_covariance < 0))
+      proportion_intervals_dontcoverzero <- non_zero_intervals / nrow(results_inner)
+
       # Gather the min and max optimized sigmas
       minsigma_values <- results_inner$minsigma_absolute_minimum_covariance
-      maxsigma_values <- results_inner$maxsigma_absolute_maximum_covariance
+      maxsigma_values <- results_inner$maxsigma_absolute_maximum_covariance      
       
       # Sort the results
       sortedmin <- sort(minsigma_values)
@@ -669,11 +677,10 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
       # Obtain parameters for the minimum and maximum sigma values
       min_index <- which.min(minsigma_values)
       max_index <- which.max(maxsigma_values)
-      
+     
       min_rho1 <- results_inner$minsigma_correlation_relativetaxa1_scale[min_index]
       min_rho2 <- results_inner$minsigma_correlation_relativetaxa2_scale[min_index]
-      min_x <- results_inner$minsigma_scale_sd[min_index]
-      
+      min_x <- results_inner$minsigma_scale_sd[min_index]  
       max_rho1 <- results_inner$maxsigma_correlation_relativetaxa1_scale[max_index]
       max_rho2 <- results_inner$maxsigma_correlation_relativetaxa2_scale[max_index]
       max_x <- results_inner$maxsigma_scale_sd[max_index]
@@ -689,6 +696,7 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
           comparison = comparison,
           taxa1 = rownames(Y)[d1],
           taxa2 = rownames(Y)[d2],
+          proportion_intervals_dontcoverzero = proportion_intervals_dontcoverzero,
           ninetyfive_ci_lower = cilower,
           ninetyfive_ci_upper = ciupper,
           minsigma_absolute_minimum_covariance = minsigma,
