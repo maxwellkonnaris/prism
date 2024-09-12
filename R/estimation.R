@@ -704,6 +704,11 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
         )
       )
   }
+
+  # Remove all lock files
+  # Get all .txt.lock files in the working directory or a specific folder
+  lock_files <- list.files(path = ".", pattern = "\\.txt\\.lock$", full.names = TRUE)
+  file.remove(lock_files)
   
   # Combine the results into a data frame, transpose it, remove row names
   final_results <- do.call(rbind, lapply(results_list, function(x) x$results))
