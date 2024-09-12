@@ -90,7 +90,7 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
 
   if (algorithm == "GRID_SEARCH") {
 
-    scale = (upperscalestdev - lowerrhobound) / 5
+    scale = (upperscalestdev - lowerscalestdev) / 5
 
     # Define parameter steps
     rho1 <- seq(lowerrhobound, upperrhobound, by=0.05)
