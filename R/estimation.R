@@ -623,7 +623,7 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
             minsigma_absolute_minimum_covariance = res_min$objective,
             minsigma_correlation_relativetaxa1_scale = res_min$solution[1],
             minsigma_correlation_relativetaxa2_scale = res_min$solution[2],
-            minsigma_scale_variance = res_min$solution[3],
+            minsigma_scale_sd = res_min$solution[3],
             minsigma_message = res_min$message,
             minsigma_status = res_min$status,
             minsigma_iterations = res_min$iterations,
@@ -904,10 +904,10 @@ estimate_covariance_convergence <- function(Y, S=c(100, 500, 1000, 2000, 5000, 1
           maxsigma_absolute_maximum_covariance = -res_max$value,
           minsigma_correlation_relativetaxa1_scale = res_min$par[1],
           minsigma_correlation_relativetaxa2_scale = res_min$par[2],
-          minsigma_scale_variance = res_min$par[3],
+          minsigma_scale_sd = res_min$par[3],
           maxsigma_correlation_relativetaxa1_scale = res_max$par[1],
           maxsigma_correlation_relativetaxa2_scale = res_max$par[2],
-          maxsigma_scale_variance = res_max$par[3],
+          maxsigma_scale_sd = res_max$par[3],
           taxa1relativesd = taxa1relativesd,
           taxa2relativesd = taxa2relativesd,
           relativecorrelation = relativecorrelation,
@@ -929,11 +929,11 @@ estimate_covariance_convergence <- function(Y, S=c(100, 500, 1000, 2000, 5000, 1
       
       min_rho1 <- results_inner$minsigma_correlation_relativetaxa1_scale[min_index]
       min_rho2 <- results_inner$minsigma_correlation_relativetaxa2_scale[min_index]
-      min_x <- results_inner$minsigma_scale_variance[min_index]
+      min_x <- results_inner$minsigma_scale_sd[min_index]
       
       max_rho1 <- results_inner$maxsigma_correlation_relativetaxa1_scale[max_index]
       max_rho2 <- results_inner$maxsigma_correlation_relativetaxa2_scale[max_index]
-      max_x <- results_inner$maxsigma_scale_variance[max_index]
+      max_x <- results_inner$maxsigma_scale_sd[max_index]
       
       taxa1relativesd <- results_inner$taxa1relativesd[min_index]
       taxa2relativesd <- results_inner$taxa2relativesd[min_index]
@@ -952,10 +952,10 @@ estimate_covariance_convergence <- function(Y, S=c(100, 500, 1000, 2000, 5000, 1
           maxsigma_absolute_maximum_covariance = maxsigma,
           minsigma_correlation_relativetaxa1_scale = min_rho1,
           minsigma_correlation_relativetaxa2_scale = min_rho2,
-          minsigma_scale_variance = min_x,
+          minsigma_scale_sd = min_x,
           maxsigma_correlation_relativetaxa1_scale = max_rho1,
           maxsigma_correlation_relativetaxa2_scale = max_rho2,
-          maxsigma_scale_variance = max_x,
+          maxsigma_scale_sd = max_x,
           relative_standard_dev_taxa1 = taxa1relativesd,
           relative_standard_dev_taxa2 = taxa2relativesd,
           relative_correlation = relativecorrelation,
