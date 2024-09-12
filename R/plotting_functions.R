@@ -869,7 +869,7 @@ plot_rpars_3d_scatter <- function(data, output_directory = "plots/", rho_scale_r
 }
 
 
-# Function to plot a grid of bivariate plots
+# Function to plot a grid of bivariate plots, highlighting SPSD >= 0
 plot_bivariate_grid <- function(data, output_directory = "plots/") {
 
   # Ensure output directory exists
@@ -877,18 +877,34 @@ plot_bivariate_grid <- function(data, output_directory = "plots/") {
     dir.create(output_directory, recursive = TRUE)
   }
 
-  # Select the relevant columns for plotting
+  # Add a column classifying SPSD values
   plot_data <- data %>%
-    dplyr::select(rho1, rho2, scalestdevstep, sigma)
+    dplyr::mutate(SPSD_category = ifelse(SPSD >= 0, "SPSD >= 0", "SPSD < 0")) %>%
+    dplyr::select(rho1, rho2, scalestdevstep, sigma, SPSD_category)
 
+  # Use a sample of data if necessary
   plot_data_sample <- plot_data %>% sample_n(2000)
 
+  # Create custom color palette: one for SPSD >= 0 and one for SPSD < 0
+  color_palette <- c("SPSD >= 0" = "blue", "SPSD < 0" = "red")
+
+  # Custom function for scatter plots in lower triangle, colored by SPSD category
+  lower_fn <- function(data, mapping, ...) {
+    ggplot(data = data, mapping = mapping) +
+      geom_point(aes(color = SPSD_category), alpha = 0.7, size = 1.5) +
+      scale_color_manual(values = color_palette) +
+      theme(legend.position = "bottom")
+  }
+
   # Create a grid of bivariate plots using ggpairs
-  pairwise_plot <- ggpairs(plot_data_sample,
-                           title = "Bivariate Scatter Plot Matrix",
-                           upper = list(continuous = wrap("cor", size = 4)),  # Add correlation in the upper triangle
-                           lower = list(continuous = "smooth"),  # Add scatter plots with smoothing lines in the lower triangle
-                           diag = list(continuous = "densityDiag"))  # Add density plots on the diagonal
+  pairwise_plot <- ggpairs(
+    plot_data_sample,
+    mapping = aes(color = SPSD_category),  # Map color to SPSD category
+    title = "Bivariate Scatter Plot Matrix",
+    upper = list(continuous = wrap("cor", size = 4)),  # Add correlation in upper triangle
+    lower = list(continuous = lower_fn),  # Custom lower function to color points by SPSD
+    diag = list(continuous = "densityDiag")  # Add density plots on diagonal
+  )
 
   # Display the plot
   print(pairwise_plot)
