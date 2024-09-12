@@ -770,7 +770,7 @@ plot_comparisons_3d_scatter <- function(data, output_directory = "plots/",
 #' @return This function saves the plots and returns no value.
 #' @import plotly htmlwidgets alphashape3d
 #' @export
-plot_rpars_3d_scatter <- function(data, output_directory = "plots/", rho_scale_range = c(min(data$rho1)), max(data$rho1))), scalestdevstep_range = c(min(data$scalestdevstep),max(data$scalestdevstep)), plot_all = TRUE, alpha_value = 1) {
+plot_rpars_3d_scatter <- function(data, output_directory = "plots/", rho_scale_range = c(min(data$rho1), max(data$rho1)), scalestdevstep_range = c(min(data$scalestdevstep),max(data$scalestdevstep)), plot_all = TRUE, alpha_value = 1) {
   
   # Ensure output directory exists
   if (!dir.exists(output_directory)) {
@@ -917,7 +917,7 @@ plot_rpars_3d_scatter <- function(data, output_directory = "plots/", rho_scale_r
 #' }
 #' 
 #' @export
-plot_spsdparameter <- function(data, output_directory = "plots/", rho_scale_range = c(min(data$rho1)), max(data$rho1))), scalestdevstep_range = c(min(data$scalestdevstep)), max(data$scalestdevstep))), alpha_value = 1) {
+plot_spsdparameter <- function(data, output_directory = "plots/", rho_scale_range = c(min(data$rho1), max(data$rho1)), scalestdevstep_range = c(min(data$scalestdevstep), max(data$scalestdevstep)), alpha_value = 1) {
 
   # Ensure output directory exists
   if (!dir.exists(output_directory)) {
