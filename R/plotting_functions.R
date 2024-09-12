@@ -869,6 +869,37 @@ plot_rpars_3d_scatter <- function(data, output_directory = "plots/", rho_scale_r
 }
 
 
+# Function to plot a grid of bivariate plots
+plot_bivariate_grid <- function(data, output_directory = "plots/") {
+
+  # Ensure output directory exists
+  if (!dir.exists(output_directory)) {
+    dir.create(output_directory, recursive = TRUE)
+  }
+
+  # Select the relevant columns for plotting
+  plot_data <- data %>%
+    dplyr::select(rho1, rho2, scalestdevstep, sigma)
+
+  plot_data_sample <- plot_data %>% sample_n(2000)
+
+  # Create a grid of bivariate plots using ggpairs
+  pairwise_plot <- ggpairs(plot_data_sample,
+                           title = "Bivariate Scatter Plot Matrix",
+                           upper = list(continuous = wrap("cor", size = 4)),  # Add correlation in the upper triangle
+                           lower = list(continuous = "smooth"),  # Add scatter plots with smoothing lines in the lower triangle
+                           diag = list(continuous = "densityDiag"))  # Add density plots on the diagonal
+
+  # Display the plot
+  print(pairwise_plot)
+
+  # Save the plot as a PNG file
+  output_file <- file.path(output_directory, "bivariate_plot_matrix.png")
+  ggsave(output_file, pairwise_plot, width = 8, height = 8, dpi = 300)
+
+  # Optionally, print a message to confirm plot generation
+  message("Generated and saved bivariate scatter plot matrix.")
+}
 
 
 
