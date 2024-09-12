@@ -112,7 +112,7 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
     
     tryCatch({
       # Write data to the file in append mode
-      write.table(results, file = pair_file_name, append = TRUE, sep = "\t", row.names = FALSE, col.names = FALSE)
+      write.table(results, file = pair_file_name, append = TRUE, sep = "\t", row.names = FALSE, col.names = TRUE)
     }, error = function(e) {
       message("Error while writing to file: ", pair_file_name, "\n", e)
     }, finally = {
