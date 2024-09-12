@@ -802,8 +802,8 @@ plot_rpars_3d_scatter <- function(data, output_directory = "plots/", rho_scale_r
     data_spsd_neg <- subset(data_subset, mean_SPSD < 0)
 
     # Determine the size scale for sigma values
-    size_min <- 4  # minimum marker size (same as SPSD < 0 markers)
-    size_max <- 8  # maximum marker size (2x the size_min)
+    size_min <- 2  # minimum marker size (same as SPSD < 0 markers)
+    size_max <- 12  # maximum marker size (2x the size_min)
     sigma_range <- range(data_spsd_pos$mean_sigma, na.rm = TRUE)  # get the range of sigma values
 
     # Map sigma to marker size for SPSD >= 0 points
