@@ -97,7 +97,7 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
     
     # Create the grid of parameters
     pars <- expand.grid(rho1 = rho1, rho2 = rho2, scalestdevstep = scalestdevstep)
-    
+    print(pars)
   }
   
   # Initialize a results matrix to store the results for each pair
