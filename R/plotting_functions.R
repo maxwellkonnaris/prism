@@ -801,7 +801,15 @@ plot_rpars_3d_scatter <- function(data, output_directory = "plots/", rho_scale_r
     data_spsd_pos <- subset(data_subset, mean_SPSD >= 0)
     data_spsd_neg <- subset(data_subset, mean_SPSD < 0)
 
-    # Plot points where SPSD < 0 (in red)
+    # Determine the size scale for sigma values
+    size_min <- 4  # minimum marker size
+    size_max <- 15  # maximum marker size
+    sigma_range <- range(data_spsd_pos$mean_sigma, na.rm = TRUE)  # get the range of sigma values
+
+    # Map sigma to marker size for SPSD >= 0 points
+    marker_size_spsd_pos <- size_min + (data_spsd_pos$mean_sigma - sigma_range[1]) / (sigma_range[2] - sigma_range[1]) * (size_max - size_min)
+
+    # Plot points where SPSD < 0 (in red) with constant size
     if (nrow(data_spsd_neg) > 0) {
       plot <- plot %>%
         add_markers(data = data_spsd_neg, 
@@ -814,24 +822,24 @@ plot_rpars_3d_scatter <- function(data, output_directory = "plots/", rho_scale_r
                     text = ~paste("rho1:", rho1, "<br>rho2:", rho2, "<br>scalestdevstep:", scalestdevstep, "<br>sigma:", mean_sigma, "<br>SPSD:", mean_SPSD))
     }
 
-    # Plot points where SPSD >= 0 with a gradient color based on sigma values
+    # Plot points where SPSD >= 0 with a gradient color and varying size based on sigma values
     if (nrow(data_spsd_pos) > 0) {
-      # Use a wider gradient for the sigma values (e.g., "Viridis" or another color map)
-      sigma_colors <- scales::col_numeric(palette = "viridis", domain = range(data_spsd_pos$mean_sigma))(data_spsd_pos$mean_sigma)
-      
-      # Add sigma scatter plot with gradient colors based on sigma values
       plot <- plot %>%
         add_markers(data = data_spsd_pos, 
                     x = ~rho1, 
                     y = ~rho2, 
                     z = ~scalestdevstep, 
-                    marker = list(symbol = 'circle', color = sigma_colors, size = 4),
+                    marker = list(symbol = 'circle', 
+                                  color = ~mean_sigma, 
+                                  colorscale = 'Viridis', 
+                                  colorbar = list(title = "Sigma"),  # Set the colorbar title
+                                  size = marker_size_spsd_pos,       # Vary marker size based on sigma
+                                  sizemode = 'diameter',             # Scale marker size based on diameter
+                                  sizeref = 2 * max(marker_size_spsd_pos) / (size_max ^ 2)),  # Reference size to control scaling
                     name = "SPSD >= 0 (Sigma Gradient)",
                     hoverinfo = "text",
                     text = ~paste("rho1:", rho1, "<br>rho2:", rho2, "<br>scalestdevstep:", scalestdevstep, "<br>sigma:", mean_sigma, "<br>SPSD:", mean_SPSD))
     }
-
-    # Add convex hull plotting logic as before, if applicable.
   }
 
   # Finalize and add legend and color scale
@@ -845,17 +853,8 @@ plot_rpars_3d_scatter <- function(data, output_directory = "plots/", rho_scale_r
         ),
         title = "Sigma Scatter Plot for All Comparisons",
         
-        # Legend configuration for SPSD < 0 and Sigma gradient
-        showlegend = TRUE,
-        
-        # Add color scale for sigma values
-        colorbar = list(
-          title = "Sigma Values",
-          tickvals = seq(min(data_spsd_pos$mean_sigma, na.rm = TRUE), 
-                         max(data_spsd_pos$mean_sigma, na.rm = TRUE), length.out = 10),
-          ticktext = seq(min(data_spsd_pos$mean_sigma, na.rm = TRUE), 
-                         max(data_spsd_pos$mean_sigma, na.rm = TRUE), length.out = 10)
-        )
+        # Show the legend for the red points and sigma gradient
+        showlegend = TRUE
       )
     
     # Define file path for saving the combined plot
@@ -868,6 +867,7 @@ plot_rpars_3d_scatter <- function(data, output_directory = "plots/", rho_scale_r
     message("Generated and saved combined scatter plot for all comparisons.")
   }
 }
+
 
 
 
