@@ -988,8 +988,46 @@ plot_spsdparameter <- function(data, output_directory = "plots/", rho_scale_rang
 
 
 
-# Function to plot a grid of bivariate plots, highlighting SPSD >= 0
-plot_bivariate_grid <- function(data, output_directory = "plots/") {
+#' Bivariate Grid Plot with SPSD Classification and Adjustable Sample Size
+#'
+#' This function generates a bivariate scatter plot matrix to visualize the relationships 
+#' between `rho1`, `rho2`, `scalestdevstep`, and `sigma`, classifying points based on 
+#' whether they are SPSD or not. The plot includes scatter plots, correlation coefficients, 
+#' and density plots for each variable. Points are colored based on their SPSD category.
+#'
+#' @param data A data frame containing the variables `rho1`, `rho2`, `scalestdevstep`, 
+#'        `sigma`, and `SPSD`. The dataset should contain multiple observations of these 
+#'        variables to generate meaningful bivariate plots.
+#' @param output_directory A character string specifying the directory where the plot 
+#'        should be saved. Defaults to "plots/".
+#' @param sample_size A numeric value specifying the number of points to sample from the 
+#'        dataset for plotting. Defaults to `3000`. If the dataset has fewer than 
+#'        `sample_size` rows, the entire dataset will be used.
+#'
+#' @return The function returns a bivariate scatter plot matrix generated using `ggpairs`. 
+#'         It also saves the plot as a PNG file in the specified `output_directory`.
+#'         
+#' @import dplyr
+#' @import GGally
+#' @import ggplot2
+#'
+#' @examples
+#' \dontrun{
+#' # Example dataset
+#' data <- data.frame(
+#'   rho1 = runif(1000, -1, 1),
+#'   rho2 = runif(1000, -1, 1),
+#'   scalestdevstep = runif(1000, 0.49, 0.51),
+#'   sigma = runif(1000, 0, 1),
+#'   SPSD = rnorm(1000)
+#' )
+#' 
+#' # Generate the bivariate plot, using the default sample size of 3000
+#' plot_bivariate_grid(data, output_directory = "plots/")
+#' }
+#' 
+#' @export
+plot_bivariate_grid <- function(data, output_directory = "plots/", sample_size = 3000) {
 
   # Ensure output directory exists
   if (!dir.exists(output_directory)) {
@@ -1001,8 +1039,12 @@ plot_bivariate_grid <- function(data, output_directory = "plots/") {
     dplyr::mutate(SPSD_category = ifelse(SPSD >= 0, "SPSD >= 0", "SPSD < 0")) %>%
     dplyr::select(rho1, rho2, scalestdevstep, sigma, SPSD_category)
 
-  # Use a sample of data if necessary
-  plot_data_sample <- plot_data %>% sample_n(2000)
+  # Sample the data based on the specified sample_size
+  if (sample_size < nrow(plot_data)) {
+    plot_data_sample <- plot_data %>% sample_n(sample_size)
+  } else {
+    plot_data_sample <- plot_data
+  }
 
   # Create custom color palette: one for SPSD >= 0 and one for SPSD < 0
   color_palette <- c("SPSD >= 0" = "blue", "SPSD < 0" = "red")
@@ -1035,14 +1077,3 @@ plot_bivariate_grid <- function(data, output_directory = "plots/") {
   # Optionally, print a message to confirm plot generation
   message("Generated and saved bivariate scatter plot matrix.")
 }
-
-
-
-
-
-
-
-
-
-
-
