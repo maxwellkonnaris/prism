@@ -1077,3 +1077,34 @@ plot_bivariate_grid <- function(data, output_directory = "plots/", sample_size =
   # Optionally, print a message to confirm plot generation
   message("Generated and saved bivariate scatter plot matrix.")
 }
+
+#' Plot Proportion of Intervals That Do Not Cover Zero (Pre-calculated)
+#'
+#' This function plots the proportion of intervals that do not cover zero across unique comparisons, 
+#' assuming the calculations have already been done.
+#'
+#' @param data A dataframe that contains the proportion of intervals that do not cover zero.
+#' @param comparison_col A string representing the name of the column that identifies the unique comparisons (default: "comparison").
+#' @param proportion_col A string representing the name of the column that contains the calculated proportions (default: "proportion_interval_dontcoverzero").
+#'
+#' @return A bar plot showing the proportion of intervals that do not cover zero for each unique comparison.
+#' @import ggplot2
+#' @export
+#'
+#' @examples
+#' # Assuming you have a dataframe called `results_df` with columns for comparison and proportion_interval_dontcoverzero
+#' # proportiondontoverzerobars(results_df)
+proportiondontoverzerobars <- function(data, comparison_col="comparison", proportion_col="proportion_interval_dontcoverzero") {
+  
+  # Sort the dataframe by proportion_col in descending order
+  data <- data[order(-data[[proportion_col]]), ]
+  
+  # Plot the bar plot using ggplot2
+  ggplot(data, aes_string(x = comparison_col, y = proportion_col)) +
+    geom_bar(stat = "identity", fill = "skyblue") +
+    labs(title = "Proportion of Intervals That Do Not Cover Zero",
+         x = "Comparison",
+         y = "Proportion") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotate x-axis labels for readability
+}
