@@ -168,27 +168,24 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
   }
 
   vectorized_constraint_function <- function(rho1, rho2, scalestdevstep, taxa1relativesd, taxa2relativesd, relativecovariance) {
-      
-      # Vectorize taxa1relativesd, taxa2relativesd, and relativecovariance if they are not already vectors
-      n <- length(rho1)  # Assuming rho1 is a vector, use its length to replicate the constants
+    
+      # Assuming rho1, rho2, scalestdevstep are vectors
+      # Replicate taxa1relativesd and others to match the length of rho1
+      n <- length(rho1)
       if (length(taxa1relativesd) == 1) taxa1relativesd <- rep(taxa1relativesd, n)
       if (length(taxa2relativesd) == 1) taxa2relativesd <- rep(taxa2relativesd, n)
       if (length(relativecovariance) == 1) relativecovariance <- rep(relativecovariance, n)
       
-      # Continue with the calculations
-      taxa1scalecorrelation <- rho1  # Direct mapping
-      taxa2scalecorrelation <- rho2  # Direct mapping
-      scalestdev <- scalestdevstep   # Direct mapping
+      # Perform calculations entirely with vectorized operations
+      term1 <- taxa1relativesd * rho1 + taxa2relativesd * rho2
+      term2 <- sqrt(2) * sqrt(taxa1relativesd^2 * rho1^2 + taxa2relativesd^2 * rho2^2)
       
-      term1 <- taxa1relativesd * taxa1scalecorrelation + taxa2relativesd * taxa2scalecorrelation
-      term2 <- sqrt(2) * sqrt((taxa1relativesd^2 * taxa1scalecorrelation^2) + (taxa2relativesd^2 * taxa2scalecorrelation^2))
-                              
-      term3 <- (1 / (2 * scalestdev)) * ((taxa1relativesd^2 + taxa2relativesd^2) 
-              - sqrt((taxa1relativesd^2 - taxa2relativesd^2)^2 + 4 * relativecovariance^2) 
-              + 4 * scalestdev^2)
+      term3 <- (1 / (2 * scalestdevstep)) * ((taxa1relativesd^2 + taxa2relativesd^2) -
+               sqrt((taxa1relativesd^2 - taxa2relativesd^2)^2 + 4 * relativecovariance^2) + 4 * scalestdevstep^2)
       
       g_1 <- term1 - term2 + term3
       
+      # Return the result as a fully vectorized output
       return(g_1)
   }
 
@@ -564,19 +561,26 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
 
             "GRID_SEARCH" = {
 
+              # Calculate the constraint
+              constraint_values <- vectorized_constraint_function(
+                pars$rho1, 
+                pars$rho2, 
+                pars$scalestdevstep, 
+                taxa1relativesd, 
+                taxa2relativesd, 
+                relativecovariance
+              )
+              
+              # Add the calculated constraint as a new column to 'pars'
+              pars$SPSD <- constraint_values
+
               # Calculate rpars without filtering based on SPSD
               rpars <- pars %>%
-                rowwise() %>%
-                dplyr::mutate(SPSD = constraint_function(params = c_across(c(rho1, rho2, scalestdevstep)), taxa1relativesd, taxa2relativesd, relativecovariance)) %>%
-                ungroup() %>%
-                dplyr::mutate(sigma = relativecovariance + scalestdevstep * taxa1relativesd * rho1 + scalestdevstep * taxa2relativesd * rho2 + scalestdevstep^2)
+                dplyr::mutate(sigma = relativecovariance + scalestdevstep * taxa1relativesd * rho1 + scalestdevstep * taxa2relativesd * rho2 + scalestdevstep^2,
+                              s = s,  
+                              comparison = paste0(d1, ":", d2)
+                             )
 
-              # Add s and comparison as new columns after rpars is created
-              rpars <- rpars %>%
-                dplyr::mutate(
-                  s = s,  # Ensure 's' is the same for all rows
-                  comparison = paste0(d1, ":", d2)  # Ensure 'comparison' is the same for all rows
-                )
               
               # # Append the rpars to the file for this pair
               pair_file_name = paste0("rpars_taxa_", d1, "_", d2, ".txt")
