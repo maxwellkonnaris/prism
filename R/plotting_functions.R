@@ -800,13 +800,12 @@ plot_rpars_3d_scatter <- function(data, output_directory = "plots/", rho_scale_r
     # Marker shapes: use different shapes or sizes if needed
     marker_shape <- 'circle'
     
-    # Check if SPSD column exists and color points where SPSD < 0 in red, others in black
+    # Check if SPSD column exists and map colors based on SPSD values
     if ("SPSD" %in% names(data_subset)) {
-      sigma_colors <- ifelse(data_subset$SPSD < 0, "red", "black")
-    } else {
-      sigma_colors <- "black"
+      # Assign color scale based on SPSD values
+      data_subset$color_label <- ifelse(data_subset$SPSD < 0, "Negative", "Non-negative")
     }
-    
+
     # Get the points for plotting
     points <- data.frame(
       x = data_subset$rho1,
@@ -844,7 +843,9 @@ plot_rpars_3d_scatter <- function(data, output_directory = "plots/", rho_scale_r
                     x = ~rho1, 
                     y = ~rho2, 
                     z = ~scalestdevstep, 
-                    marker = list(symbol = marker_shape, color = sigma_colors, size = 4),
+                    marker = list(symbol = marker_shape, size = 4),
+                    color = ~color_label,  # Map color to the SPSD status
+                    colors = c("red", "black"),  # Define colors for Negative and Non-negative
                     name = paste('Sigma', comparison_value))
       
       # Add convex hull if it was successfully created
@@ -857,8 +858,6 @@ plot_rpars_3d_scatter <- function(data, output_directory = "plots/", rho_scale_r
       }
     } else {
       # For individual plots
-      sigma_colors <- ifelse(data_subset$SPSD < 0, "red", "black")
-      
       # Generate individual plots for each comparison
       comparison_plot <- plot_ly() %>%
         
@@ -867,7 +866,9 @@ plot_rpars_3d_scatter <- function(data, output_directory = "plots/", rho_scale_r
                     x = ~rho1, 
                     y = ~rho2, 
                     z = ~scalestdevstep, 
-                    marker = list(symbol = marker_shape, color = sigma_colors, size = 4),
+                    marker = list(symbol = marker_shape, size = 4),
+                    color = ~color_label,  # Map color to SPSD status
+                    colors = c("red", "black"),  # Define colors for Negative and Non-negative
                     name = paste('Sigma', comparison_value)) 
         
       # Add convex hull if it was successfully created
@@ -916,6 +917,7 @@ plot_rpars_3d_scatter <- function(data, output_directory = "plots/", rho_scale_r
     message("Generated and saved combined scatter plot for all comparisons.")
   }
 }
+
 
 
 
