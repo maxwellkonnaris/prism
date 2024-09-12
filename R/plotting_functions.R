@@ -868,6 +868,125 @@ plot_rpars_3d_scatter <- function(data, output_directory = "plots/", rho_scale_r
   }
 }
 
+#' 3D Scatter Plot for Sigma and SPSD Values with Confidence Intervals
+#'
+#' This function generates a 3D scatter plot to visualize the relationship 
+#' between `rho1`, `rho2`, `scalestdevstep`, and `sigma` values. It also 
+#' highlights points where the SPSD condition is uncertain, based on confidence 
+#' intervals (CI). Points where the SPSD condition is uncertain are displayed 
+#' in red, while those where SPSD is certain are shown with a color gradient based 
+#' on `sigma` values.
+#'
+#' @param data A data frame containing the variables `rho1`, `rho2`, `scalestdevstep`, 
+#'        `SPSD`, `sigma`, and `comparison` for grouping. This dataset should 
+#'        contain multiple rows with repeated `rho1`, `rho2`, `scalestdevstep`, 
+#'        and `comparison` values to allow for averaging and confidence interval 
+#'        calculation.
+#' @param output_directory A character string specifying the directory where the 
+#'        plot should be saved. Defaults to "plots/".
+#' @param rho_scale_range A numeric vector of length 2 defining the range for the 
+#'        `rho1` and `rho2` axes. Defaults to `c(-1, 1)`.
+#' @param scalestdevstep_range A numeric vector of length 2 defining the range for 
+#'        the `scalestdevstep` axis. Defaults to `c(0.49, 0.51)`.
+#' @param plot_all A logical value indicating whether to generate a combined plot 
+#'        of all comparisons in the dataset. Defaults to `TRUE`.
+#' @param alpha_value A numeric value controlling the transparency of points where 
+#'        the SPSD condition is uncertain. Defaults to `1` (fully opaque).
+#'
+#' @return The function returns a 3D scatter plot generated using `plotly`. It also 
+#'         saves the plot as an HTML file in the specified `output_directory`.
+#'         
+#' @import plotly
+#' @import dplyr
+#' @import htmlwidgets
+#'
+#' @examples
+#' \dontrun{
+#' # Example dataset
+#' data <- data.frame(
+#'   rho1 = runif(100, -1, 1),
+#'   rho2 = runif(100, -1, 1),
+#'   scalestdevstep = runif(100, 0.49, 0.51),
+#'   SPSD = rnorm(100),
+#'   sigma = runif(100, 0, 1),
+#'   comparison = sample(1:5, 100, replace = TRUE)
+#' )
+#' 
+#' # Generate the plot
+#' plot_spsdparameter(data, output_directory = "plots/")
+#' }
+#' 
+#' @export
+plot_spsdparameter <- function(data, output_directory = "plots/", rho_scale_range = c(-1, 1), scalestdevstep_range = c(0.49, 0.51), alpha_value = 1) {
+
+  # Ensure output directory exists
+  if (!dir.exists(output_directory)) {
+    dir.create(output_directory, recursive = TRUE)
+  }
+
+  # Step 1: Group by 'comparison' and calculate both the mean and CI for each group
+  summarised_data <- data %>%
+    group_by(rho1, rho2, scalestdevstep) %>%
+    summarise(
+      mean_SPSD = mean(SPSD),
+      ci_lower_SPSD = mean(SPSD) - qt(0.975, df = n() - 1) * sd(SPSD) / sqrt(n()),  # 95% CI lower bound
+      ci_upper_SPSD = mean(SPSD) + qt(0.975, df = n() - 1) * sd(SPSD) / sqrt(n()),  # 95% CI upper bound
+      mean_sigma = mean(sigma),
+      .groups = 'drop'
+    )
+  
+  plot <- plot_ly()
+
+  # Separate based on CI bounds
+  data_spsd_uncertain <- subset(summarized_data, ci_lower_SPSD < 0)
+  data_spsd_certain <- subset(summarized_data, ci_lower_SPSD >= 0)
+
+  if (nrow(data_spsd_uncertain) > 0) {
+      plot <- plot %>%
+        add_markers(data = data_spsd_uncertain, 
+                    x = ~rho1, 
+                    y = ~rho2, 
+                    z = ~scalestdevstep, 
+                    marker = list(symbol = 'circle', color = "rgba(255, 0, 0, 0.5)", size = 5),  # Red and semi-transparent
+                    name = "SPSD Uncertain",
+                    hoverinfo = "text",
+                    text = ~paste("rho1:", rho1, "<br>rho2:", rho2, "<br>scalestdevstep:", scalestdevstep, "<br>sigma:", mean_sigma, "<br>SPSD CI:", ci_lower_SPSD, "-", ci_upper_SPSD))
+  }
+
+    # Plot certain SPSD points with gradient based on sigma values
+  if (nrow(data_spsd_certain) > 0) {
+      plot <- plot %>%
+        add_markers(data = data_spsd_certain, 
+                    x = ~rho1, 
+                    y = ~rho2, 
+                    z = ~scalestdevstep, 
+                    marker = list(symbol = 'circle', 
+                                  color = ~mean_sigma, 
+                                  colorscale = 'Viridis', 
+                                  colorbar = list(title = "Sigma", len = 0.4),  
+                                  size = 8),
+                    name = "SPSD Certain",
+                    hoverinfo = "text",
+                    text = ~paste("rho1:", rho1, "<br>rho2:", rho2, "<br>scalestdevstep:", scalestdevstep, "<br>sigma:", mean_sigma, "<br>SPSD CI:", ci_lower_SPSD, "-", ci_upper_SPSD))
+    }
+  }
+
+  plot <- plot %>%
+      layout(
+        scene = list(
+          xaxis = list(title = 'rho1', range = rho_scale_range),
+          yaxis = list(title = 'rho2', range = rho_scale_range),
+          zaxis = list(title = 'scalestdevstep', range = scalestdevstep_range)
+        ),
+        title = "Sigma Scatter Plot with SPSD Uncertainty",
+        showlegend = TRUE
+      )
+  output_file <- file.path(output_directory, "sigma_scatter_with_CI.html")
+  htmlwidgets::saveWidget(plot, file = output_file)
+  message("Generated and saved scatter plot with CI for SPSD uncertainty.")
+}
+
+
 
 # Function to plot a grid of bivariate plots, highlighting SPSD >= 0
 plot_bivariate_grid <- function(data, output_directory = "plots/") {
