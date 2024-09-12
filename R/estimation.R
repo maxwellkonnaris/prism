@@ -108,17 +108,17 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
 
   # Function to append results to a file with error handling
   append_to_pair_file <- function(results, pair_file_name) {
-    lock_file <- paste0(pair_file_name, ".lock")
-    
-    lock <- filelock::lock(lock_file)
     
     tryCatch({
       # Output in current directory
       if (is.null(outputdirectory)) {
         outputdirectory <- paste0(getwd(), "/")
       }
-      # Write data to the file in append mode
-      write.table(results, file = paste0(outputdirectory,pair_file_name), append = TRUE, sep = "\t", row.names = FALSE, col.names = TRUE)
+      pair_file_name = paste0(outputdirectory,pair_file_name)
+      lock_file <- paste0(pair_file_name, ".lock")
+      lock <- filelock::lock(lock_file)
+      
+      write.table(results, file = pair_file_name, append = TRUE, sep = "\t", row.names = FALSE, col.names = TRUE)
     }, error = function(e) {
       message("Error while writing to file: ", pair_file_name, "\n", e)
     }, finally = {
