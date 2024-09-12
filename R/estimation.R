@@ -103,22 +103,22 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
   # Initialize a results matrix to store the results for each pair
   results <- matrix(list(), D, D)
 
-  # # Function to append results to a file with error handling
-  # append_to_pair_file <- function(results, pair_file_name) {
-  #   lock_file <- paste0(pair_file_name, ".lock")
+  # Function to append results to a file with error handling
+  append_to_pair_file <- function(results, pair_file_name) {
+    lock_file <- paste0(pair_file_name, ".lock")
     
-  #   lock <- filelock::lock(lock_file)
+    lock <- filelock::lock(lock_file)
     
-  #   tryCatch({
-  #     # Write data to the file in append mode
-  #     write.table(results, file = pair_file_name, append = TRUE, sep = "\t", row.names = FALSE, col.names = FALSE)
-  #   }, error = function(e) {
-  #     message("Error while writing to file: ", pair_file_name, "\n", e)
-  #   }, finally = {
-  #     # Release the lock in any case (success or error)
-  #     filelock::unlock(lock)
-  #   })
-  # }
+    tryCatch({
+      # Write data to the file in append mode
+      write.table(results, file = pair_file_name, append = TRUE, sep = "\t", row.names = FALSE, col.names = FALSE)
+    }, error = function(e) {
+      message("Error while writing to file: ", pair_file_name, "\n", e)
+    }, finally = {
+      # Release the lock in any case (success or error)
+      filelock::unlock(lock)
+    })
+  }
   ## END SETUP -----------------------------------------------------------------------------------------------------------------------------------
 
   ## OPTIMIZATION FUNCTIONS ----------------------------------------------------------------------------------------------------------------------
