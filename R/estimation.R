@@ -27,7 +27,7 @@
 #' results <- estimate_covariance(Y)
 #' @export
 
-estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobound = 1.0, S = 1000, lowerscalestdev = .490, upperscalestdev = .510, algorithm="COBYLA") {
+estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobound = 1.0, S = 1000, lowerscalestdev = .490, upperscalestdev = .510, algorithm="COBYLA", outputdirectory=NULL) {
 
   ## COMPUTATIONAL TIME -------------------------------------------------------------------------------------------------------------------------
   # Record the start time for profiling
@@ -113,8 +113,12 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
     lock <- filelock::lock(lock_file)
     
     tryCatch({
+      # Output in current directory
+      if (is.null(outputdirectory)) {
+        outputdirectory <- paste0(getwd(), "/")
+      }
       # Write data to the file in append mode
-      write.table(results, file = pair_file_name, append = TRUE, sep = "\t", row.names = FALSE, col.names = TRUE)
+      write.table(results, file = paste0(outputdirectory,pair_file_name), append = TRUE, sep = "\t", row.names = FALSE, col.names = TRUE)
     }, error = function(e) {
       message("Error while writing to file: ", pair_file_name, "\n", e)
     }, finally = {
