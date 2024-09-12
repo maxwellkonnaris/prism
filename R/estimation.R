@@ -90,10 +90,12 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
 
   if (algorithm == "GRID_SEARCH") {
 
+    scale = (upperscalestdev - lowerrhobound) / 5
+
     # Define parameter steps
     rho1 <- seq(lowerrhobound, upperrhobound, by=0.05)
     rho2 <- seq(lowerrhobound, upperrhobound, by=0.05)
-    scalestdevstep <- seq(lowerscalestdev, upperscalestdev, by=0.001)
+    scalestdevstep <- seq(lowerscalestdev, upperscalestdev, by=scale)
     iterations <- length(rho1) * length(rho2) * length(scalestdevstep)
     
     # Create the grid of parameters
