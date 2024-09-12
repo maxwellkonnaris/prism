@@ -588,7 +588,7 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
               
               # Filter rows where SPSD is >= 0
               rpars <- rpars %>%
-                dplyr::filter(SPSD >= 0) %>%  
+                dplyr::filter(SPSD >= 0) 
               
               # Find min and max
               min_sigma_row <- rpars[which.min(rpars$sigma), , drop = FALSE]
