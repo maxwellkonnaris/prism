@@ -566,8 +566,10 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
 
               # Calculate rpars without filtering based on SPSD
               rpars <- pars %>%
-                dplyr::mutate(SPSD = vectorized_constraint_function(rho1, rho2, scalestdevstep, taxa1relativesd, taxa2relativesd, relativecovariance),
-                              sigma = relativecovariance + scalestdevstep * taxa1relativesd * rho1 + scalestdevstep * taxa2relativesd * rho2 + scalestdevstep^2)
+                rowwise() %>%
+                dplyr::mutate(SPSD = constraint_function(params = c_across(c(rho1, rho2, scalestdevstep)), taxa1relativesd, taxa2relativesd, relativecovariance)) %>%
+                ungroup() %>%
+                dplyr::mutate(sigma = relativecovariance + scalestdevstep * taxa1relativesd * rho1 + scalestdevstep * taxa2relativesd * rho2 + scalestdevstep^2)
 
               # Add s and comparison as new columns after rpars is created
               rpars <- rpars %>%
@@ -575,6 +577,10 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
                   s = s,  # Ensure 's' is the same for all rows
                   comparison = paste0(d1, ":", d2)  # Ensure 'comparison' is the same for all rows
                 )
+              
+              # # Append the rpars to the file for this pair
+              pair_file_name = paste0("rpars_taxa_", d1, "_", d2, ".txt")
+              append_to_pair_file(rpars, pair_file_name)
               
               # Filter rows where SPSD is >= 0
               rpars <- rpars %>%
