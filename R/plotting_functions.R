@@ -802,8 +802,8 @@ plot_rpars_3d_scatter <- function(data, output_directory = "plots/", rho_scale_r
     data_spsd_neg <- subset(data_subset, mean_SPSD < 0)
 
     # Determine the size scale for sigma values
-    size_min <- 4  # minimum marker size
-    size_max <- 15  # maximum marker size
+    size_min <- 4  # minimum marker size (same as SPSD < 0 markers)
+    size_max <- 8  # maximum marker size (2x the size_min)
     sigma_range <- range(data_spsd_pos$mean_sigma, na.rm = TRUE)  # get the range of sigma values
 
     # Map sigma to marker size for SPSD >= 0 points
@@ -816,7 +816,7 @@ plot_rpars_3d_scatter <- function(data, output_directory = "plots/", rho_scale_r
                     x = ~rho1, 
                     y = ~rho2, 
                     z = ~scalestdevstep, 
-                    marker = list(symbol = 'circle', color = "red", size = 4),
+                    marker = list(symbol = 'circle', color = "red", size = size_min),
                     name = "SPSD < 0 (Red)",
                     hoverinfo = "text",
                     text = ~paste("rho1:", rho1, "<br>rho2:", rho2, "<br>scalestdevstep:", scalestdevstep, "<br>sigma:", mean_sigma, "<br>SPSD:", mean_SPSD))
@@ -832,7 +832,7 @@ plot_rpars_3d_scatter <- function(data, output_directory = "plots/", rho_scale_r
                     marker = list(symbol = 'circle', 
                                   color = ~mean_sigma, 
                                   colorscale = 'Viridis', 
-                                  colorbar = list(title = "Sigma"),  # Set the colorbar title
+                                  colorbar = list(title = "Sigma", len = 0.4),  # Adjust the length of the colorbar to make it smaller
                                   size = marker_size_spsd_pos,       # Vary marker size based on sigma
                                   sizemode = 'diameter',             # Scale marker size based on diameter
                                   sizeref = 2 * max(marker_size_spsd_pos) / (size_max ^ 2)),  # Reference size to control scaling
@@ -867,6 +867,7 @@ plot_rpars_3d_scatter <- function(data, output_directory = "plots/", rho_scale_r
     message("Generated and saved combined scatter plot for all comparisons.")
   }
 }
+
 
 
 
