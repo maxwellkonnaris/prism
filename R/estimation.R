@@ -114,6 +114,9 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
       if (is.null(outputdirectory)) {
         outputdirectory <- paste0(getwd(), "/")
       }
+      if (substr(outputdirectory, nchar(outputdirectory), nchar(outputdirectory)) != "/") {
+        outputdirectory <- paste0(outputdirectory, "/")
+      }
       pair_file_name = paste0(outputdirectory,pair_file_name)
       lock_file <- paste0(pair_file_name, ".lock")
       lock <- filelock::lock(lock_file)
