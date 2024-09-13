@@ -35,11 +35,8 @@ Imports:
     plotly,
     viridis,
     htmlwidgets,
-    alphashape3d,
-    reticulate,           
-    phyloseq,             
-    SpiecEasi,           
-    CCLasso,            
-    propr           
+    alphashape3d,        
+    phyloseq,   
+    gtools
 RoxygenNote: 7.3.2
 Encoding: UTF-8
