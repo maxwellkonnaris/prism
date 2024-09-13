@@ -1146,7 +1146,7 @@ proportiondontoverzerobars <- function(data, comparison_col = "comparison", prop
     scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, by = 0.10), expand = c(0, 0))
   
   # Save the plot in high resolution suitable for publications
-  ggsave(paste0(outputdirectory,"proportion_coverage_plot.jpg"), plot = p, width = 12, height = 5, dpi = 300, units = "in")
+  ggsave(paste0(outputdirectory,"proportion_coverage_plot.jpg"), plot = p, width = 20, height = 5, dpi = 300, units = "in")
   
   # Return the plot object
   return(p)
