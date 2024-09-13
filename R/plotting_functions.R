@@ -1148,8 +1148,8 @@ proportiondontoverzerobars <- function(data, comparison_col = "comparison", prop
     # Add text labels only for values below 0.10 and adjust position to avoid overlap
     geom_text(data = subset(data, data[[proportion_col]] < 0.10), 
               aes_string(label = proportion_col), 
-              vjust = -0.5, color = "black", size = 3.5, 
-              position = position_dodge(width = 0.9))  # Positioning to avoid overlap
+              vjust = -0.5, color = "black", size = 3.5,
+	     position=position_jitter())  # Positioning to avoid overlap
   
   # Save the plot in high resolution suitable for publications
   ggsave(paste0(outputdirectory, "proportion_coverage_plot.jpg"), plot = p, width = 15, height = 5, dpi = 300, units = "in")
