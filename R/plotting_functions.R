@@ -1104,12 +1104,12 @@ proportiondontoverzerobars <- function(data, comparison_col = "comparison", prop
     # Create the directory
     dir.create(outputdirectory)
     if (dir.exists(outputdirectory)) {
-      cat("Directory created successfully!")
+      cat("Directory created successfully!\n")
     } else {
-      cat("Failed to create directory.")
+      cat("Failed to create directory.\n")
     }
   } else {
-    cat("Directory already present.")
+    cat("Directory already present.\n")
   }
   
   # Create a new column to flag whether the 95% CI does not cover zero
@@ -1145,10 +1145,11 @@ proportiondontoverzerobars <- function(data, comparison_col = "comparison", prop
     geom_hline(yintercept = c(0.25, 0.5, 0.75, 0.9), linetype = "dashed", color = "grey50") +
     # Set y-axis limits
     scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, by = 0.10), expand = c(0, 0)) +
-    # Add text labels only for values below 0.10
+    # Add text labels only for values below 0.10 and adjust position to avoid overlap
     geom_text(data = subset(data, data[[proportion_col]] < 0.10), 
               aes_string(label = proportion_col), 
-              vjust = -0.5, color = "black", size = 3.5)
+              vjust = -0.5, color = "black", size = 3.5, 
+              position = position_dodge(width = 0.9))  # Positioning to avoid overlap
   
   # Save the plot in high resolution suitable for publications
   ggsave(paste0(outputdirectory, "proportion_coverage_plot.jpg"), plot = p, width = 15, height = 5, dpi = 300, units = "in")
