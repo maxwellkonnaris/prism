@@ -59,7 +59,6 @@ PRISM imports the following R packages:
 - **htmlwidgets**: For creating interactive web visualizations within R.
 - **viridis**: A color palette for `ggplot2` plots, optimized for perceptual uniformity and colorblind-friendliness.
 - **alphashape3d**: For 3D alpha shapes, used in visualization and analysis of 3D data.
-- **reticulate**: Integrates R with Python, used for running SparCC, a Python-based tool.
 - **phyloseq**: For microbiome data analysis, used for Banocc covariance estimation.
 - **SpiecEasi**: For sparse inverse covariance estimation for ecological association inference. 
 - **CCLasso**: For sparse covariance estimation using compositional data using Lasso.
