@@ -1096,7 +1096,10 @@ plot_bivariate_grid <- function(data, output_directory = "plots/", sample_size =
 #' @examples
 #' # Assuming you have a dataframe called `results_df` with columns for comparison and proportion_intervals_dontcoverzero
 #' # proportiondontoverzerobars(results_df)
-proportiondontoverzerobars <- function(data, comparison_col="comparison", proportion_col="proportion_intervals_dontcoverzero") {
+proportiondontoverzerobars <- function(data, comparison_col = "comparison", proportion_col = "proportion_intervals_dontcoverzero") {
+  
+  # Reorder the factor levels of comparison_col based on proportion_col
+  data[[comparison_col]] <- factor(data[[comparison_col]], levels = data[[comparison_col]][order(data[[proportion_col]], decreasing = TRUE)])
   
   # Plot the bar plot using ggplot2
   ggplot(data, aes_string(x = comparison_col, y = proportion_col)) +
@@ -1107,3 +1110,4 @@ proportiondontoverzerobars <- function(data, comparison_col="comparison", propor
     theme_minimal() +
     theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotate x-axis labels for readability
 }
+
