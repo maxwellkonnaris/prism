@@ -1095,8 +1095,8 @@ plot_bivariate_grid <- function(data, output_directory = "plots/", sample_size =
 #'
 #' @examples
 #' # Assuming you have a dataframe called `results_df` with columns for comparison and proportion_intervals_dontcoverzero
-#' # proportiondontoverzerobars(results_df)
-proportiondontoverzerobars <- function(data, comparison_col = "comparison", proportion_col = "proportion_intervals_dontcoverzero", 
+#' # proportiondontcoverzerobars(results_df)
+proportiondontcoverzerobars <- function(data, comparison_col = "comparison", proportion_col = "proportion_intervals_dontcoverzero", 
                                        ci_upper = "ninetyfive_ci_upper", ci_lower = "ninetyfive_ci_lower", outputdirectory = "./plots/") {
   
   # Check if the directory exists
