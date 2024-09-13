@@ -1134,8 +1134,8 @@ proportiondontoverzerobars <- function(data, comparison_col = "comparison", prop
     theme(
       # Increase font sizes for text elements
       text = element_text(size = 12, family = "Arial"),
-      axis.text.x = element_text(angle = 45, hjust = 1, size = 13),
-      axis.text.y = element_text(size = 10),
+      axis.text.x = element_text(angle = 90, hjust = 1, size = 10),
+      axis.text.y = element_text(size = 12),
       axis.title = element_text(size = 12),
       plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
       legend.position = "top"
@@ -1146,7 +1146,7 @@ proportiondontoverzerobars <- function(data, comparison_col = "comparison", prop
     scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, by = 0.10), expand = c(0, 0))
   
   # Save the plot in high resolution suitable for publications
-  ggsave(paste0(outputdirectory,"proportion_coverage_plot.jpg"), plot = p, width = 20, height = 5, dpi = 300, units = "in")
+  ggsave(paste0(outputdirectory,"proportion_coverage_plot.jpg"), plot = p, width = 15, height = 5, dpi = 300, units = "in")
   
   # Return the plot object
   return(p)
