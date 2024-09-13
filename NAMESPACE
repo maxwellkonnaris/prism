@@ -16,7 +16,7 @@ export(plot_bivariate_grid)
 export(plot_spsdparameter)
 export(proportiondontcoverzerobars)
 export(run_sparcc)
-
+export(compare_covariance)
 
 import(compositions)
 import(foreach)
