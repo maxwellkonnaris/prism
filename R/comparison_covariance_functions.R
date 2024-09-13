@@ -33,7 +33,6 @@
 #' @import compositions
 #' @export
 compare_covariance <- function(count_data, normalize = TRUE, transformation = "none") {
-  library(reticulate)
   
   # Normalization function (Common pre-processing step)
   normalize_counts <- function(count_matrix) {
