@@ -58,8 +58,21 @@ compare_covariance <- function(count_data, normalize = TRUE, transformation = "n
   ### Banocc ###
   # Convert to phyloseq object for Banocc
   ps <- phyloseq(otu_table(transformed_data, taxa_are_rows = TRUE))
-  banocc_result <- banocc(ps)
-  cov_matrix_banocc <- cov(banocc_result$Sigma)
+  # Define the prior information (you can adjust these as needed)
+  priors <- list(
+    Sigma = diag(ncol(ps)),  # The covariance matrix prior
+    alpha = 0.5,  # Dirichlet prior on proportions
+    mu = rep(0, ncol(ps))  # Prior mean for log-ratios
+  )
+  
+  # Run Banocc model
+  banocc_results <- banocc::run_banocc(
+    ps,
+    priors = priors,
+    num_iterations = 10000,  # Number of iterations
+    burnin = 5000  # Number of burn-in iterations
+  )
+  cov_matrix_banocc <- banocc_results$posterior$Sigma
 
   ### SparCC ###
   # Run SparCC using the prism_SparCC_count function
