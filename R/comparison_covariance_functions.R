@@ -24,7 +24,6 @@
 #' result$cov_matrix_cclasso
 #' result$cov_matrix_proportionality
 #' }
-#' @import reticulate
 #' @import BANOVA
 #' @import SpiecEasi
 #' @import propr
