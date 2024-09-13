@@ -14,6 +14,7 @@
 #' @examples
 #' result <- SparCC_count(x = matrix_data)
 #' 
+#' @import gtools
 #' @export
 # Adapted from SparCC.R by Fang Huaying (Peking University)
 # Original code: https://github.com/huayingfang/CCLasso
