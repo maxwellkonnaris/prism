@@ -1126,10 +1126,10 @@ proportiondontoverzerobars <- function(data, comparison_col = "comparison", prop
     geom_bar(stat = "identity", colour = "black", size = 0.5) +
     scale_fill_manual(values = c("Does Not Cover Zero" = "green", "Covers Zero" = "magenta")) +
     labs(
-      title = "Proportion of Intervals That Do Not Cover Zero",
+      title = "Proportion of Range Intervals That Do Not Cover Zero",
       x = "Comparison",
       y = "Proportion",
-      fill = "CI Status"
+      fill = "95% CI Status"
     ) +
     theme_classic() +
     theme(
