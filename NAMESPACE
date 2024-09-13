@@ -17,6 +17,7 @@ export(plot_spsdparameter)
 export(proportiondontcoverzerobars)
 export(run_sparcc)
 export(compare_covariance)
+export(cclasso)
 
 import(compositions)
 import(foreach)
