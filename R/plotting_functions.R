@@ -1146,15 +1146,10 @@ proportiondontoverzerobars <- function(data, comparison_col = "comparison", prop
     # Set y-axis limits
     scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, by = 0.10), expand = c(0, 0)) +
     
-    # Add text labels for values < 0.05 using geom_label_repel
-    geom_label_repel(data = subset(data, data[[proportion_col]] < 0.05), 
-                     aes_string(label = proportion_col), 
-                     nudge_y = 0.05, # Nudge labels slightly above the bars
-                     color = "black", size = 3.5, 
-                     box.padding = 0.3, # Padding around the label box
-                     point.padding = 0.5, # Padding from the bar to the label
-                     min.segment.length = 0, # Ensures that the segment lines are drawn
-                     segment.color = "grey50")  # Line color for connecting labels to bars
+    # Add text labels for values < 0.05 using geom_text
+    geom_text(data = subset(data, data[[proportion_col]] < 0.025), 
+              aes_string(label = proportion_col), 
+              vjust = -0.5, color = "black", size = 3.5)  # Adjust position above bars
   
   # Save the plot in high resolution suitable for publications
   ggsave(paste0(outputdirectory, "proportion_coverage_plot.jpg"), plot = p, width = 15, height = 5, dpi = 300, units = "in")
@@ -1162,6 +1157,7 @@ proportiondontoverzerobars <- function(data, comparison_col = "comparison", prop
   # Return the plot object
   return(p)
 }
+
 
 
 
