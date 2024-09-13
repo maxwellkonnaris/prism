@@ -62,7 +62,8 @@ PRISM imports the following R packages:
 - **reticulate**: Integrates R with Python, used for running SparCC, a Python-based tool.
 - **phyloseq**: For microbiome data analysis, used for Banocc covariance estimation.
 - **SpiecEasi**: For sparse inverse covariance estimation for ecological association inference. (Separate install below and not auto imported)
-- **CCLasso**: For sparse covariance estimation using compositional data. (Separate install below and not auto imported)
+- **CCLasso**: For sparse covariance estimation using compositional data using Lasso.
+- **SparCC**: For sparse covariance estimation using compositional data.
 - **propr**: For analyzing proportionality relationships in compositional data. (Separate install below and not auto imported)
 
 <br>
@@ -72,7 +73,6 @@ However, some packages are easier to download here: <br>
 # install.packages("devtools")
 devtools::install_github("jsilve24/driver")
 devtools::install_github("tpq/propr")
-devtools::install_github("huayingfang/CCLasso")
 devtools::install_github("zdk123/SpiecEasi")
 ```
 
