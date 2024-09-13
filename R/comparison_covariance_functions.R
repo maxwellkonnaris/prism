@@ -27,7 +27,6 @@
 #' @import reticulate
 #' @import BANOVA
 #' @import SpiecEasi
-#' @import CCLasso
 #' @import propr
 #' @import phyloseq
 #' @import Matrix
@@ -65,14 +64,11 @@ compare_covariance <- function(count_data, normalize = TRUE, transformation = "n
   cov_matrix_banocc <- cov(banocc_result$Sigma)
 
   ### SparCC ###
-  # Export data to CSV for SparCC Python script
-  write.csv(transformed_data, "input_sparcc.csv")
+  # Run SparCC using the prism_SparCC_count function
+  sparcc_result <- SparCC_count(x = transformed_data)
   
-  # Run the SparCC Python script
-  system("python sparcc_script.py input_sparcc.csv output_sparcc.csv")
-  
-  # Read the SparCC output
-  cov_matrix_sparcc <- as.matrix(read.csv("output_sparcc.csv", row.names = 1))
+  # Extract the covariance matrix from the result
+  cov_matrix_sparcc <- sparcc_result$cov.w
 
   ### SPIEC-EASI ###
   spiec_easi_result <- spiec.easi(transformed_data, method = "mb", lambda.min.ratio = 1e-2, nlambda = 20)
