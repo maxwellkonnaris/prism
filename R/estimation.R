@@ -107,17 +107,17 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
   results <- matrix(list(), D, D)
 
   # Function to append results to a file with error handling
-  append_to_pair_file <- function(results, pair_file_name) {
+  append_to_pair_file <- function(results, pair_file_name, outputdirectory) {
     
     tryCatch({
-      # # Output in current directory
-      # if (is.null(outputdirectory)) {
-      #   outputdirectory <- paste0(getwd(), "/")
-      # }
-      # if (substr(outputdirectory, nchar(outputdirectory), nchar(outputdirectory)) != "/") {
-      #   outputdirectory <- paste0(outputdirectory, "/")
-      # }
-      # pair_file_name = paste0(outputdirectory,pair_file_name)
+      # Output in current directory
+      if (is.null(outputdirectory)) {
+        outputdirectory <- getwd()
+      }
+      if (substr(outputdirectory, nchar(outputdirectory), nchar(outputdirectory)) != "/") {
+        outputdirectory <- paste0(outputdirectory, "/")
+      }
+      pair_file_name = paste0(outputdirectory,pair_file_name)
       lock_file <- paste0(pair_file_name, ".lock")
       lock <- filelock::lock(lock_file)
       
@@ -597,7 +597,7 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
               
               # # Append the rpars to the file for this pair
               pair_file_name = paste0("gridresults_taxa_", d1, "_", d2, ".txt")
-              append_to_pair_file(rpars, pair_file_name)
+              append_to_pair_file(rpars, pair_file_name, outputdirectory)
               
               # Filter rows where SPSD is >= 0
               rpars <- rpars %>%
