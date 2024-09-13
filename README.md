@@ -74,6 +74,11 @@ However, some packages are easier to download here: <br>
 devtools::install_github("jsilve24/driver")
 devtools::install_github("tpq/propr")
 devtools::install_github("zdk123/SpiecEasi")
+
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("phyloseq")
 ```
 
 Ensure you have these packages installed before using PRISM.
