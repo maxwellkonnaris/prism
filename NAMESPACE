@@ -18,7 +18,7 @@ export(proportiondontcoverzerobars)
 export(run_sparcc)
 export(compare_covariance)
 export(cclasso)
-export(sparcc)
+export(SparCC_count)
 
 import(compositions)
 import(foreach)
