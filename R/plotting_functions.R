@@ -1087,16 +1087,16 @@ plot_bivariate_grid <- function(data, output_directory = "plots/", sample_size =
 #'
 #' @param data A dataframe that contains the proportion of intervals that do not cover zero.
 #' @param comparison_col A string representing the name of the column that identifies the unique comparisons (default: "comparison").
-#' @param proportion_col A string representing the name of the column that contains the calculated proportions (default: "proportion_interval_dontcoverzero").
+#' @param proportion_col A string representing the name of the column that contains the calculated proportions (default: "proportion_intervals_dontcoverzero").
 #'
 #' @return A bar plot showing the proportion of intervals that do not cover zero for each unique comparison.
 #' @import ggplot2
 #' @export
 #'
 #' @examples
-#' # Assuming you have a dataframe called `results_df` with columns for comparison and proportion_interval_dontcoverzero
+#' # Assuming you have a dataframe called `results_df` with columns for comparison and proportion_intervals_dontcoverzero
 #' # proportiondontoverzerobars(results_df)
-proportiondontoverzerobars <- function(data, comparison_col="comparison", proportion_col="proportion_interval_dontcoverzero") {
+proportiondontoverzerobars <- function(data, comparison_col="comparison", proportion_col="proportion_intervals_dontcoverzero") {
   
   # Sort the dataframe by proportion_col in descending order
   data <- data[order(-data[[proportion_col]]), ]
