@@ -1147,7 +1147,7 @@ proportiondontoverzerobars <- function(data, comparison_col = "comparison", prop
     scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, by = 0.10), expand = c(0, 0)) +
     
     # Add text labels for values < 0.05 using geom_text
-    geom_text(data = subset(data, data[[proportion_col]] < 0.025), 
+    geom_text(data = subset(data, data[[proportion_col]] == 0), 
               aes_string(label = proportion_col), 
               vjust = -0.5, color = "black", size = 3.5)  # Adjust position above bars
   
