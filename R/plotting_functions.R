@@ -1099,6 +1099,9 @@ plot_bivariate_grid <- function(data, output_directory = "plots/", sample_size =
 proportiondontoverzerobars <- function(data, comparison_col = "comparison", proportion_col = "proportion_intervals_dontcoverzero", 
                                        ci_upper = "ninetyfive_ci_upper", ci_lower = "ninetyfive_ci_lower", outputdirectory = "./plots/") {
   
+  # Load ggrepel
+  library(ggrepel)
+  
   # Check if the directory exists
   if (!dir.exists(outputdirectory)) {
     # Create the directory
@@ -1135,7 +1138,7 @@ proportiondontoverzerobars <- function(data, comparison_col = "comparison", prop
     theme(
       # Increase font sizes for text elements
       text = element_text(size = 12, family = "Arial"),
-      axis.text.x = element_text(angle = 90, hjust = 1, size = 10),
+      axis.text.x = element_text(angle = 90, hjust = 0, size = 10),
       axis.text.y = element_text(size = 12),
       axis.title = element_text(size = 12),
       plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
@@ -1145,11 +1148,15 @@ proportiondontoverzerobars <- function(data, comparison_col = "comparison", prop
     geom_hline(yintercept = c(0.25, 0.5, 0.75, 0.9), linetype = "dashed", color = "grey50") +
     # Set y-axis limits
     scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, by = 0.10), expand = c(0, 0)) +
-    # Add text labels only for values below 0.10 and adjust position to avoid overlap
-    geom_text(data = subset(data, data[[proportion_col]] < 0.10), 
-              aes_string(label = proportion_col), 
-              vjust = -0.5, color = "black", size = 3.5,
-	     position=position_jitter())  # Positioning to avoid overlap
+    # Add text labels only for values below 0.10 and use geom_label_repel for non-overlapping labels
+    geom_label_repel(data = subset(data, data[[proportion_col]] < 0.10), 
+                     aes_string(label = proportion_col), 
+                     nudge_y = 0.05, # Nudge labels slightly above the bars
+                     color = "black", size = 3.5, 
+                     box.padding = 0.3, # Padding around the label box
+                     point.padding = 0.5, # Padding from the bar to the label
+                     min.segment.length = 0, # Ensures that the segment lines are drawn
+                     segment.color = "grey50")  # Line color for connecting labels to bars
   
   # Save the plot in high resolution suitable for publications
   ggsave(paste0(outputdirectory, "proportion_coverage_plot.jpg"), plot = p, width = 15, height = 5, dpi = 300, units = "in")
@@ -1157,5 +1164,6 @@ proportiondontoverzerobars <- function(data, comparison_col = "comparison", prop
   # Return the plot object
   return(p)
 }
+
 
 
