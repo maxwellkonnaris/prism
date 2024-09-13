@@ -16,6 +16,7 @@
 #' # Example usage
 #' x <- matrix(rnorm(100), nrow=10, ncol=10)
 #' result <- cclasso(x)
+#' @import stats var
 #' @export
 # Adapted from cclasso.R by Fang Huaying (Peking University)
 # Original code: https://github.com/huayingfang/CCLasso
