@@ -1097,7 +1097,7 @@ plot_bivariate_grid <- function(data, output_directory = "plots/", sample_size =
 #' # Assuming you have a dataframe called `results_df` with columns for comparison and proportion_intervals_dontcoverzero
 #' # proportiondontoverzerobars(results_df)
 proportiondontoverzerobars <- function(data, comparison_col = "comparison", proportion_col = "proportion_intervals_dontcoverzero", ci_upper = "ninetyfive_ci_upper", 
-                                            ci_lower = "ninetyfive_ci_lower") {
+                                            ci_lower = "ninetyfive_ci_lower", outputdirectory="./plots/") {
   
   # Create a new column to flag whether the 95% CI does not cover zero
   data$does_not_cover_zero <- ifelse(
@@ -1122,7 +1122,7 @@ proportiondontoverzerobars <- function(data, comparison_col = "comparison", prop
     theme(
       # Increase font sizes for text elements
       text = element_text(size = 12, family = "Arial"),
-      axis.text.x = element_text(angle = 45, hjust = 1, size = 10),
+      axis.text.x = element_text(angle = 45, hjust = 1, size = 13),
       axis.text.y = element_text(size = 10),
       axis.title = element_text(size = 12),
       plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
@@ -1131,10 +1131,10 @@ proportiondontoverzerobars <- function(data, comparison_col = "comparison", prop
     # Add horizontal dashed lines at specified y-values
     geom_hline(yintercept = c(0.25, 0.5, 0.75, 0.9), linetype = "dashed", color = "grey50") +
     # Set y-axis limits
-    scale_y_continuous(limits = c(0, 1), expand = c(0, 0))
+    scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, by = 0.10), expand = c(0, 0))
   
   # Save the plot in high resolution suitable for publications
-  ggsave("proportion_plot_ci_colored.jpg", plot = p, width = 8, height = 5, dpi = 300, units = "in")
+  ggsave(paste0(outputdirectory,"proportion_coverage_plot.jpg"), plot = p, width = 12, height = 5, dpi = 300, units = "in")
   
   # Return the plot object
   return(p)
