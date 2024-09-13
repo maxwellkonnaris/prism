@@ -770,7 +770,7 @@ plot_comparisons_3d_scatter <- function(data, output_directory = "plots/",
 #' @return This function saves the plots and returns no value.
 #' @import plotly htmlwidgets alphashape3d
 #' @export
-plot_rpars_3d_scatter <- function(data, output_directory = "plots/", rho_scale_range = c(min(data$rho1), max(data$rho1)), scalestdevstep_range = c(min(data$scalestdevstep),max(data$scalestdevstep)), plot_all = TRUE, alpha_value = 1) {
+plot_rpars_3d_scatter <- function(data, output_directory = "plots/", rho_scale_range = c(min(data$rho1, na.rm = TRUE), max(data$rho1, na.rm = TRUE)), scalestdevstep_range = c(min(data$scalestdevstep, na.rm = TRUE), max(data$scalestdevstep, na.rm = TRUE)), plot_all = TRUE, alpha_value = 1) {
   
   # Ensure output directory exists
   if (!dir.exists(output_directory)) {
@@ -780,14 +780,14 @@ plot_rpars_3d_scatter <- function(data, output_directory = "plots/", rho_scale_r
   # Step 1: Group by 'comparison' and then group by the shared columns (rho1, rho2, scalestdevstep) within each comparison
   averaged_data <- data %>%
     group_by(comparison, rho1, rho2, scalestdevstep) %>%
-    summarise(across(everything(), mean, .names = "mean_{.col}"), .groups = 'drop')
+    summarise(across(where(is.numeric), mean, .names = "mean_{.col}"), .groups = 'drop')
 
   # Get unique comparisons from the data
   unique_comparisons <- unique(averaged_data$comparison)
   
   # Initialize an empty plot if plotting all together
   if (plot_all) {
-    plot <- plot_ly()
+    plot <- plot_ly(type = 'scatter3d', mode = 'markers')
   }
 
   # Loop through each comparison
@@ -805,6 +805,10 @@ plot_rpars_3d_scatter <- function(data, output_directory = "plots/", rho_scale_r
     size_min <- 1  # minimum marker size (same as SPSD < 0 markers)
     size_max <- 8  # maximum marker size (2x the size_min)
     sigma_range <- range(data_spsd_pos$mean_sigma, na.rm = TRUE)  # get the range of sigma values
+    
+    if (diff(sigma_range) == 0) {
+      sigma_range[2] <- sigma_range[1] + 1  # prevent division by zero
+    }
 
     # Map sigma to marker size for SPSD >= 0 points
     marker_size_spsd_pos <- size_min + (data_spsd_pos$mean_sigma - sigma_range[1]) / (sigma_range[2] - sigma_range[1]) * (size_max - size_min)
@@ -832,10 +836,10 @@ plot_rpars_3d_scatter <- function(data, output_directory = "plots/", rho_scale_r
                     marker = list(symbol = 'circle', 
                                   color = ~mean_sigma, 
                                   colorscale = 'Viridis', 
-                                  colorbar = list(title = "Sigma", len = 0.4),  # Adjust the length of the colorbar to make it smaller
-                                  size = marker_size_spsd_pos,       # Vary marker size based on sigma
-                                  sizemode = 'diameter',             # Scale marker size based on diameter
-                                  sizeref = 2 * max(marker_size_spsd_pos) / (size_max ^ 2)),  # Reference size to control scaling
+                                  colorbar = list(title = "Sigma", len = 0.4),
+                                  size = marker_size_spsd_pos,
+                                  sizemode = 'diameter',
+                                  sizeref = 2 * max(marker_size_spsd_pos, na.rm = TRUE) / (size_max ^ 2)),
                     name = "SPSD >= 0 (Sigma Gradient)",
                     hoverinfo = "text",
                     text = ~paste("rho1:", rho1, "<br>rho2:", rho2, "<br>scalestdevstep:", scalestdevstep, "<br>sigma:", mean_sigma, "<br>SPSD:", mean_SPSD))
@@ -852,8 +856,6 @@ plot_rpars_3d_scatter <- function(data, output_directory = "plots/", rho_scale_r
           zaxis = list(title = 'scalestdevstep', range = scalestdevstep_range)
         ),
         title = "Sigma Scatter Plot for All Comparisons",
-        
-        # Show the legend for the red points and sigma gradient
         showlegend = TRUE
       )
     
@@ -867,6 +869,7 @@ plot_rpars_3d_scatter <- function(data, output_directory = "plots/", rho_scale_r
     message("Generated and saved combined scatter plot for all comparisons.")
   }
 }
+
 
 #' 3D Scatter Plot for Sigma and SPSD Values with Confidence Intervals
 #'
