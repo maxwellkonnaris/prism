@@ -1101,13 +1101,33 @@ proportiondontoverzerobars <- function(data, comparison_col = "comparison", prop
   # Reorder the factor levels of comparison_col based on proportion_col
   data[[comparison_col]] <- factor(data[[comparison_col]], levels = data[[comparison_col]][order(data[[proportion_col]], decreasing = TRUE)])
   
-  # Plot the bar plot using ggplot2
-  ggplot(data, aes_string(x = comparison_col, y = proportion_col)) +
-    geom_bar(stat = "identity", fill = "skyblue") +
-    labs(title = "Proportion of Intervals That Do Not Cover Zero",
-         x = "Comparison",
-         y = "Proportion") +
-    theme_minimal() +
-    theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotate x-axis labels for readability
+  # Create the bar plot
+  p <- ggplot(data, aes_string(x = comparison_col, y = proportion_col, fill = "color")) +
+    geom_bar(stat = "identity", colour = "black", size = 0.5) +
+    labs(
+      title = "Proportion of Intervals That Do Not Cover Zero",
+      x = "Comparison",
+      y = "Proportion"
+    ) +
+    scale_fill_manual(values = c("green" = "green", "magenta" = "magenta"), guide = "none") + # Custom color for bars
+    theme_classic() +
+    theme(
+      # Increase font sizes for text elements
+      text = element_text(size = 12, family = "Arial"),
+      axis.text.x = element_text(angle = 45, hjust = 1, size = 10),
+      axis.text.y = element_text(size = 10),
+      axis.title = element_text(size = 12),
+      plot.title = element_text(size = 14, face = "bold", hjust = 0.5)
+    ) +
+    # Add horizontal dashed lines at specified y-values
+    geom_hline(yintercept = c(0.25, 0.5, 0.75, 0.9), linetype = "dashed", color = "grey50") +
+    # Set y-axis limits
+    scale_y_continuous(limits = c(0, 1), expand = c(0, 0))
+  
+  # Save the plot in high resolution suitable for publications
+  ggsave("proportion_plot.jpg", plot = p, width = 8, height = 5, dpi = 300, units = "in")
+  
+  # Return the plot object
+  return(p)
 }
 
