@@ -33,23 +33,49 @@ install.packages("PRISM")
 ```
 
 ## Dependencies
-PRISM imports the following R packages: <br>
+PRISM imports the following R packages:
+
+- **driver**: For managing simulations and workflows. (Separate install below and not auto imported)
+- **tidyverse**: A collection of R packages for data manipulation and visualization (includes `ggplot2`, `dplyr`, `tidyr`, etc.).
+- **rBeta2009**: A package for working with beta distributions.
+- **pbapply**: An alternative to `apply` functions with built-in progress bars.
+- **progress**: A package for displaying progress bars in R scripts.
+- **progressr**: Provides an API to track the progress of computations, used for longer running tasks.
+- **foreach**: For loop constructs that allow parallel and distributed execution.
+- **doSNOW**: A parallel backend for the `foreach` package, particularly for Windows users.
+- **parallel**: The core R package that supports parallel computing.
+- **stats**: A core R package for statistical functions.
+- **MCMCpack**: For performing Markov Chain Monte Carlo (MCMC) simulations.
+- **ggplot2**: Part of the tidyverse, used for advanced data visualization.
+- **profvis**: A graphical profiler for R to analyze performance bottlenecks.
+- **gridExtra**: A package for arranging multiple grid-based plots (e.g., ggplot2) on a single page.
+- **grid**: Core R package that provides low-level functions for creating and manipulating graphical objects.
+- **compositions**: Provides tools for working with compositional data, including CLR and ILR transformations.
+- **GGally**: Extends `ggplot2` with additional plotting functionality, especially for data diagnostics and visualizations.
+- **filelock**: Used to safely manage file locking when running parallel computations.
+- **nloptr**: A package for nonlinear optimization, used in optimization problems within the package.
+- **reshape2**: Used for data reshaping, particularly in preparing data for analysis.
+- **plotly**: For creating interactive visualizations.
+- **htmlwidgets**: For creating interactive web visualizations within R.
+- **viridis**: A color palette for `ggplot2` plots, optimized for perceptual uniformity and colorblind-friendliness.
+- **alphashape3d**: For 3D alpha shapes, used in visualization and analysis of 3D data.
+- **reticulate**: Integrates R with Python, used for running SparCC, a Python-based tool.
+- **phyloseq**: For microbiome data analysis, used for Banocc covariance estimation.
+- **SpiecEasi**: For sparse inverse covariance estimation for ecological association inference. (Separate install below and not auto imported)
+- **CCLasso**: For sparse covariance estimation using compositional data. (Separate install below and not auto imported)
+- **propr**: For analyzing proportionality relationships in compositional data. (Separate install below and not auto imported)
+
 <br>
-- driver (downloaded through devtools::install_github("jsilve24/driver") <br>
-- tidyverse<br>
-- rBeta2009<br>
-- pbapply<br>
-- progressr<br>
-- foreach<br>
-- doSNOW<br>
-- parallel<br>
-- stats<br>
-- MCMCpack<br>
-- ggplot2<br>
-- profvis<br>
-- gridExtra<br>
-- grid<br>
-<br>
+However, some packages are easier to download here: <br>
+
+```r
+# install.packages("devtools")
+devtools::install_github("jsilve24/driver")
+devtools::install_github("tpq/propr")
+devtools::install_github("huayingfang/CCLasso")
+devtools::install_github("zdk123/SpiecEasi")
+```
+
 Ensure you have these packages installed before using PRISM.
 
 ## Usage
