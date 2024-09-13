@@ -37,6 +37,16 @@ Imports:
     htmlwidgets,
     alphashape3d,        
     phyloseq,   
-    gtools
+    gtools,
+    devtools,
+    BiocManager,
+    propr,
+    SpiecEasi,
+    banocc
+Remotes:
+    jsilve24/driver,
+    tpq/propr,
+    zdk123/SpiecEasi,
+    biobakery/banocc
 RoxygenNote: 7.3.2
 Encoding: UTF-8
