@@ -1099,18 +1099,25 @@ plot_bivariate_grid <- function(data, output_directory = "plots/", sample_size =
 proportiondontoverzerobars <- function(data, comparison_col = "comparison", proportion_col = "proportion_intervals_dontcoverzero", ci_upper_col = "ninetyfive_ci_upper", 
                                             ci_lower_col = "ninetyfive_ci_lower") {
   
-  # Reorder the factor levels of comparison_col based on proportion_col
+  # Create a new column to flag whether the 95% CI does not cover zero
+  data$does_not_cover_zero <- ifelse(
+    (data[[ci_upper]] > 0 & data[[ci_lower]] > 0) | (data[[ci_upper]] < 0 & data[[ci_lower]] < 0),
+    "Does Not Cover Zero", "Covers Zero"
+  )
+  
+  # Reorder the factor levels of the comparison column based on the proportion column
   data[[comparison_col]] <- factor(data[[comparison_col]], levels = data[[comparison_col]][order(data[[proportion_col]], decreasing = TRUE)])
   
   # Create the bar plot
-  p <- ggplot(data, aes_string(x = comparison_col, y = proportion_col, fill = "color")) +
+  p <- ggplot(data, aes_string(x = comparison_col, y = proportion_col, fill = "does_not_cover_zero")) +
     geom_bar(stat = "identity", colour = "black", size = 0.5) +
+    scale_fill_manual(values = c("Does Not Cover Zero" = "green", "Covers Zero" = "magenta")) +
     labs(
       title = "Proportion of Intervals That Do Not Cover Zero",
       x = "Comparison",
-      y = "Proportion"
+      y = "Proportion",
+      fill = "CI Status"
     ) +
-    scale_fill_manual(values = c("green" = "green", "magenta" = "magenta"), guide = "none") + # Custom color for bars
     theme_classic() +
     theme(
       # Increase font sizes for text elements
@@ -1118,7 +1125,8 @@ proportiondontoverzerobars <- function(data, comparison_col = "comparison", prop
       axis.text.x = element_text(angle = 45, hjust = 1, size = 10),
       axis.text.y = element_text(size = 10),
       axis.title = element_text(size = 12),
-      plot.title = element_text(size = 14, face = "bold", hjust = 0.5)
+      plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+      legend.position = "top"
     ) +
     # Add horizontal dashed lines at specified y-values
     geom_hline(yintercept = c(0.25, 0.5, 0.75, 0.9), linetype = "dashed", color = "grey50") +
@@ -1126,7 +1134,7 @@ proportiondontoverzerobars <- function(data, comparison_col = "comparison", prop
     scale_y_continuous(limits = c(0, 1), expand = c(0, 0))
   
   # Save the plot in high resolution suitable for publications
-  ggsave("proportion_plot.jpg", plot = p, width = 8, height = 5, dpi = 300, units = "in")
+  ggsave("proportion_plot_ci_colored.jpg", plot = p, width = 8, height = 5, dpi = 300, units = "in")
   
   # Return the plot object
   return(p)
