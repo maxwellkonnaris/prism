@@ -1099,9 +1099,6 @@ plot_bivariate_grid <- function(data, output_directory = "plots/", sample_size =
 proportiondontoverzerobars <- function(data, comparison_col = "comparison", proportion_col = "proportion_intervals_dontcoverzero", 
                                        ci_upper = "ninetyfive_ci_upper", ci_lower = "ninetyfive_ci_lower", outputdirectory = "./plots/") {
   
-  # Load ggrepel
-  library(ggrepel)
-  
   # Check if the directory exists
   if (!dir.exists(outputdirectory)) {
     # Create the directory
@@ -1147,7 +1144,17 @@ proportiondontoverzerobars <- function(data, comparison_col = "comparison", prop
     # Add horizontal dashed lines at specified y-values
     geom_hline(yintercept = c(0.25, 0.5, 0.75, 0.9), linetype = "dashed", color = "grey50") +
     # Set y-axis limits
-    scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, by = 0.10), expand = c(0, 0)) 
+    scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, by = 0.10), expand = c(0, 0)) +
+    
+    # Add text labels for values < 0.05 using geom_label_repel
+    geom_label_repel(data = subset(data, data[[proportion_col]] < 0.05), 
+                     aes_string(label = proportion_col), 
+                     nudge_y = 0.05, # Nudge labels slightly above the bars
+                     color = "black", size = 3.5, 
+                     box.padding = 0.3, # Padding around the label box
+                     point.padding = 0.5, # Padding from the bar to the label
+                     min.segment.length = 0, # Ensures that the segment lines are drawn
+                     segment.color = "grey50")  # Line color for connecting labels to bars
   
   # Save the plot in high resolution suitable for publications
   ggsave(paste0(outputdirectory, "proportion_coverage_plot.jpg"), plot = p, width = 15, height = 5, dpi = 300, units = "in")
@@ -1155,6 +1162,7 @@ proportiondontoverzerobars <- function(data, comparison_col = "comparison", prop
   # Return the plot object
   return(p)
 }
+
 
 
 
