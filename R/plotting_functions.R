@@ -1098,8 +1098,6 @@ plot_bivariate_grid <- function(data, output_directory = "plots/", sample_size =
 #' # proportiondontoverzerobars(results_df)
 proportiondontoverzerobars <- function(data, comparison_col="comparison", proportion_col="proportion_intervals_dontcoverzero") {
   
-  data <- data[order(data$proportion_col, decreasing = TRUE), ]
-  
   # Plot the bar plot using ggplot2
   ggplot(data, aes_string(x = comparison_col, y = proportion_col)) +
     geom_bar(stat = "identity", fill = "skyblue") +
