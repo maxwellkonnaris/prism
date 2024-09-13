@@ -1098,7 +1098,19 @@ plot_bivariate_grid <- function(data, output_directory = "plots/", sample_size =
 #' # proportiondontoverzerobars(results_df)
 proportiondontoverzerobars <- function(data, comparison_col = "comparison", proportion_col = "proportion_intervals_dontcoverzero", ci_upper = "ninetyfive_ci_upper", 
                                             ci_lower = "ninetyfive_ci_lower", outputdirectory="./plots/") {
-  
+  # Check if the directory exists
+  if (!dir.exists(outputdirectory)) {
+    # Create the directory
+    dir.create(outputdirectory)
+    if (dir.exists(outputdirectory)) {
+      cat("Directory created successfully!")
+    } else {
+      cat("Failed to create directory.")
+    }
+  } else {
+    cat("Directory already present")
+  }
+	
   # Create a new column to flag whether the 95% CI does not cover zero
   data$does_not_cover_zero <- ifelse(
     (data[[ci_upper]] > 0 & data[[ci_lower]] > 0) | (data[[ci_upper]] < 0 & data[[ci_lower]] < 0),
