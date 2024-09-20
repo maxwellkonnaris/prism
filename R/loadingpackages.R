@@ -20,7 +20,7 @@
     if (!requireNamespace(pkg, quietly = TRUE)) {
       message(paste("Installing '", pkg, "' package from Bioconductor...", sep = ""))
       tryCatch({
-        BiocManager::install(pkg)
+        BiocManager::install(pkg, dependencies = TRUE)
       }, error = function(e) {
         message(paste("Failed to install '", pkg, "' from Bioconductor. Error: ", e$message, sep = ""))
       })
