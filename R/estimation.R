@@ -300,6 +300,12 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
     stop("Error: pair_indices is not populated correctly. Aborting analysis.")
   }
 
+  # Assuming Y is a matrix and alpha is a scalar or vector
+  rWparaoriginal <- apply(Y, 1, function(row) MCMCpack::rdirichlet(1, row + alpha))
+
+  # log transform relative abundances
+  rWparaoriginal <- log(t(rWparaoriginal))
+
   # Run the analysis
   cat("Running sigma estimation")
   results_list <- foreach(pair = pair_indices, .packages = c('stats', 'MCMCpack', 'dplyr'), .options.snow = opts) %dopar% {
@@ -312,17 +318,9 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = -1.0, upperrhobo
       
       # Use parallel foreach for the inner loop
       results_inner <- foreach(s = 1:S, .combine = 'rbind', .packages = c('stats', 'MCMCpack', 'nloptr', 'dplyr'), .options.snow = opts) %dopar% {
-          Yboot <- Y[, bootstrap_samples[[s]]]
           
-          rWpara <- matrix(NA, D, N)
-          for (n in 1:N) {
-            rWpara[, n] <- MCMCpack::rdirichlet(1, Yboot[, n] + alpha)
-          }
-
-          # log transform relative abundances
-          rWpara <- log(rWpara)
-          rWpara = rWpara[c(d1,d2), ]
-          
+          rWpara <- rWparaoriginal[c(d1, d2), bootstrap_samples[[s]]]
+        
           taxa1relativesd <- sd(rWpara[1, ])
           taxa2relativesd <- sd(rWpara[2, ])
           relativecorrelation <- cor(rWpara[1, ], rWpara[2, ])
