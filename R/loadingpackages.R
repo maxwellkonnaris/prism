@@ -3,30 +3,36 @@
 #' @param libname The library name.
 #' @param pkgname The package name.
 .onLoad <- function(libname, pkgname) {  
-  # Install GitHub packages if not installed
-  if (!requireNamespace("driver", quietly = TRUE)) {
-    message("Installing 'driver' package from GitHub...")
-    devtools::install_github("jsilve24/driver")
+  # Function to install GitHub packages
+  install_github_package <- function(pkg, repo) {
+    if (!requireNamespace(pkg, quietly = TRUE)) {
+      message(paste("Installing '", pkg, "' package from GitHub...", sep = ""))
+      tryCatch({
+        devtools::install_github(repo)
+      }, error = function(e) {
+        message(paste("Failed to install '", pkg, "' from GitHub. Error: ", e$message, sep = ""))
+      })
+    }
   }
+
+  # Function to install Bioconductor packages
+  install_bioconductor_package <- function(pkg) {
+    if (!requireNamespace(pkg, quietly = TRUE)) {
+      message(paste("Installing '", pkg, "' package from Bioconductor...", sep = ""))
+      tryCatch({
+        BiocManager::install(pkg)
+      }, error = function(e) {
+        message(paste("Failed to install '", pkg, "' from Bioconductor. Error: ", e$message, sep = ""))
+      })
+    }
+  }
+
+  # Install GitHub packages
+  install_github_package("driver", "jsilve24/driver")
+  install_github_package("propr", "tpq/propr")
+  install_github_package("SpiecEasi", "zdk123/SpiecEasi")
   
-  if (!requireNamespace("propr", quietly = TRUE)) {
-    message("Installing 'propr' package from GitHub...")
-    devtools::install_github("tpq/propr")
-  }
-  
-  if (!requireNamespace("SpiecEasi", quietly = TRUE)) {
-    message("Installing 'SpiecEasi' package from GitHub...")
-    devtools::install_github("zdk123/SpiecEasi")
-  }
-  
-  # Install Bioconductor packages if not installed
-  if (!requireNamespace("banocc", quietly = TRUE)) {
-    message("Installing 'banocc' package from Bioconductor...")
-    BiocManager::install("banocc")
-  }
-  
-  if (!requireNamespace("phyloseq", quietly = TRUE)) {
-    message("Installing 'phyloseq' package from Bioconductor...")
-    BiocManager::install("phyloseq")
-  }
+  # Install Bioconductor packages
+  install_bioconductor_package("banocc")
+  install_bioconductor_package("phyloseq")
 }
