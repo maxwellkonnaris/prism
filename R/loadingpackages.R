@@ -2,12 +2,7 @@
 #' @description Installs necessary GitHub and Bioconductor packages if not installed.
 #' @param libname The library name.
 #' @param pkgname The package name.
-.onLoad <- function(libname, pkgname) {
-  # Check and install BiocManager if not available
-  if (!requireNamespace("BiocManager", quietly = TRUE)) {
-    install.packages("BiocManager")
-  }
-  
+.onLoad <- function(libname, pkgname) {  
   # Install GitHub packages if not installed
   if (!requireNamespace("driver", quietly = TRUE)) {
     message("Installing 'driver' package from GitHub...")
