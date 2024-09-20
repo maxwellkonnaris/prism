@@ -2,14 +2,17 @@
 #' @description Installs necessary GitHub and Bioconductor packages
 #' @details
 #' This function installs the following packages if they are not already installed:
-#' - GitHub packages: driver, propr, SpiecEasi, banocc
-#' - Bioconductor package: phyloseq
+#' - GitHub packages: driver, propr, SpiecEasi
+#' - Bioconductor package: phyloseq, banocc
 #' The function is executed upon loading the package.
 #' @param libname The library name.
 #' @param pkgname The package name.
 #' @importFrom devtools install_github
 #' @importFrom BiocManager install
 .onLoad <- function(libname, pkgname) {
+  if (!requireNamespace("BiocManager", quietly = TRUE)) {
+    install.packages("BiocManager")
+  } 
   if (!requireNamespace("driver", quietly = TRUE)) {
     devtools::install_github("jsilve24/driver")
   }
@@ -20,10 +23,9 @@
     devtools::install_github("zdk123/SpiecEasi")
   }
   if (!requireNamespace("banocc", quietly = TRUE)) {
-    devtools::install_github("biobakery/banocc")
+    BiocManager::install("banocc", force=TRUE)
   }
-  if (!requireNamespace("BiocManager", quietly = TRUE)) {
-    install.packages("BiocManager")
+  if (!requireNamespace("phyloseq", quietly = TRUE)) {
+    BiocManager::install("phyloseq", force=TRUE)
   }
-  BiocManager::install("phyloseq", force=TRUE)
 }
