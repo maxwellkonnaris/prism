@@ -1,15 +1,127 @@
-#' Run Analysis on All Pairwise Taxa
+#' Run Bootstrapped Analysis on Pairwise Taxa
 #'
-#' This function runs a bootstrapped analysis on the input data matrix \code{Y}.
+#' This function performs a bootstrapped analysis on the input matrix \code{Y}, estimating 
+#' covariance, correlation, and scale for all pairwise combinations of taxa. It supports 
+#' various optimization algorithms to estimate the minimum and maximum covariance.
 #'
-#' @param Y A matrix of data with observations in columns and variables in rows.
-#' @param alpha A numeric vector of priors for the Dirichlet distribution. Defaults to a vector of zeros.
-#' @param lowerrhobound A numeric value specifying the lower bound for the \code{lowerrhobound} parameter. Defaults to -1.0.
-#' @param upperrhobound A numeric value specifying the upper bound for the \code{upperrhobound} parameter. Defaults to 1.0.
-#' @param S An integer specifying the number of bootstrap samples. Increase to reduce Monte Carlo error. Defaults to 1000.
-#' @param lowerscalestdev A numeric value specifying the lower bound of the variance of the scale. Defaults to 0.49.
-#' @param upperscalestdev A numeric value specifying the upper bound of the variance of the scale. Defaults to 0.51.
-#' @return A list of dataframes containing the results of the analysis including estimated 95% confidence intervals, minimum and maximum values for estimated absolute covariance, and parameters. \code{final_results} contains the data intended for forest_plot() and \code{all_inner_results} contains the data intended for sigmaplot().
+#' @param Y A matrix of observed counts, where rows represent variables (e.g., taxa) and columns represent observations (samples). The matrix should have at least two rows and two columns.
+#' 
+#' @param alpha A numeric vector of Dirichlet priors with the same length as the number of rows in \code{Y}. If \code{alpha} is a scalar, it will be replicated for each row. Defaults to \code{0.5}.
+#' 
+#' @param lowerrhobound A numeric vector of lower bounds for correlation parameters (\eqn{\rho}). Each element specifies the lower bound for a row of \code{Y}. If a scalar is provided, it will be replicated for each row. Defaults to \code{-1.0}.
+#' 
+#' @param upperrhobound A numeric vector of upper bounds for correlation parameters (\eqn{\rho}). Each element specifies the upper bound for a row of \code{Y}. If a scalar is provided, it will be replicated for each row. Defaults to \code{1.0}.
+#' 
+#' @param S An integer specifying the number of bootstrap samples. Larger values reduce Monte Carlo error but increase computation time. Defaults to \code{1000}.
+#' 
+#' @param lowerscalestdev A numeric value specifying the lower bound of the standard deviation of the scale. Defaults to \code{0.49}.
+#' 
+#' @param upperscalestdev A numeric value specifying the upper bound of the standard deviation of the scale. Defaults to \code{0.51}.
+#' 
+#' @param algorithm A character string specifying the optimization algorithm to be used. 
+#' Can be one of \code{"COBYLA"}, \code{"MMA"}, \code{"AUGLAG_COBYLA"}, \code{"AUGLAG_MMA"}, or \code{"GRID_SEARCH"}. Defaults to \code{"COBYLA"}.
+#' 
+#' @param outputdirectory A character string specifying the directory to save results for grid search. If \code{NULL}, the current working directory is used. Defaults to \code{NULL}.
+#'
+#' @return A list with two elements:
+#' \item{\code{final_results}}{A dataframe containing the minimum and maximum covariance estimates for each pair of taxa along with confidence intervals and other relevant metrics.}
+#' \item{\code{all_inner_results}}{A dataframe containing the full set of results from the bootstrapped analysis, including correlation, covariance, and scale estimates for each bootstrap sample.}
+#'
+#' @details
+#' The function \code{estimate_covariance} performs a comprehensive analysis of pairwise relationships between taxa in the input matrix \code{Y}. For each pair of taxa, it:
+#' \enumerate{
+#'   \item Generates \code{S} bootstrap samples.
+#'   \item Estimates covariance and correlation parameters using the specified optimization algorithm.
+#'   \item Computes 95\% confidence intervals for the estimated covariances.
+#'   \item Aggregates results across all pairs and bootstrap samples.
+#' }
+#'
+#' Supported optimization algorithms include:
+#' \describe{
+#'   \item{\code{"COBYLA"}}{Constrained Optimization BY Linear Approximations.}
+#'   \item{\code{"MMA"}}{Method of Moving Asymptotes.}
+#'   \item{\code{"AUGLAG_COBYLA"}}{Augmented Lagrangian with COBYLA as the inner optimizer.}
+#'   \item{\code{"AUGLAG_MMA"}}{Augmented Lagrangian with MMA as the inner optimizer.}
+#'   \item{\code{"GRID_SEARCH"}}{Exhaustive grid search over specified parameter ranges.}
+#' }
+#'
+#' The \code{final_results} dataframe is intended for visualization functions such as \code{forest_plot()}, while \code{all_inner_results} is suitable for detailed analysis and plotting with functions like \code{sigmaplot()}.
+#'
+#' @section Input and Output Structures:
+#'
+#' \strong{Input Matrix (\code{Y}):}
+#'
+#' The input matrix \code{Y} should be structured with taxa as rows and samples as columns. Each entry represents the observed count for a specific taxon in a given sample.
+#'
+#' \preformatted{
+#'      Sample1 Sample2 Sample3 ... SampleN
+#' Taxon1    x11     x12     x13        x1N
+#' Taxon2    x21     x22     x23        x2N
+#' ...       ...     ...     ...         ...
+#' TaxonD    xD1     xD2     xD3        xDN
+#' }
+#'
+#' \strong{Output Dataframes:}
+#'
+#' \emph{final_results}:
+#'
+#' Contains summary statistics for each pair of taxa, including covariance estimates and confidence intervals.
+#'
+#' \preformatted{
+#'   comparison    taxa1    taxa2 proportion_intervals_dontcoverzero ninetyfive_ci_lower ninetyfive_ci_upper minsigma_absolute_minimum_covariance maxsigma_absolute_maximum_covariance ...
+#'   Taxon1:Taxon2 Taxon1    Taxon2                            0.95                -0.8                0.7                            -0.85                             0.75 ...
+#'   Taxon1:Taxon3 Taxon1    Taxon3                            0.90                -0.6                0.6                            -0.65                             0.55 ...
+#'   ...            ...       ...                              ...                  ...                  ...                              ...                               ...
+#' }
+#'
+#' \emph{all_inner_results}:
+#'
+#' Contains detailed results for each bootstrap sample and pair of taxa.
+#'
+#' \preformatted{
+#'   d1 d2 s minsigma_absolute_minimum_covariance minsigma_correlation_relativetaxa1_scale minsigma_correlation_relativetaxa2_scale minsigma_scale_sd maxsigma_absolute_maximum_covariance ...
+#'    1  2 1                            -0.80                               0.10                               -0.05                      0.50                             0.75 ...
+#'    1  2 2                            -0.85                               0.12                               -0.04                      0.51                             0.73 ...
+#'    ... ... ...                             ...                                 ...                                 ...                       ...                               ...
+#' }
+#'
+#' @examples
+#' \dontrun{
+#' # Example 1: Basic Usage with Default Parameters
+#' set.seed(123)
+#' Y <- matrix(rnorm(1000), nrow = 10, ncol = 100)
+#' rownames(Y) <- paste0("Taxon", 1:10)
+#' colnames(Y) <- paste0("Sample", 1:100)
+#' 
+#' results <- estimate_covariance(Y)
+#' 
+#' # View the final results
+#' head(results$final_results)
+#' 
+#' # Example Output:
+#' \dontrun{
+#'   comparison   taxa1  taxa2 proportion_intervals_dontcoverzero ninetyfive_ci_lower ninetyfive_ci_upper minsigma_absolute_minimum_covariance maxsigma_absolute_maximum_covariance
+#'   Taxon1:Taxon2 Taxon1 Taxon2                           0.95                 -0.8                  0.7                             -0.85                              0.75
+#'   Taxon1:Taxon3 Taxon1 Taxon3                           0.90                 -0.6                  0.6                             -0.65                              0.55
+#'   ...            ...     ...                             ...                   ...                    ...                               ...                                ...
+#' }
+#'
+#' # Example 2: Using a Different Optimization Algorithm (MMA)
+#' results_mma <- estimate_covariance(Y, algorithm = "MMA")
+#' 
+#' # Example 3: Custom Priors and Bounds
+#' alpha_custom <- rep(0.5, 10)
+#' lowerrhobound_custom <- rep(-0.9, 10)
+#' upperrhobound_custom <- rep(0.9, 10)
+#' results_custom <- estimate_covariance(Y, alpha = alpha_custom, 
+#'                                       lowerrhobound = lowerrhobound_custom, 
+#'                                       upperrhobound = upperrhobound_custom)
+#' 
+#' # Example 4: Specifying Output Directory for Grid Search
+#' results_grid <- estimate_covariance(Y, algorithm = "GRID_SEARCH", 
+#'                                     outputdirectory = "grid_search_results/")
+#' }
+#'
 #' @import progress
 #' @import progressr
 #' @import foreach
@@ -20,11 +132,6 @@
 #' @import utils
 #' @import nloptr
 #' @import filelock
-#' @examples
-#' # Example usage (You could also use the simulation function provided to generate sample data):
-#' set.seed(123)
-#' Y <- matrix(rnorm(1000), nrow = 10)
-#' results <- estimate_covariance(Y)
 #' @export
 estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = rep(-1.0,nrow(Y)), upperrhobound = rep(1.0,nrow(Y)), S = 1000, lowerscalestdev = .490, upperscalestdev = .510, algorithm="COBYLA", outputdirectory=NULL) {
 
