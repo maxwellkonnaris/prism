@@ -34,5 +34,5 @@
   
   # Install Bioconductor packages
   install_bioconductor_package("banocc")
-  install_bioconductor_package("phyloseq")
+  #install_bioconductor_package("phyloseq")
 }
