@@ -78,7 +78,7 @@ The primary function of the PRISM package is estimate_covariance, which runs a b
 See Scale Reliant Inference for more information: https://arxiv.org/abs/2201.03616 
 
 ```r
-results = estimate_covariance(Y, alpha = rep(0, nrow(Y)), rhobound = 0.9, S = 1000, upperscalevariance = 1.0)
+results = estimate_covariance(Y, alpha = rep(0, nrow(Y)), lowerrhobound = rep(0.9, nrow(Y)), upperrhobound = rep(0.9, nrow(Y)), S = 1000, lowerscalestdev = 0.45, upperscalestdev = 0.6, outputdirectory='/tables/')
 forest_plot(results$final_results, save="png", filename="example_dataset")
 sigmaplot(results$all_inner_results, save="png", filename="example_dataset")
 calculate_bootstrap_summary(results$all_inner_results, group_col = "comparison", exclude_cols = c("d1", "d2"), save_as_csv = TRUE, csv_path = "my_summary_stats.csv")
