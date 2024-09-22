@@ -389,17 +389,17 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = rep(-1.0, nrow(Y
   }
   
   if (length(alpha) == 1) {
-    rWparaoriginal <- apply(Y, 1, function(row) MCMCpack::rdirichlet(1, row + alpha))
+    # If alpha is a scalar, apply it to all rows
+    rWparaoriginal <- apply(Y, 2, function(col) MCMCpack::rdirichlet(1, col + alpha))
   } else {
     # If alpha is a vector, add corresponding elements of alpha to each row
-    rWparaoriginal <- apply(Y, 1, function(row, alpha) {
-      row_idx <- as.integer(row.names(as.data.frame(row)))  # Get the row index
-      MCMCpack::rdirichlet(1, row + alpha[row_idx])
-    }, alpha = alpha)
+    rWparaoriginal <- apply(Y, 2, function(col) {
+      MCMCpack::rdirichlet(1, col + alpha) # Element-wise addition of alpha to each row
+    })
   }
   
   # Log transform relative abundances
-  rWparaoriginal <- log(t(rWparaoriginal))
+  rWparaoriginal <- log(rWparaoriginal)
   
   # Run the analysis
   cat("Running sigma estimation\n")
