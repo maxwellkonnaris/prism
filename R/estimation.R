@@ -183,9 +183,11 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = rep(-1.0,nrow(Y)
   cat("Alpha:\n")
   print(alpha)
   cat("Rho bounds:\n")
-  print(paste0("lower rho bounds: ", lowerrhobound))
-  print(paste0("upper rho bounds: ", upperrhobound))
+  print(paste0("lower rho bounds: ", round(lowerrhobound,2), "\n"))
+  print(paste0("upper rho bounds: ", round(upperrhobound,2), "\n"))
   cat("Scale standard deviation bounds:\n")
+  lowerscalestdev = round(lowerscalestdev,2)
+  upperscalestdev = round(upperscalestdev,2)
   print(paste0(lowerscalestdev,":",upperscalestdev))
   cat("Dimensions of supplied matrix:\n")
   print(paste0("Number of Taxa: ", D))
@@ -404,10 +406,11 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = rep(-1.0,nrow(Y)
       maxsigma_values <- numeric(S)
 
       # Use the specific bounds for the current taxa pair
-      rho_lower_bound_1 <- lowerrhobound[d1]
-      rho_upper_bound_1 <- upperrhobound[d1]
-      rho_lower_bound_2 <- lowerrhobound[d2]
-      rho_upper_bound_2 <- upperrhobound[d2]
+      rho_lower_bound_1 <- round(lowerrhobound[d1],2)
+      rho_upper_bound_1 <- round(upperrhobound[d1],2)
+      rho_lower_bound_2 <- round(lowerrhobound[d2],2)
+      rho_upper_bound_2 <- round(upperrhobound[d2],2)
+      
 
       # Definine the initial parameters for the Optimization                                      
       initialparameters = c(((rho_upper_bound_1+rho_lower_bound_1)/2), ((rho_upper_bound_2+rho_lower_bound_2)/2), ((upperscalestdev+lowerscalestdev)/2))
@@ -668,8 +671,8 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = rep(-1.0,nrow(Y)
               # Define parameter steps
               scale = (upperscalestdev - lowerscalestdev) / 5
         
-              rho1 <- seq(lowerrhobound[d1], upperrhobound[d1], by=0.05)
-              rho2 <- seq(lowerrhobound[d2], upperrhobound[d2], by=0.05)
+              rho1 <- seq(lowerrhobound[d1], upperrhobound[d1], by=0.01)
+              rho2 <- seq(lowerrhobound[d2], upperrhobound[d2], by=0.01)
               scalestdevstep <- seq(lowerscalestdev, upperscalestdev, by=scale)
               iterations <- length(rho1) * length(rho2) * length(scalestdevstep)
               
@@ -763,10 +766,10 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = rep(-1.0,nrow(Y)
             taxa1relativesd = taxa1relativesd,
             taxa2relativesd = taxa2relativesd,
             relativecorrelation = relativecorrelation,
-            relativecovariance = relativecovariance,
-            d1rhobounds = paste0(rho_lower_bound_1, ":", rho_upper_bound_1),
-            d2rhobounds = paste0(rho_lower_bound_2, ":", rho_upper_bound_2),
-            scalesdbounds = paste0(lowerscalestdev, ":", upperscalestdev)
+            relativecovariance = relativecovariance#,
+            #d1rhobounds = paste0(rho_lower_bound_1, ":", rho_upper_bound_1),
+            #d2rhobounds = paste0(rho_lower_bound_2, ":", rho_upper_bound_2),
+            #scalesdbounds = paste0(lowerscalestdev, ":", upperscalestdev)
           )    
       }
 
@@ -826,9 +829,9 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = rep(-1.0,nrow(Y)
           relative_standard_dev_taxa2 = taxa2relativesd,
           relative_correlation = relativecorrelation,
           relative_covariance = relativecovariance,
-          d1rhobounds = paste0(rho_lower_bound_1, ":", rho_upper_bound_1),
-          d2rhobounds = paste0(rho_lower_bound_2, ":", rho_upper_bound_2),
-          scalesdbounds = paste0(lowerscalestdev, ":", upperscalestdev),
+          # d1rhobounds = paste0(rho_lower_bound_1, ":", rho_upper_bound_1),
+          # d2rhobounds = paste0(rho_lower_bound_2, ":", rho_upper_bound_2),
+          # scalesdbounds = paste0(lowerscalestdev, ":", upperscalestdev),
           stringsAsFactors = FALSE
         )
       )
