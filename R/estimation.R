@@ -715,10 +715,10 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = rep(-1.0, nrow(Y
                          rpars <- rpars %>%
                            dplyr::filter(SPSD >= 0)
 
-                         if (nrow(rpars) == 0) {
-                            message("Warning: No valid results after filtering for pair ", d1, ":", d2, "-", s)
-                            next # Skip this pair if all rows are filtered out
-                         }
+                        if (nrow(rpars) == 0) {
+                          message("Warning: No valid results after filtering for pair ", d1, ":", d2, "-", s)
+                          return(NULL)  # Return NULL to indicate this task should be skipped
+                        }
                          
                          # Find min and max
                          min_sigma_row <- rpars[which.min(rpars$sigma), , drop = FALSE]
