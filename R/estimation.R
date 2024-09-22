@@ -716,7 +716,6 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = rep(-1.0, nrow(Y
                            dplyr::filter(SPSD >= 0)
   
                          if (nrow(rpars) == 0) {
-                           message("Warning: No valid results after filtering for pair ", d1, ":", d2, "-", s)
                            
                            # NULL
                            res_min <- list(
@@ -778,14 +777,14 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = rep(-1.0, nrow(Y
         minsigma_scale_sd = ifelse(is.null(res_min$solution[3]), NA, res_min$solution[3]),
         minsigma_message = res_min$message,
         minsigma_status = res_min$status,
-        minsigma_iterations = res_min$iterations,
+        minsigma_iterations = ifelse(is.null(res_min$iterations), NA, res_min$iterations),
         maxsigma_absolute_maximum_covariance = ifelse(is.null(res_max$objective), NA, -res_max$objective),
         maxsigma_correlation_relativetaxa1_scale = ifelse(is.null(res_max$solution[1]), NA, res_max$solution[1]),
         maxsigma_correlation_relativetaxa2_scale = ifelse(is.null(res_max$solution[2]), NA, res_max$solution[2]),
         maxsigma_scale_sd = ifelse(is.null(res_max$solution[3]), NA, res_max$solution[3]),
         maxsigma_message = res_max$message,
         maxsigma_status = res_max$status,
-        maxsigma_iterations = res_max$iterations,
+        maxsigma_iterations = ifelse(is.null(res_max$iterations), NA, res_max$iterations),
         taxa1relativesd = taxa1relativesd,
         taxa2relativesd = taxa2relativesd,
         relativecorrelation = relativecorrelation,
