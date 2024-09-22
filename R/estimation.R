@@ -674,7 +674,7 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = rep(-1.0, nrow(Y
                        "GRID_SEARCH" = {
                          
                          # Define parameter steps
-                         scale <- (upperscalestdev - lowerscalestdev) / 10
+                         scale <- (upperscalestdev - lowerscalestdev) / 5
                          
                          rho1 <- seq(lowerrhobound[d1], upperrhobound[d1], by = 0.01)
                          rho2 <- seq(lowerrhobound[d2], upperrhobound[d2], by = 0.01)
