@@ -714,35 +714,53 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = rep(-1.0, nrow(Y
                          # Filter rows where SPSD is >= 0
                          rpars <- rpars %>%
                            dplyr::filter(SPSD >= 0)
-
-                        if (nrow(rpars) == 0) {
-                          message("Warning: No valid results after filtering for pair ", d1, ":", d2, "-", s)
-                          return(NULL)  # Return NULL to indicate this task should be skipped
-                        }
-                         
-                         # Find min and max
-                         min_sigma_row <- rpars[which.min(rpars$sigma), , drop = FALSE]
-                         max_sigma_row <- rpars[which.max(rpars$sigma), , drop = FALSE]
-                         
-                         # Extract values from min_sigma_row
-                         res_min <- list(
-                           objective = min_sigma_row$sigma,
-                           solution = c(min_sigma_row$rho1, min_sigma_row$rho2, min_sigma_row$scalestdevstep),
-                           message = "GRIDSEARCH",
-                           status = "GRIDSEARCH",
-                           iterations = min_sigma_row$iterations
-                         )
-                         
-                         # Extract values from max_sigma_row
-                         res_max <- list(
-                           objective = -max_sigma_row$sigma,
-                           solution = c(max_sigma_row$rho1, max_sigma_row$rho2, max_sigma_row$scalestdevstep),
-                           message = "GRIDSEARCH",
-                           status = "GRIDSEARCH",
-                           iterations = max_sigma_row$iterations
-                         )
+  
+                         if (nrow(rpars) == 0) {
+                           message("Warning: No valid results after filtering for pair ", d1, ":", d2, "-", s)
+                           
+                           # NULL
+                           res_min <- list(
+                             objective = NULL,
+                             solution = c(NULL, NULL, NULL),
+                             message = "GRIDSEARCH",
+                             status = "GRIDSEARCH",
+                             iterations = min_sigma_row$iterations
+                           )
+                           
+                           # NULL
+                           res_max <- list(
+                             objective = NULL,
+                             solution = c(NULL, NULL, NULL),
+                             message = "GRIDSEARCH",
+                             status = "GRIDSEARCH",
+                             iterations = max_sigma_row$iterations
+                           )
+                         } else {
+                           # Find min and max
+                           min_sigma_row <- rpars[which.min(rpars$sigma), , drop = FALSE]
+                           max_sigma_row <- rpars[which.max(rpars$sigma), , drop = FALSE]
+                           
+                           # Extract values from min_sigma_row
+                           res_min <- list(
+                             objective = min_sigma_row$sigma,
+                             solution = c(min_sigma_row$rho1, min_sigma_row$rho2, min_sigma_row$scalestdevstep),
+                             message = "GRIDSEARCH",
+                             status = "GRIDSEARCH",
+                             iterations = min_sigma_row$iterations
+                           )
+                           
+                           # Extract values from max_sigma_row
+                           res_max <- list(
+                             objective = -max_sigma_row$sigma,
+                             solution = c(max_sigma_row$rho1, max_sigma_row$rho2, max_sigma_row$scalestdevstep),
+                             message = "GRIDSEARCH",
+                             status = "GRIDSEARCH",
+                             iterations = max_sigma_row$iterations
+                           )
+                         }
                          
                          list(res_min = res_min, res_max = res_max)
+                        
                        },
                        stop("Invalid algorithm selected") # Default case if no match is found
       )
@@ -750,25 +768,21 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = rep(-1.0, nrow(Y
       res_min <- result$res_min
       res_max <- result$res_max
       
-      if (is.null(res_min) || is.null(res_max)) {
-        stop("Optimization failed for task.")
-      }
-      
       data.frame(
         d1 = d1,
         d2 = d2,
         s = s,
-        minsigma_absolute_minimum_covariance = res_min$objective,
-        minsigma_correlation_relativetaxa1_scale = res_min$solution[1],
-        minsigma_correlation_relativetaxa2_scale = res_min$solution[2],
-        minsigma_scale_sd = res_min$solution[3],
+        minsigma_absolute_minimum_covariance = ifelse(is.null(res_min$objective), NA, res_min$objective),
+        minsigma_correlation_relativetaxa1_scale = ifelse(is.null(res_min$solution[1]), NA, res_min$solution[1]),
+        minsigma_correlation_relativetaxa2_scale = ifelse(is.null(res_min$solution[2]), NA, res_min$solution[2]),
+        minsigma_scale_sd = ifelse(is.null(res_min$solution[3]), NA, res_min$solution[3]),
         minsigma_message = res_min$message,
         minsigma_status = res_min$status,
         minsigma_iterations = res_min$iterations,
-        maxsigma_absolute_maximum_covariance = -res_max$objective,
-        maxsigma_correlation_relativetaxa1_scale = res_max$solution[1],
-        maxsigma_correlation_relativetaxa2_scale = res_max$solution[2],
-        maxsigma_scale_sd = res_max$solution[3],
+        maxsigma_absolute_maximum_covariance = ifelse(is.null(res_max$objective), NA, -res_max$objective),
+        maxsigma_correlation_relativetaxa1_scale = ifelse(is.null(res_max$solution[1]), NA, res_max$solution[1]),
+        maxsigma_correlation_relativetaxa2_scale = ifelse(is.null(res_max$solution[2]), NA, res_max$solution[2]),
+        maxsigma_scale_sd = ifelse(is.null(res_max$solution[3]), NA, res_max$solution[3]),
         maxsigma_message = res_max$message,
         maxsigma_status = res_max$status,
         maxsigma_iterations = res_max$iterations,
@@ -790,6 +804,13 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = rep(-1.0, nrow(Y
     }
     
     cat("End Optimization for: ", d1, ":", d2, "\n")
+
+    numbootstrapsfailedspsd <- sum(is.na(results_inner$minsigma_absolute_minimum_covariance) | is.na(results_inner$maxsigma_absolute_maximum_covariance))
+
+    # Filter results_inner to keep rows without NA in the specified columns
+    results_inner <- results_inner %>%
+      filter(!is.na(minsigma_absolute_minimum_covariance) & !is.na(maxsigma_absolute_maximum_covariance))
+
     
     # Calculate the number of intervals where both minsigma and maxsigma do not cover zero
     non_zero_intervals <- sum((results_inner$minsigma_absolute_minimum_covariance > 0 & results_inner$maxsigma_absolute_maximum_covariance > 0) |
@@ -832,6 +853,7 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = rep(-1.0, nrow(Y
         taxa1 = rownames(Y)[d1],
         taxa2 = rownames(Y)[d2],
         proportion_intervals_dontcoverzero = proportion_intervals_dontcoverzero,
+        numbootstrapsfailedspsd,
         ninetyfive_ci_lower = cilower,
         ninetyfive_ci_upper = ciupper,
         minsigma_absolute_minimum_covariance = minsigma,
