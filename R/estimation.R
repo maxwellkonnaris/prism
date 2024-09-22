@@ -724,7 +724,7 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = rep(-1.0, nrow(Y
                              solution = c(NULL, NULL, NULL),
                              message = "GRIDSEARCH",
                              status = "GRIDSEARCH",
-                             iterations = min_sigma_row$iterations
+                             iterations = NULL
                            )
                            
                            # NULL
@@ -733,7 +733,7 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = rep(-1.0, nrow(Y
                              solution = c(NULL, NULL, NULL),
                              message = "GRIDSEARCH",
                              status = "GRIDSEARCH",
-                             iterations = max_sigma_row$iterations
+                             iterations = NULL
                            )
                          } else {
                            # Find min and max
