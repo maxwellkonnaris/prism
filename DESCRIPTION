@@ -5,6 +5,7 @@ Version: 0.1.0
 Author(s): Maxwell Konnaris and Justin Silverman
 Contributor(s): Michelle Nixon
 Maintainer: Maxwell Konnaris <Maxwellkonnaris@gmail.com>
+Manuscript: 
 Description: A package for running simulations and robust covariance analysis on count data using a bootstrap scale estimation approach to solve partially identified systems. This package integrates multiple methods, including Banocc, SparCC (through Python integration), SPIEC-EASI, CCLasso, and Proportionality, along with CLR and ILR transformations for compositional data.
 License: MIT + file LICENSE
 Imports: 
