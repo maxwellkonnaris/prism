@@ -391,8 +391,15 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = rep(-1.0,nrow(Y)
     stop("Error: pair_indices is not populated correctly. Aborting analysis.")
   }
 
-  # Assuming Y is a matrix and alpha is a scalar or vector
-  rWparaoriginal <- apply(Y, 1, function(row) MCMCpack::rdirichlet(1, row + alpha))
+  if (length(alpha) == 1) {
+    rWparaoriginal <- apply(Y, 1, function(row) MCMCpack::rdirichlet(1, row + alpha))
+  } else {
+    # If alpha is a vector, add corresponding elements of alpha to each row
+    rWparaoriginal <- apply(Y, 1, function(row, alpha) {
+      row_idx <- as.integer(row.names(as.data.frame(row)))  # Get the row index
+      MCMCpack::rdirichlet(1, row + alpha[row_idx])
+    }, alpha = alpha)
+  }
 
   # log transform relative abundances
   rWparaoriginal <- log(t(rWparaoriginal))
