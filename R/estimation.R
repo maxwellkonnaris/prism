@@ -411,7 +411,6 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = rep(-1.0,nrow(Y)
       rho_lower_bound_2 <- round(lowerrhobound[d2],2)
       rho_upper_bound_2 <- round(upperrhobound[d2],2)
       
-
       # Definine the initial parameters for the Optimization                                      
       initialparameters = c(((rho_upper_bound_1+rho_lower_bound_1)/2), ((rho_upper_bound_2+rho_lower_bound_2)/2), ((upperscalestdev+lowerscalestdev)/2))
       
