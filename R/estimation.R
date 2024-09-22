@@ -784,6 +784,10 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = rep(-1.0, nrow(Y
         scalesdupperbound = upperscalestdev
       )
     }
+
+    if (nrow(results_inner) == 0) {
+      stop("Error: No valid inner results generated")
+    }
     
     cat("End Optimization for: ", d1, ":", d2, "\n")
     
