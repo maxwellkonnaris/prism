@@ -36,7 +36,6 @@ Imports:
     viridis,
     htmlwidgets,
     alphashape3d,        
-    phyloseq,   
     gtools,
     devtools,
     BiocManager,
