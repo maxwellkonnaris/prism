@@ -389,18 +389,18 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = rep(-1.0, nrow(Y
   }
   
   if (length(alpha) == 1) {
-    # If alpha is a scalar, apply it to all rows
-    rWparaoriginal <- apply(Y, 2, function(col) MCMCpack::rdirichlet(1, col + alpha))
+    # If alpha is a scalar, apply it to all columns
+    rWparaoriginal <- apply(Y, 1, function(row) MCMCpack::rdirichlet(1, row + alpha))
   } else {
-    # If alpha is a vector, add corresponding elements of alpha to each row
-    rWparaoriginal <- apply(Y, 2, function(col) {
-      MCMCpack::rdirichlet(1, col + alpha) # Element-wise addition of alpha to each row
+    # If alpha is a vector, add corresponding elements of alpha to each column
+    rWparaoriginal <- apply(Y, 1, function(row) {
+      MCMCpack::rdirichlet(1, row + alpha) # Element-wise addition of alpha to each column
     })
   }
   
   # Log transform relative abundances
-  rWparaoriginal <- log(rWparaoriginal)
-  
+  rWparaoriginal <- log(t(rWparaoriginal))  # Transpose to maintain original structure
+    
   # Run the analysis
   cat("Running sigma estimation\n")
   results_list <- foreach(pair = pair_indices, .packages = c('stats', 'MCMCpack', 'dplyr'), .options.snow = opts) %dopar% {
