@@ -133,7 +133,7 @@
 #' @import nloptr
 #' @import filelock
 #' @export
-estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = rep(-1.0,nrow(Y)), upperrhobound = rep(1.0,nrow(Y)), S = 1000, lowerscalestdev = .490, upperscalestdev = .510, algorithm="COBYLA", outputdirectory=NULL) {
+estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = rep(-1.0,nrow(Y)), upperrhobound = rep(1.0,nrow(Y)), S = 1000, lowerscalestdev = .450, upperscalestdev = .650, algorithm="GRID_SEARCH", outputdirectory=NULL) {
 
   ## COMPUTATIONAL TIME -------------------------------------------------------------------------------------------------------------------------
   # Record the start time for profiling
@@ -347,6 +347,7 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = rep(-1.0,nrow(Y)
   }
   ## END CLUSTER RESOURCES ----------------------------------------------------------------------------------------------------------------------------------
 
+  
   ## PROGRESS BARS ------------------------------------------------------------------------------------------------------------------------------------------
   # Define global handlers for progress bars
   handlers(global = TRUE)
@@ -379,6 +380,7 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = rep(-1.0,nrow(Y)
   # Reshape bootstrap_samples into a list of vectors
   bootstrap_samples <- split(bootstrap_samples, rep(1:S, each = N))
   ## END BOOTSTRAP PRECOMPUTE ------------------------------------------------------------------------------------------------------------------------------
+
   
   ## SIGMA ESTIMATION --------------------------------------------------------------------------------------------------------------------------------------
   # Generate all pairs of indices and add diagonal pairs
@@ -435,8 +437,8 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = rep(-1.0,nrow(Y)
                 x0 = initialparameters,
                 eval_f = function(params) objective_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
                 eval_g_ineq = function(params) constraint_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-                lb = c(lowerrhobound, lowerrhobound, lowerscalestdev),
-                ub = c(upperrhobound, upperrhobound, upperscalestdev),
+                lb = c(rho_lower_bound_1, rho_lower_bound_2, lowerscalestdev),
+                ub = c(rho_upper_bound_1, rho_upper_bound_2, upperscalestdev),
                 opts = list("algorithm"="NLOPT_LN_COBYLA", "maxeval" = 1000000, "xtol_rel" = 1e-5)
               )
               
@@ -668,7 +670,7 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = rep(-1.0,nrow(Y)
             "GRID_SEARCH" = {
               
               # Define parameter steps
-              scale = (upperscalestdev - lowerscalestdev) / 5
+              scale = (upperscalestdev - lowerscalestdev) / 10
         
               rho1 <- seq(lowerrhobound[d1], upperrhobound[d1], by=0.01)
               rho2 <- seq(lowerrhobound[d2], upperrhobound[d2], by=0.01)
@@ -765,12 +767,17 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = rep(-1.0,nrow(Y)
             taxa1relativesd = taxa1relativesd,
             taxa2relativesd = taxa2relativesd,
             relativecorrelation = relativecorrelation,
-            relativecovariance = relativecovariance#,
-            #d1rhobounds = paste0(rho_lower_bound_1, ":", rho_upper_bound_1),
-            #d2rhobounds = paste0(rho_lower_bound_2, ":", rho_upper_bound_2),
-            #scalesdbounds = paste0(lowerscalestdev, ":", upperscalestdev)
+            relativecovariance = relativecovariance,
+            d1lowerrhobound = rho_lower_bound_1,
+            d1upperrhobound = rho_upper_bound_1,
+            d2lowerrhobound = rho_lower_bound_2, 
+            d2upperrhobound = rho_upper_bound_2,
+            scalesdlowerbound = lowerscalestdev,
+            scalesdupperbound = upperscalestdev
           )    
       }
+
+      cat("End Optimization for: ",d1,":",d2, "\n")
 
       # Calculate the number of intervals where both minsigma and maxsigma do not cover zero
       non_zero_intervals <- sum((results_inner$minsigma_absolute_minimum_covariance > 0 & results_inner$maxsigma_absolute_maximum_covariance > 0) |
@@ -828,13 +835,18 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = rep(-1.0,nrow(Y)
           relative_standard_dev_taxa2 = taxa2relativesd,
           relative_correlation = relativecorrelation,
           relative_covariance = relativecovariance,
-          # d1rhobounds = paste0(rho_lower_bound_1, ":", rho_upper_bound_1),
-          # d2rhobounds = paste0(rho_lower_bound_2, ":", rho_upper_bound_2),
-          # scalesdbounds = paste0(lowerscalestdev, ":", upperscalestdev),
+          d1lowerrhobound = rho_lower_bound_1,
+          d1upperrhobound = rho_upper_bound_1,
+          d2lowerrhobound = rho_lower_bound_2, 
+          d2upperrhobound = rho_upper_bound_2,
+          scalesdlowerbound = lowerscalestdev,
+          scalesdupperbound = upperscalestdev,
           stringsAsFactors = FALSE
         )
       )
   }
+
+  ## END SIGMA ESTIMATION --------------------------------------------------------------------------------------------------------------------------------------
 
   # Remove all lock files
   # Get all .txt.lock files in the working directory or a specific folder
@@ -1314,7 +1326,7 @@ estimate_covariance_convergence <- function(Y, S=c(100, 500, 1000, 2000, 5000, 1
 #' @import nloptr
 #' @import filelock
 #' @export
-estimate_covariance_MLN <- function(Y, alpha = 0.5, lowerrhobound = rep(-1.0,nrow(Y)), upperrhobound = rep(1.0,nrow(Y)), S = 1000, lowerscalestdev = .490, upperscalestdev = .510, algorithm="COBYLA", outputdirectory=NULL) {
+estimate_covariance_MLN <- function(Y, alpha = 0.5, lowerrhobound = rep(-1.0,nrow(Y)), upperrhobound = rep(1.0,nrow(Y)), S = 1000, lowerscalestdev = .450, upperscalestdev = .650, algorithm="GRID_SEARCH", outputdirectory=NULL) {
 
   ## COMPUTATIONAL TIME -------------------------------------------------------------------------------------------------------------------------
   # Record the start time for profiling
@@ -1367,6 +1379,8 @@ estimate_covariance_MLN <- function(Y, alpha = 0.5, lowerrhobound = rep(-1.0,nro
   print(paste0("lower rho bounds: ", lowerrhobound))
   print(paste0("upper rho bounds: ", upperrhobound))
   cat("Scale standard deviation bounds:\n")
+  lowerscalestdev = round(lowerscalestdev,2)
+  upperscalestdev = round(upperscalestdev,2)
   print(paste0(lowerscalestdev,":",upperscalestdev))
   cat("Dimensions of supplied matrix:\n")
   print(paste0("Number of Taxa: ", D))
@@ -1632,8 +1646,8 @@ estimate_covariance_MLN <- function(Y, alpha = 0.5, lowerrhobound = rep(-1.0,nro
                 x0 = initialparameters,
                 eval_f = function(params) objective_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
                 eval_g_ineq = function(params) constraint_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-                lb = c(lowerrhobound, lowerrhobound, lowerscalestdev),
-                ub = c(upperrhobound, upperrhobound, upperscalestdev),
+                lb = c(rho_lower_bound_1, rho_lower_bound_2, lowerscalestdev),
+                ub = c(rho_upper_bound_1, rho_upper_bound_2, upperscalestdev),
                 opts = list("algorithm"="NLOPT_LN_COBYLA", "maxeval" = 1000000, "xtol_rel" = 1e-5)
               )
               
