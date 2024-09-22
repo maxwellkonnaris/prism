@@ -183,34 +183,15 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = rep(-1.0,nrow(Y)
   cat("Alpha:\n")
   print(alpha)
   cat("Rho bounds:\n")
-  print(paste0(lowerrhobound,":",upperrhobound))
+  print(paste0("lower rho bounds: ", lowerrhobound))
+  print(paste0("upper rho bounds: ", upperrhobound))
   cat("Scale standard deviation bounds:\n")
   print(paste0(lowerscalestdev,":",upperscalestdev))
   cat("Dimensions of supplied matrix:\n")
-  print(dim(Y))
+  print(paste0("Number of Taxa: ", D))
+  print(paste0("Number of Samples: ", N))     
   cat("Bootstrap sample size (S):\n")
   print(S)
-
-  # Definine the initial parameters for the Optimization                                      
-  initialparameters = c(((upperrhobound+lowerrhobound)/2), ((upperrhobound+lowerrhobound)/2), ((upperscalestdev+lowerscalestdev)/2))
-
-  if (algorithm == "GRID_SEARCH") {
-
-    scale = (upperscalestdev - lowerscalestdev) / 5
-
-    # Define parameter steps
-    rho1 <- seq(lowerrhobound[d1], upperrhobound[d1], by=0.05)
-    rho2 <- seq(lowerrhobound[d2], upperrhobound[d2], by=0.05)
-    scalestdevstep <- seq(lowerscalestdev, upperscalestdev, by=scale)
-    iterations <- length(rho1) * length(rho2) * length(scalestdevstep)
-    
-    # Create the grid of parameters
-    pars <- expand.grid(rho1 = rho1, rho2 = rho2, scalestdevstep = scalestdevstep, iterations = iterations)
-    print(pars)
-  }
-  
-  # Initialize a results matrix to store the results for each pair
-  results <- matrix(list(), D, D)
 
   # Function to append results to a file with error handling
   append_to_pair_file <- function(results, pair_file_name, outputdirectory) {
@@ -427,6 +408,9 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = rep(-1.0,nrow(Y)
       rho_upper_bound_1 <- upperrhobound[d1]
       rho_lower_bound_2 <- lowerrhobound[d2]
       rho_upper_bound_2 <- upperrhobound[d2]
+
+      # Definine the initial parameters for the Optimization                                      
+      initialparameters = c(((rho_upper_bound_1+rho_lower_bound_1)/2), ((rho_upper_bound_2+rho_lower_bound_2)/2), ((upperscalestdev+lowerscalestdev)/2))
       
       # Use parallel foreach for the inner loop
       results_inner <- foreach(s = 1:S, .combine = 'rbind', .packages = c('stats', 'MCMCpack', 'nloptr', 'dplyr'), .options.snow = opts) %dopar% {
@@ -680,7 +664,18 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = rep(-1.0,nrow(Y)
             },
 
             "GRID_SEARCH" = {
-
+              
+              # Define parameter steps
+              scale = (upperscalestdev - lowerscalestdev) / 5
+        
+              rho1 <- seq(lowerrhobound[d1], upperrhobound[d1], by=0.05)
+              rho2 <- seq(lowerrhobound[d2], upperrhobound[d2], by=0.05)
+              scalestdevstep <- seq(lowerscalestdev, upperscalestdev, by=scale)
+              iterations <- length(rho1) * length(rho2) * length(scalestdevstep)
+              
+              # Create the grid of parameters
+              pars <- expand.grid(rho1 = rho1, rho2 = rho2, scalestdevstep = scalestdevstep, iterations = iterations)
+  
               # Calculate the constraint
               constraint_values <- vectorized_constraint_function(
                 pars$rho1, 
@@ -1367,34 +1362,15 @@ estimate_covariance_MLN <- function(Y, alpha = 0.5, lowerrhobound = rep(-1.0,nro
   cat("Alpha:\n")
   print(alpha)
   cat("Rho bounds:\n")
-  print(paste0(lowerrhobound,":",upperrhobound))
+  print(paste0("lower rho bounds: ", lowerrhobound))
+  print(paste0("upper rho bounds: ", upperrhobound))
   cat("Scale standard deviation bounds:\n")
   print(paste0(lowerscalestdev,":",upperscalestdev))
   cat("Dimensions of supplied matrix:\n")
-  print(dim(Y))
+  print(paste0("Number of Taxa: ", D))
+  print(paste0("Number of Samples: ", N))  
   cat("Bootstrap sample size (S):\n")
   print(S)
-
-  # Definine the initial parameters for the Optimization                                      
-  initialparameters = c(((upperrhobound+lowerrhobound)/2), ((upperrhobound+lowerrhobound)/2), ((upperscalestdev+lowerscalestdev)/2))
-
-  if (algorithm == "GRID_SEARCH") {
-
-    scale = (upperscalestdev - lowerscalestdev) / 5
-
-    # Define parameter steps
-    rho1 <- seq(lowerrhobound[d1], upperrhobound[d1], by=0.05)
-    rho2 <- seq(lowerrhobound[d2], upperrhobound[d2], by=0.05)
-    scalestdevstep <- seq(lowerscalestdev, upperscalestdev, by=scale)
-    iterations <- length(rho1) * length(rho2) * length(scalestdevstep)
-    
-    # Create the grid of parameters
-    pars <- expand.grid(rho1 = rho1, rho2 = rho2, scalestdevstep = scalestdevstep, iterations = iterations)
-    print(pars)
-  }
-  
-  # Initialize a results matrix to store the results for each pair
-  results <- matrix(list(), D, D)
 
   # Function to append results to a file with error handling
   append_to_pair_file <- function(results, pair_file_name, outputdirectory) {
@@ -1629,6 +1605,9 @@ estimate_covariance_MLN <- function(Y, alpha = 0.5, lowerrhobound = rep(-1.0,nro
       rho_upper_bound_1 <- upperrhobound[d1]
       rho_lower_bound_2 <- lowerrhobound[d2]
       rho_upper_bound_2 <- upperrhobound[d2]
+
+      # Definine the initial parameters for the Optimization                                      
+      initialparameters = c(((rho_upper_bound_1+rho_lower_bound_1)/2), ((rho_upper_bound_2+rho_lower_bound_2)/2), ((upperscalestdev+lowerscalestdev)/2))
       
       # Use parallel foreach for the inner loop
       results_inner <- foreach(s = 1:S, .combine = 'rbind', .packages = c('stats', 'MCMCpack', 'nloptr', 'dplyr'), .options.snow = opts) %dopar% {
@@ -1882,6 +1861,17 @@ estimate_covariance_MLN <- function(Y, alpha = 0.5, lowerrhobound = rep(-1.0,nro
             },
 
             "GRID_SEARCH" = {
+
+              # Define parameter steps
+              scale = (upperscalestdev - lowerscalestdev) / 5
+        
+              rho1 <- seq(lowerrhobound[d1], upperrhobound[d1], by=0.05)
+              rho2 <- seq(lowerrhobound[d2], upperrhobound[d2], by=0.05)
+              scalestdevstep <- seq(lowerscalestdev, upperscalestdev, by=scale)
+              iterations <- length(rho1) * length(rho2) * length(scalestdevstep)
+              
+              # Create the grid of parameters
+              pars <- expand.grid(rho1 = rho1, rho2 = rho2, scalestdevstep = scalestdevstep, iterations = iterations)
 
               # Calculate the constraint
               constraint_values <- vectorized_constraint_function(
