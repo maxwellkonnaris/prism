@@ -133,201 +133,47 @@
 #' @import nloptr
 #' @import filelock
 #' @export
-estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = rep(-1.0, nrow(Y)), upperrhobound = rep(1.0, nrow(Y)), S = 1000, lowerscalestdev = 0.450, upperscalestdev = 0.650, algorithm = "GRID_SEARCH", outputdirectory = NULL) {
+estimate_covariance <- function(Y, alpha = 0.5, externalscalemeasurements = NULL, lowerrhobound = rep(-1.0, nrow(Y)), upperrhobound = rep(1.0, nrow(Y)), S = 1000, lowerscalestdev = 0.450, upperscalestdev = 0.650, algorithm = "GRID_SEARCH", outputdirectory = NULL) {
   
   ## COMPUTATIONAL TIME -------------------------------------------------------------------------------------------------------------------------
-  # Record the start time for profiling
   start_time <- Sys.time()
-  
-  # Function to format elapsed time in a user-friendly format
-  format_elapsed_time <- function(elapsed_time) {
-    total_seconds <- as.numeric(elapsed_time, units = "secs")
-    
-    seconds <- total_seconds %% 60
-    minutes <- (total_seconds %/% 60) %% 60
-    hours <- (total_seconds %/% 3600) %% 24
-    days <- total_seconds %/% 86400
-    
-    result <- c()
-    
-    if (days > 0) {
-      result <- c(result, paste(days, "days"))
-    }
-    if (hours > 0) {
-      result <- c(result, paste(hours, "hours"))
-    }
-    if (minutes > 0) {
-      result <- c(result, paste(minutes, "minutes"))
-    }
-    if (seconds > 0 || length(result) == 0) {
-      result <- c(result, paste(round(seconds, 2), "seconds"))
-    }
-    
-    return(paste(result, collapse = ", "))
-  }
-  
   ## END COMPUTATIONAL TIME SETUP ---------------------------------------------------------------------------------------------------------------
-  
   ## SETUP --------------------------------------------------------------------------------------------------------------------------------------
   # Check if Y is a matrix, dataframe, or tibble, and has appropriate dimensions
   if (!(is.matrix(Y) || is.data.frame(Y) || inherits(Y, "tbl_df")) || nrow(Y) < 2 || ncol(Y) < 2) {
     stop("Y must be a matrix, dataframe, or tibble with at least 2 rows and 2 columns.")
   }
-  
+
   # Get the number of columns (N) and rows (D) in the input matrix Y
   N <- ncol(Y)
   D <- nrow(Y)
-  
-  # Print priors
+
   cat("Priors used for the analysis:\n")
   cat("Alpha:\n")
   print(alpha)
-  cat("Rho bounds:\n")
-  print(paste0("lower rho bounds: ", round(lowerrhobound, 2)))
-  print(paste0("upper rho bounds: ", round(upperrhobound, 2)))
-  cat("Scale standard deviation bounds:\n")
-  lowerscalestdev <- round(lowerscalestdev, 2)
-  upperscalestdev <- round(upperscalestdev, 2)
-  print(paste0(lowerscalestdev, ":", upperscalestdev))
-  cat("Dimensions of supplied matrix:\n")
+  cat("Dimensions of supplied Y matrix:\n")
   print(paste0("Number of Taxa: ", D))
   print(paste0("Number of Samples: ", N))
   cat("Bootstrap sample size (S):\n")
   print(S)
-  
-  # Function to append results to a file with error handling
-  append_to_pair_file <- function(results, pair_file_name, outputdirectory) {
-    
-    tryCatch({
-      # Output in current directory
-      if (is.null(outputdirectory)) {
-        outputdirectory <- getwd()
-      }
-      if (substr(outputdirectory, nchar(outputdirectory), nchar(outputdirectory)) != "/") {
-        outputdirectory <- paste0(outputdirectory, "/")
-      }
-      pair_file_name <- paste0(outputdirectory, pair_file_name)
-      lock_file <- paste0(pair_file_name, ".lock")
-      lock <- filelock::lock(lock_file)
-      
-      write.table(results, file = pair_file_name, append = TRUE, sep = "\t", row.names = FALSE, col.names = TRUE)
-    }, error = function(e) {
-      message("Error while writing to file: ", pair_file_name, "\n", e)
-    }, finally = {
-      # Release the lock in any case (success or error)
-      filelock::unlock(lock)
-    })
+  cat("Algorithm selected:\n")
+  print(algorithm)
+
+  if (!is.null(externalscalemeasurements) & (is.matrix(externalscalemeasurements) || ncol(Y) == nrow(externalscalemeasurements))) {
+      cat("External scale measurements were provided:\n")
+      cat("Dimensions of supplied external scale measurements matrix:\n")
+      replicates <- ncol(externalscalemeasurements)
+      sampletotals <- nrow(externalscalemeasurements)
+      print(paste0("Number of Sample-scale Measurement Pairs: ", sampletotals))
+      print(paste0("Number of Replicates: ", replicates))
+      cat("Estimating Rho bounds and scale SD from the exernal scale measurements:\n")
+  } else {
+      cat("Using default Rho bounds:\n")
+      print(paste0(lowerrhobound, ":", upperrhobound))
+      cat("Using default Scale standard deviation bounds:\n")
+      print(paste0(lowerscalestdev, ":", upperscalestdev))
   }
-  ## END SETUP -----------------------------------------------------------------------------------------------------------------------------------
-  
-  ## OPTIMIZATION FUNCTIONS ----------------------------------------------------------------------------------------------------------------------
-  # Objective function used to optimize the covariance whether minimum or maximum
-  objective_function <- function(params, taxa1relativesd, taxa2relativesd, relativecovariance) {
-    taxa1scalecorrelation <- params[1]
-    taxa2scalecorrelation <- params[2]
-    scalestdev <- params[3]
-    
-    sigma <- relativecovariance + scalestdev * taxa1relativesd * taxa1scalecorrelation + scalestdev * taxa2relativesd * taxa2scalecorrelation + scalestdev^2
-    
-    return(sigma)
-  }
-  
-  # Gradient function for covariance
-  gradient_function <- function(params, taxa1relativesd, taxa2relativesd, relativecovariance) {
-    taxa1scalecorrelation <- params[1]
-    taxa2scalecorrelation <- params[2]
-    scalestdev <- params[3]
-    
-    # Calculate partial derivatives
-    grad_rho1 <- taxa1relativesd * scalestdev
-    grad_rho2 <- taxa2relativesd * scalestdev
-    grad_x <- taxa1relativesd * taxa1scalecorrelation + taxa2relativesd * taxa2scalecorrelation + 2 * scalestdev
-    
-    # Return the gradient as a vector
-    return(c(grad_rho1, grad_rho2, grad_x))
-  }
-  
-  # Symmetric Positive Semi-Definite case constraint
-  constraint_function <- function(params, taxa1relativesd, taxa2relativesd, relativecovariance) {
-    
-    taxa1scalecorrelation <- params[1]
-    taxa2scalecorrelation <- params[2]
-    scalestdev <- params[3]
-    
-    term1 <- taxa1relativesd * taxa1scalecorrelation + taxa2relativesd * taxa2scalecorrelation
-    term2 <- sqrt(2) * sqrt(((taxa1relativesd^2 * taxa1scalecorrelation^2) + (taxa2relativesd^2 * taxa2scalecorrelation^2)))
-    
-    term3 <- (1 / (2 * scalestdev)) * ((taxa1relativesd^2 + taxa2relativesd^2)
-                                       - sqrt((taxa1relativesd^2 - taxa2relativesd^2)^2 + 4 * relativecovariance^2)
-                                       + 4 * scalestdev^2)
-    
-    g_1 <- term1 - term2 + term3
-    
-    return(g_1)
-  }
-  
-  vectorized_constraint_function <- function(rho1, rho2, scalestdevstep, taxa1relativesd, taxa2relativesd, relativecovariance) {
-    
-    # Assuming rho1, rho2, scalestdevstep are vectors
-    # Replicate taxa1relativesd and others to match the length of rho1
-    n <- length(rho1)
-    if (length(taxa1relativesd) == 1) taxa1relativesd <- rep(taxa1relativesd, n)
-    if (length(taxa2relativesd) == 1) taxa2relativesd <- rep(taxa2relativesd, n)
-    if (length(relativecovariance) == 1) relativecovariance <- rep(relativecovariance, n)
-    
-    # Perform calculations entirely with vectorized operations
-    term1 <- taxa1relativesd * rho1 + taxa2relativesd * rho2
-    term2 <- sqrt(2) * sqrt(taxa1relativesd^2 * rho1^2 + taxa2relativesd^2 * rho2^2)
-    
-    term3 <- (1 / (2 * scalestdevstep)) * ((taxa1relativesd^2 + taxa2relativesd^2) -
-                                             sqrt((taxa1relativesd^2 - taxa2relativesd^2)^2 + 4 * relativecovariance^2) + 4 * scalestdevstep^2)
-    
-    g_1 <- term1 - term2 + term3
-    
-    # Return the result as a fully vectorized output
-    return(g_1)
-  }
-  
-  constraint_gradient_function <- function(params, taxa1relativesd, taxa2relativesd, relativecovariance) {
-    taxa1scalecorrelation <- params[1]
-    taxa2scalecorrelation <- params[2]
-    scalestdev <- params[3]
-    
-    # Add a small epsilon to avoid division by zero
-    epsilon <- 1e-8
-    
-    denominator <- sqrt(taxa1relativesd^2 * taxa1scalecorrelation^2 + taxa2relativesd^2 * taxa2scalecorrelation^2 + epsilon)
-    
-    grad_taxa1scalecorrelation <- taxa1relativesd - sqrt(2) * (taxa1relativesd^2 * taxa1scalecorrelation) / denominator
-    grad_taxa2scalecorrelation <- taxa2relativesd - sqrt(2) * (taxa2relativesd^2 * taxa2scalecorrelation) / denominator
-    
-    term_to_simplify <- (taxa1relativesd^2 + taxa2relativesd^2) - sqrt((taxa1relativesd^2 - taxa2relativesd^2)^2 + 4 * relativecovariance^2)
-    grad_scalestdev <- -1 / (2 * (scalestdev + epsilon)^2) * term_to_simplify + 2 * scalestdev
-    
-    return(c(grad_taxa1scalecorrelation, grad_taxa2scalecorrelation, grad_scalestdev))
-  }
-  
-  # Wrapper function for the objective function
-  objective_function_wrapper <- function(params, taxa1relativesd, taxa2relativesd, relativecovariance) {
-    objective_function(params, taxa1relativesd, taxa2relativesd, relativecovariance)
-  }
-  
-  # Wrapper function for the constraint function
-  constraint_function_wrapper <- function(params, taxa1relativesd, taxa2relativesd, relativecovariance) {
-    constraint_function(params, taxa1relativesd, taxa2relativesd, relativecovariance)
-  }
-  
-  # Wrapper function for the gradient function
-  gradient_function_wrapper <- function(params, taxa1relativesd, taxa2relativesd, relativecovariance) {
-    gradient_function(params, taxa1relativesd, taxa2relativesd, relativecovariance)
-  }
-  
-  # Wrapper function for the constraint gradient function
-  constraint_gradient_function_wrapper <- function(params, taxa1relativesd, taxa2relativesd, relativecovariance) {
-    constraint_gradient_function(params, taxa1relativesd, taxa2relativesd, relativecovariance)
-  }
-  ## END OPTIMIZATION FUNCTIONS -----------------------------------------------------------------------------------------------------------------------------
-  
+  ## END SETUP ----------------------------------------------------------------------------------------------------------------------------------------------
   ## CLUSTER RESOURCES --------------------------------------------------------------------------------------------------------------------------------------
   # Register the parallel backend
   num_cores <- parallel::detectCores() - 1
