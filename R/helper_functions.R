@@ -98,7 +98,6 @@ calculate_pval <- function(results) {
 #' @examples
 #' data <- c(1, 2, 2, 3, 4, 6, 7, 8, 9, NA)
 #' skewness(data, na.rm = TRUE)
-#' @export
 skewness <- function(x, na.rm = FALSE) {
   if (na.rm) {
     x <- x[!is.na(x)]
@@ -126,7 +125,6 @@ skewness <- function(x, na.rm = FALSE) {
 #' @examples
 #' data <- c(1, 2, 2, 3, 4, 6, 7, 8, 9, NA)
 #' kurtosis(data, na.rm = TRUE)
-#' @export
 kurtosis <- function(x, na.rm = FALSE) {
   if (na.rm) {
     x <- x[!is.na(x)]
