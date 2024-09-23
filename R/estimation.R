@@ -399,7 +399,7 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = rep(-1.0, nrow(Y
   }
   
   # Log transform relative abundances
-  rWparaoriginal <- log(t(rWparaoriginal))  # Transpose to maintain original structure
+  rWparaoriginal <- log(rWparaoriginal)
     
   # Run the analysis
   cat("Running sigma estimation\n")
