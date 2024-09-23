@@ -195,6 +195,13 @@ estimate_covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "Multi
   ## END CLUSTER RESOURCES ----------------------------------------------------------------------------------------------------------------------------------
   ## PROGRESS BARS ------------------------------------------------------------------------------------------------------------------------------------------
   progressr::handlers(global = TRUE)
+
+  pb <- progress::progress_bar$new(total = D, format = "Generating Rho and SD [:bar] :percent in :elapsed | eta: :eta", clear = FALSE, width = 100)
+  progress <- function(n) {
+    pb$tick()
+  }
+  opts <- list(progress = progress)
+  
   total_pairs <- D * (D - 1) / 2
   pb <- progress::progress_bar$new(total = total_pairs, format = "Generating Sigmas [:bar] :percent in :elapsed | eta: :eta", clear = FALSE, width = 100)
   progress <- function(n) {
@@ -248,16 +255,17 @@ estimate_covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "Multi
     posterior <- refit(priors, optim_method="lbfgs")
     rWparaoriginal <- to_proportions(posterior)$Eta
   }
-
   # Log transform relative abundances
   rWparaoriginal <- log(rWparaoriginal)
-  ## ACCOUNTING FOR UNCERTAINTY IN OBSERVED RELATIVE ABUNDANCES -------------------------------------------------------------------------------
+  ## END ACCOUNTING FOR UNCERTAINTY IN OBSERVED RELATIVE ABUNDANCES ---------------------------------------------------------------------------
 
   ## ESTIMATING COVARIANCE --------------------------------------------------------------------------------------------------------------------
   cat("Running sigma estimation\n")
 
   # Use sequential foreach for the inner loop
   results_inner <- foreach(s = 1:S, .combine = 'rbind', .packages = c('stats', 'MCMCpack', 'dplyr')) %dopar% {
+
+  }
   
   # Outer loop is not parallelized
   results_list <- foreach(pair = pair_indices, .packages = c('stats', 'MCMCpack', 'dplyr'), .options.snow = opts) %do% {
