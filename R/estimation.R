@@ -196,37 +196,32 @@ estimate_covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "Multi
   ## PROGRESS BARS ------------------------------------------------------------------------------------------------------------------------------------------
   progressr::handlers(global = TRUE)
 
-  pb <- progress::progress_bar$new(total = D, format = "Generating Rho and SD [:bar] :percent in :elapsed | eta: :eta", clear = FALSE, width = 100)
-  progress <- function(n) {
-    pb$tick()
-  }
-  opts <- list(progress = progress)
-  
+  # Define total comparisons
   total_pairs <- D * (D - 1) / 2
+
+  # Create progress bars
   pb <- progress::progress_bar$new(total = total_pairs, format = "Generating Sigmas [:bar] :percent in :elapsed | eta: :eta", clear = FALSE, width = 100)
+  pb_rhosd <- progress::progress_bar$new(total = D*S, format = "Generating Rho and SD [:bar] :percent in :elapsed | eta: :eta", clear = FALSE, width = 100)
+  
+  # Function to update progress bar
   progress <- function(n) {
     pb$tick()
   }
-  opts <- list(progress = progress)
-  ## END PROGRESS BARS -------------------------------------------------------------------------------------------------------------------------------------
-  ## SIGMA ESTIMATION --------------------------------------------------------------------------------------------------------------------------------------
-  # Generate all pairs of indices
-  pair_indices <- combn(D, 2, simplify = FALSE)
-  
-  # Check if pair_indices is populated correctly
-  if (length(pair_indices) == 0) {
-    stop("Error: pair_indices is not populated correctly. Aborting analysis.")
+  progress_precomp <- function(n) {
+    pb_rhosd$tick()
   }
-
-  ## ACCOUNTING FOR UNCERTAINTY IN FINITE SAMPLING --------------------------------------------------------------------------------------------
+  # Options for foreach to include progress updates
+  opts <- list(progress = progress)
+  opts_rhosd <- list(progress = progress_rhosd)
+  ## END PROGRESS BARS -------------------------------------------------------------------------------------------------------------------------------------
+  ## ACCOUNTING FOR UNCERTAINTY IN FINITE SAMPLING ---------------------------------------------------------------------------------------------------------
   ## calculate bootstrap resampling -- accounting for finite sampling
   boostrap_samples <- matrix(NA, N, S)
   for (s in 1:S) {
     boostrap_samples[,s] <- sample(1:N, replace=TRUE)
   }
-  ## END ACCOUNTING FOR UNCERTAINTY IN FINITE SAMPLING ----------------------------------------------------------------------------------------
-  
-  ## ACCOUNTING FOR UNCERTAINTY IN OBSERVED RELATIVE ABUNDANCES -------------------------------------------------------------------------------
+  ## END ACCOUNTING FOR UNCERTAINTY IN FINITE SAMPLING -----------------------------------------------------------------------------------------------------
+  ## ACCOUNTING FOR UNCERTAINTY IN OBSERVED RELATIVE ABUNDANCES --------------------------------------------------------------------------------------------
   # Dimensions: (n_taxa, n_samples, n_iter) -- populate matrix of NAs
   rWparaoriginal <- array(NA, dim = c(D, N, S))
   
@@ -258,15 +253,63 @@ estimate_covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "Multi
   # Log transform relative abundances
   rWparaoriginal <- log(rWparaoriginal)
   ## END ACCOUNTING FOR UNCERTAINTY IN OBSERVED RELATIVE ABUNDANCES ---------------------------------------------------------------------------
+  ## ESTIMATING RHO AND SD --------------------------------------------------------------------------------------------------------------------
+  rhoandsd_list <- foreach(s = 1:S, .packages = c('stats')) %dopar% {
+      n <- length(externalscalemeasurements)
+      sample_indices <- boostrap_samples[, s]
+      S2 <- var(log(externalscalemeasurements[sample_indices]))
+      chi2_lower <- qchisq(alpha / 2, df = n - 1)
+      chi2_upper <- qchisq(1 - alpha / 2, df = n - 1)
+      var_lower <- (n - 1) * S2 / chi2_upper
+      var_upper <- (n - 1) * S2 / chi2_lower
+      scalestdev_s <- c(sqrt(var_lower), sqrt(var_upper))
+    
+      # Initialize matrix for rhobounds for each taxa
+      rhobounds_s <- matrix(NA, nrow = D, ncol = 2)  # [D x 2]
+      z_critical <- qnorm(1 - alpha / 2)
+      
+      for (taxa in 1:D) {
+          # Compute correlation
+          r <- cor(rWparaoriginal[taxa, sample_indices, s], log(externalscalemeasurements[sample_indices]))
+          # Fisher Z-transformation
+          z <- 0.5 * log((1 + r) / (1 - r))
+          # Standard error of z
+          se_z <- 1 / sqrt(n - 3)
+          
+          # Confidence intervals in Fisher Z-space
+          z_lower <- z - z_critical * se_z
+          z_upper <- z + z_critical * se_z
+          
+          # Inverse Fisher Z-transformation to get rho bounds
+          rho_lower <- (exp(2 * z_lower) - 1) / (exp(2 * z_lower) + 1)
+          rho_upper <- (exp(2 * z_upper) - 1) / (exp(2 * z_upper) + 1)
+          
+          rhobounds_s[taxa, 1] <- rho_lower
+          rhobounds_s[taxa, 2] <- rho_upper
+      }
+      
+      list(scalestdev_s = scalestdev_s, rhobounds_s = rhobounds_s)
+  }
+  # scalestdev_matrix --------------------------------------------------- [S x 2] 
+  scalestdev <- do.call(rbind, lapply(rhoandsd_list, function(x) x$scalestdev_s))
+  
+  # rhobounds ---------------------------------------------------------------------- [D x 2 x S]
+  rhobounds <- array(unlist(lapply(rhoandsd_list, function(x) x$rhobounds_s)), dim = c(D, 2, S))
 
+  # remove any unneeded space
+  rm(rhoandsd_list)
+  ## END ESTIMATING RHO AND SD ----------------------------------------------------------------------------------------------------------------
   ## ESTIMATING COVARIANCE --------------------------------------------------------------------------------------------------------------------
   cat("Running sigma estimation\n")
 
-  # Use sequential foreach for the inner loop
-  results_inner <- foreach(s = 1:S, .combine = 'rbind', .packages = c('stats', 'MCMCpack', 'dplyr')) %dopar% {
-
-  }
+  # Generate all pairs of indices
+  pair_indices <- combn(D, 2, simplify = FALSE)
   
+  # Check if pair_indices is populated correctly
+  if (length(pair_indices) == 0) {
+    stop("Error: pair_indices is not populated correctly. Aborting analysis.")
+  }
+
   # Outer loop is not parallelized
   results_list <- foreach(pair = pair_indices, .packages = c('stats', 'MCMCpack', 'dplyr'), .options.snow = opts) %do% {
       
@@ -279,15 +322,12 @@ estimate_covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "Multi
       # Use sequential foreach for the inner loop
       results_inner <- foreach(s = 1:S, .combine = 'rbind', .packages = c('stats', 'MCMCpack', 'nloptr', 'dplyr')) %dopar% {
         
-        rWpara <- rWparaoriginal[c(d1, d2), S]
-        
+        rWpara <- rWparaoriginal[c(d1, d2), s]
         taxa1relativesd <- sd(rWpara[1, ])
         taxa2relativesd <- sd(rWpara[2, ])
         relativecorrelation <- cor(rWpara[1, ], rWpara[2, ])
         relativecovariance <- cov(rWpara[1, ], rWpara[2, ])
-  
-        # Define the initial parameters for the optimization
-        initialparameters <- c(((rho_upper_bound_1 + rho_lower_bound_1) / 2), ((rho_upper_bound_2 + rho_lower_bound_2) / 2), ((upperscalestdev + lowerscalestdev) / 2))
+        initialparameters <- c(((upperrhobound[d1,s]+lowerrhobound[d1,s]) / 2), ((upperrhobound[d2,s]+lowerrhobound[d2,s]) / 2), ((upperscalestdev[s] + lowerscalestdev[s]) / 2))
         
         res_min <- NULL
         res_max <- NULL
