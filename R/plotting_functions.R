@@ -1144,7 +1144,7 @@ proportiondontcoverzerobars <- function(data, comparison_col = "comparison", pro
     # Add horizontal dashed lines at specified y-values
     geom_hline(yintercept = c(0.10, 0.25, 0.5, 0.75, 0.9, 0.95), linetype = "dashed", color = "grey50") +
     # Set y-axis limits
-    scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, by = 0.10), expand = c(0, 0)) +
+    scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, by = 0.05), expand = c(0, 0)) +
     
     # Add text labels for values < 0.05 using geom_text
     geom_text(data = subset(data, data[[proportion_col]] == 0), 
