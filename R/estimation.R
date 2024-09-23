@@ -810,11 +810,12 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = rep(-1.0, nrow(Y
     results_inner <- results_inner %>%
       filter(!is.na(minsigma_absolute_minimum_covariance) & !is.na(maxsigma_absolute_maximum_covariance))
 
-    
     # Calculate the number of intervals where both minsigma and maxsigma do not cover zero
-    non_zero_intervals <- sum((results_inner$minsigma_absolute_minimum_covariance > 0 & results_inner$maxsigma_absolute_maximum_covariance > 0) |
-                                (results_inner$minsigma_absolute_minimum_covariance < 0 & results_inner$maxsigma_absolute_maximum_covariance < 0))
-    proportion_intervals_dontcoverzero <- non_zero_intervals / nrow(results_inner)
+    positive_non_zero_intervals <- sum((results_inner$minsigma_absolute_minimum_covariance > 0 & results_inner$maxsigma_absolute_maximum_covariance > 0))
+    negative_non_zero_intervals <- sum((results_inner$minsigma_absolute_minimum_covariance < 0 & results_inner$maxsigma_absolute_maximum_covariance < 0))
+    proportion_positiveintervals_dontcoverzero <- positive_non_zero_intervals / nrow(results_inner)
+    proportion_negativeintervals_dontcoverzero <- negative_non_zero_intervals / nrow(results_inner)
+    proportion_intervals_dontcoverzero <- (positive_non_zero_intervals + negative_non_zero_intervals) / nrow(results_inner)
     
     # Gather the min and max optimized sigmas
     minsigma_values <- results_inner$minsigma_absolute_minimum_covariance
@@ -852,7 +853,9 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = rep(-1.0, nrow(Y
         taxa1 = rownames(Y)[d1],
         taxa2 = rownames(Y)[d2],
         proportion_intervals_dontcoverzero = proportion_intervals_dontcoverzero,
-        numbootstrapsfailedspsd,
+        proportion_positiveintervals_dontcoverzero = proportion_positiveintervals_dontcoverzero,
+        proportion_negativeintervals_dontcoverzero = proportion_negativeintervals_dontcoverzero,
+        numbootstrapsfailedspsd = numbootstrapsfailedspsd,
         ninetyfive_ci_lower = cilower,
         ninetyfive_ci_upper = ciupper,
         minsigma_absolute_minimum_covariance = minsigma,
