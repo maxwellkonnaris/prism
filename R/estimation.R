@@ -519,7 +519,9 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = rep(-1.0, nrow(Y
                           ub = c(rho_upper_bound_1, rho_upper_bound_2, upperscalestdev),
                           opts = opts
                         )
-                    
+                        list(res_min = res_min, res_max = res_max)
+                      },
+                       
                       "AUGLAG_COBYLA" = {
                         # Find the minimum sigma using AUGLAG with COBYLA as the inner algorithm
                         res_min <- nloptr(
