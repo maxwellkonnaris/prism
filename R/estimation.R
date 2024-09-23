@@ -387,15 +387,13 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = rep(-1.0, nrow(Y
   if (length(pair_indices) == 0) {
     stop("Error: pair_indices is not populated correctly. Aborting analysis.")
   }
+    
+  # Dimensions: (n_taxa, n_samples, n_iter)
+  rWparaoriginal <- array(NA, dim = c(nrow(Y), ncol(Y), n_iter))
   
-  if (length(alpha) == 1) {
-    # If alpha is a scalar, apply it to all columns
-    rWparaoriginal <- apply(Y, 1, function(row) MCMCpack::rdirichlet(1, row + alpha))
-  } else {
-    # If alpha is a vector, add corresponding elements of alpha to each column
-    rWparaoriginal <- apply(Y, 1, function(row) {
-      MCMCpack::rdirichlet(1, row + alpha) # Element-wise addition of alpha to each column
-    })
+  # Generate N Dirichlet samples for each sample (column)
+  for (n in 1:ncol(counts_matrix)) {
+      rWparaoriginal[,n,] <- t(rdirichlet(n_iter, Y[,n] + alpha))
   }
   
   # Log transform relative abundances
