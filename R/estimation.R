@@ -469,7 +469,7 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = rep(-1.0, nrow(Y
                           eval_jac_g_ineq = function(params) constraint_gradient_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
                           lb = c(rho_lower_bound_1, rho_lower_bound_2, lowerscalestdev),
                           ub = c(rho_upper_bound_1, rho_upper_bound_2, upperscalestdev),
-                          opts = list("algorithm"="NLOPT_LD_MMA", "maxeval" = 1000000, "ftol_rel" = 1e-5)
+                          opts = list("algorithm"="NLOPT_LD_MMA", "maxeval" = 10000, "ftol_rel" = 1e-4)
                         )
                         
                         # Find the maximum sigma by negating the objective function using MMA
@@ -481,11 +481,44 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = rep(-1.0, nrow(Y
                           eval_jac_g_ineq = function(params) constraint_gradient_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
                           lb = c(rho_lower_bound_1, rho_lower_bound_2, lowerscalestdev),
                           ub = c(rho_upper_bound_1, rho_upper_bound_2, upperscalestdev),
-                          opts = list("algorithm"="NLOPT_LD_MMA", "maxeval" = 1000000, "ftol_rel" = 1e-5)
+                          opts = list("algorithm"="NLOPT_LD_MMA", "maxeval" = 10000, "ftol_rel" = 1e-4)
                         )
                         
                         list(res_min = res_min, res_max = res_max)
                       },
+
+                      "SLSQP" = {
+                        # Set optimization options
+                        opts <- list(
+                          "algorithm" = "NLOPT_LD_SLSQP",
+                          "xtol_rel" = 1e-4,
+                          "ftol_rel" = 1e-4,
+                          "maxeval" = 10000
+                        )
+                        
+                        # Perform the optimization to find the minimum sigma
+                        res_min <- nloptr(
+                          x0 = initialparameters,
+                          eval_f = function(params) objective_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
+                          eval_grad_f = function(params) gradient_function_wrapper(params, taxa1relativesd, taxa2relativesd),
+                          eval_g_ineq = function(params) constraint_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
+                          eval_jac_g_ineq = function(params) constraint_gradient_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
+                          lb = c(rho_lower_bound_1, rho_lower_bound_2, lowerscalestdev),
+                          ub = c(rho_upper_bound_1, rho_upper_bound_2, upperscalestdev),
+                          opts = opts
+                        )
+                        
+                        # Perform the optimization to find the maximum sigma (negate the objective function)
+                        res_max <- nloptr(
+                          x0 = initialparameters,
+                          eval_f = function(params) -objective_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
+                          eval_grad_f = function(params) -gradient_function_wrapper(params, taxa1relativesd, taxa2relativesd),
+                          eval_g_ineq = function(params) constraint_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
+                          eval_jac_g_ineq = function(params) constraint_gradient_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
+                          lb = c(rho_lower_bound_1, rho_lower_bound_2, lowerscalestdev),
+                          ub = c(rho_upper_bound_1, rho_upper_bound_2, upperscalestdev),
+                          opts = opts
+                        )
                     
                       "AUGLAG_COBYLA" = {
                         # Find the minimum sigma using AUGLAG with COBYLA as the inner algorithm
@@ -501,11 +534,11 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = rep(-1.0, nrow(Y
                             "algorithm" = "NLOPT_LD_AUGLAG",
                             "local_opts" = list(
                               "algorithm" = "NLOPT_LN_COBYLA",
-                              "xtol_rel" = 1e-5,
-                              "maxeval" = 1000000
+                              "xtol_rel" = 1e-4,
+                              "maxeval" = 10000
                             ),
-                            "maxeval" = 1000000,
-                            "ftol_rel" = 1e-5
+                            "maxeval" = 10000,
+                            "ftol_rel" = 1e-4
                           )
                         )
                         
@@ -522,11 +555,11 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = rep(-1.0, nrow(Y
                             "algorithm" = "NLOPT_LD_AUGLAG",
                             "local_opts" = list(
                               "algorithm" = "NLOPT_LN_COBYLA",
-                              "xtol_rel" = 1e-5,
-                              "maxeval" = 1000000
+                              "xtol_rel" = 1e-4,
+                              "maxeval" = 10000
                             ),
-                            "maxeval" = 1000000,
-                            "ftol_rel" = 1e-5
+                            "maxeval" = 10000,
+                            "ftol_rel" = 1e-4
                           )
                         )
                         
@@ -547,11 +580,11 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = rep(-1.0, nrow(Y
                             "algorithm" = "NLOPT_LD_AUGLAG",
                             "local_opts" = list(
                               "algorithm" = "NLOPT_LD_MMA",
-                              "xtol_rel" = 1e-5,
-                              "maxeval" = 1000000
+                              "xtol_rel" = 1e-4,
+                              "maxeval" = 10000
                             ),
-                            "maxeval" = 1000000,
-                            "ftol_rel" = 1e-5
+                            "maxeval" = 10000,
+                            "ftol_rel" = 1e-4
                           )
                         )
                         
@@ -568,11 +601,11 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = rep(-1.0, nrow(Y
                             "algorithm" = "NLOPT_LD_AUGLAG",
                             "local_opts" = list(
                               "algorithm" = "NLOPT_LD_MMA",
-                              "xtol_rel" = 1e-5,
-                              "maxeval" = 1000000
+                              "xtol_rel" = 1e-4,
+                              "maxeval" = 10000
                             ),
-                            "maxeval" = 1000000,
-                            "ftol_rel" = 1e-5
+                            "maxeval" = 10000,
+                            "ftol_rel" = 1e-4
                           )
                         )
                         
@@ -593,11 +626,11 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = rep(-1.0, nrow(Y
                             "algorithm" = "NLOPT_LD_AUGLAG",
                             "local_opts" = list(
                               "algorithm" = "NLOPT_LD_SLSQP",
-                              "xtol_rel" = 1e-5,
-                              "maxeval" = 1000000
+                              "xtol_rel" = 1e-4,
+                              "maxeval" = 10000
                             ),
-                            "maxeval" = 1000000,
-                            "ftol_rel" = 1e-5
+                            "maxeval" = 10000,
+                            "ftol_rel" = 1e-4
                           )
                         )
                         
@@ -614,11 +647,11 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = rep(-1.0, nrow(Y
                             "algorithm" = "NLOPT_LD_AUGLAG",
                             "local_opts" = list(
                               "algorithm" = "NLOPT_LD_SLSQP",
-                              "xtol_rel" = 1e-5,
-                              "maxeval" = 1000000
+                              "xtol_rel" = 1e-4,
+                              "maxeval" = 10000
                             ),
-                            "maxeval" = 1000000,
-                            "ftol_rel" = 1e-5
+                            "maxeval" = 10000,
+                            "ftol_rel" = 1e-4
                           )
                         )
                         
@@ -639,11 +672,11 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = rep(-1.0, nrow(Y
                             "algorithm" = "NLOPT_LD_AUGLAG",
                             "local_opts" = list(
                               "algorithm" = "NLOPT_LD_LBFGS",
-                              "xtol_rel" = 1e-5,
-                              "maxeval" = 1000000
+                              "xtol_rel" = 1e-4,
+                              "maxeval" = 10000
                             ),
-                            "maxeval" = 1000000,
-                            "ftol_rel" = 1e-5
+                            "maxeval" = 10000,
+                            "ftol_rel" = 1e-4
                           )
                         )
                         
@@ -660,11 +693,11 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = rep(-1.0, nrow(Y
                             "algorithm" = "NLOPT_LD_AUGLAG",
                             "local_opts" = list(
                               "algorithm" = "NLOPT_LD_LBFGS",
-                              "xtol_rel" = 1e-5,
-                              "maxeval" = 1000000
+                              "xtol_rel" = 1e-4,
+                              "maxeval" = 10000
                             ),
-                            "maxeval" = 1000000,
-                            "ftol_rel" = 1e-5
+                            "maxeval" = 10000,
+                            "ftol_rel" = 1e-4
                           )
                         )
                         
