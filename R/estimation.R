@@ -390,9 +390,11 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = rep(-1.0, nrow(Y
     
   # Dimensions: (n_taxa, n_samples, n_iter)
   rWparaoriginal <- array(NA, dim = c(nrow(Y), ncol(Y), n_iter))
+
+  n_iter = 1
   
-  # Generate N Dirichlet samples for each sample (column)
-  for (n in 1:ncol(counts_matrix)) {
+  # Generate n_iter Dirichlet samples for each sample (column)
+  for (n in 1:ncol(Y)) {
       rWparaoriginal[,n,] <- t(rdirichlet(n_iter, Y[,n] + alpha))
   }
   
