@@ -11,7 +11,6 @@
 #' mu <- c(0, 0)
 #' Sigma <- matrix(c(1, 0.5, 0.5, 1), 2, 2)
 #' samples <- rmvnorm(100, mu, Sigma)
-#' @export
 rmvnorm <- function(n, mu, Sigma) {
   p <- length(mu)
   r <- matrix(rnorm(n * p), p, n)
@@ -32,7 +31,6 @@ rmvnorm <- function(n, mu, Sigma) {
 #' # Example usage:
 #' within(5, 1, 10) # Returns TRUE
 #' within(0, 1, 10) # Returns FALSE
-#' @export
 within <- function(x, l, u) {
   x >= l && x <= u
 }
@@ -48,7 +46,6 @@ within <- function(x, l, u) {
 #' # Example usage:
 #' # Assuming `results` is the output dataframe from the `estimate_covariance` function
 #' adjusted_results <- calculate_pval(results)
-#' @export
 calculate_pval <- function(results) {
   # Check if the necessary columns are present in the results dataframe
   required_columns <- c("ninetyfive_ci_lower", "ninetyfive_ci_upper", "comparison")
@@ -181,7 +178,6 @@ kurtosis <- function(x, na.rm = FALSE) {
 #' # Calculate summary statistics excluding columns 'd1' and 'd2'
 #' summary_stats <- calculate_summary_stats(results$all_inner_results, group_col = "comparison", exclude_cols = c("d1", "d2"), save_as_csv = TRUE, csv_path = "bootstrap_summary_stats.csv")
 #' print(summary_stats)
-#'
 calculate_bootstrap_summary <- function(data, group_col = "comparison", exclude_cols = c("d1", "d2", "s"), save_as_csv = FALSE, csv_path = "bootstrap_summary.csv") {
   
   # Ensure the group column and exclude columns are character vectors
@@ -287,4 +283,190 @@ calculate_proportionality <- function(data) {
   
   return(rho_values)
 }
+#' Format elapsed time in a user-friendly format
+#'
+#' This function takes an elapsed time and formats it in a user-friendly string 
+#' with days, hours, minutes, and seconds.
+#'
+#' @param elapsed_time A difftime object representing the elapsed time.
+#' @return A string representing the formatted elapsed time.
+format_elapsed_time <- function(elapsed_time) {
+  total_seconds <- as.numeric(elapsed_time, units = "secs")
+  
+  seconds <- total_seconds %% 60
+  minutes <- (total_seconds %/% 60) %% 60
+  hours <- (total_seconds %/% 3600) %% 24
+  days <- total_seconds %/% 86400
+  
+  result <- c()
+  
+  if (days > 0) {
+    result <- c(result, paste(days, "days"))
+  }
+  if (hours > 0) {
+    result <- c(result, paste(hours, "hours"))
+  }
+  if (minutes > 0) {
+    result <- c(result, paste(minutes, "minutes"))
+  }
+  if (seconds > 0 || length(result) == 0) {
+    result <- c(result, paste(round(seconds, 2), "seconds"))
+  }
+  
+  return(paste(result, collapse = ", "))
+}
 
+#' Append results to a file with error handling
+#'
+#' This function appends results to a specified file, creating a lock file to 
+#' avoid concurrency issues.
+#'
+#' @param results A data frame or matrix to be written to the file.
+#' @param pair_file_name The name of the file where the results will be appended.
+#' @param outputdirectory The directory where the file will be stored. If NULL, 
+#' the current working directory is used.
+#' @return NULL
+append_to_pair_file <- function(results, pair_file_name, outputdirectory) {
+  
+  tryCatch({
+    if (is.null(outputdirectory)) {
+      outputdirectory <- getwd()
+    }
+    if (substr(outputdirectory, nchar(outputdirectory), nchar(outputdirectory)) != "/") {
+      outputdirectory <- paste0(outputdirectory, "/")
+    }
+    pair_file_name <- paste0(outputdirectory, pair_file_name)
+    lock_file <- paste0(pair_file_name, ".lock")
+    lock <- filelock::lock(lock_file)
+    
+    write.table(results, file = pair_file_name, append = TRUE, sep = "\t", row.names = FALSE, col.names = TRUE)
+  }, error = function(e) {
+    message("Error while writing to file: ", pair_file_name, "\n", e)
+  }, finally = {
+    filelock::unlock(lock)
+  })
+}
+
+#' Objective function for optimizing covariance
+#'
+#' This function computes the covariance based on relative standard deviations 
+#' and correlation parameters.
+#'
+#' @param params A numeric vector with correlation and standard deviation parameters.
+#' @param taxa1relativesd Relative standard deviation for Taxa 1.
+#' @param taxa2relativesd Relative standard deviation for Taxa 2.
+#' @param relativecovariance The relative covariance.
+#' @return A numeric value representing the covariance.
+objective_function <- function(params, taxa1relativesd, taxa2relativesd, relativecovariance) {
+  taxa1scalecorrelation <- params[1]
+  taxa2scalecorrelation <- params[2]
+  scalestdev <- params[3]
+  
+  sigma <- relativecovariance + scalestdev * taxa1relativesd * taxa1scalecorrelation + scalestdev * taxa2relativesd * taxa2scalecorrelation + scalestdev^2
+  
+  return(sigma)
+}
+
+#' Gradient function for covariance optimization
+#'
+#' This function calculates the gradient of the covariance function with respect 
+#' to the correlation and standard deviation parameters.
+#'
+#' @param params A numeric vector with correlation and standard deviation parameters.
+#' @param taxa1relativesd Relative standard deviation for Taxa 1.
+#' @param taxa2relativesd Relative standard deviation for Taxa 2.
+#' @param relativecovariance The relative covariance.
+#' @return A numeric vector representing the gradient.
+gradient_function <- function(params, taxa1relativesd, taxa2relativesd, relativecovariance) {
+  taxa1scalecorrelation <- params[1]
+  taxa2scalecorrelation <- params[2]
+  scalestdev <- params[3]
+  
+  grad_rho1 <- taxa1relativesd * scalestdev
+  grad_rho2 <- taxa2relativesd * scalestdev
+  grad_x <- taxa1relativesd * taxa1scalecorrelation + taxa2relativesd * taxa2scalecorrelation + 2 * scalestdev
+  
+  return(c(grad_rho1, grad_rho2, grad_x))
+}
+
+#' Constraint function for Symmetric Positive Semi-Definite case
+#'
+#' This function checks whether the covariance matrix is Symmetric Positive 
+#' Semi-Definite (SPSD) based on given parameters.
+#'
+#' @param params A numeric vector with correlation and standard deviation parameters.
+#' @param taxa1relativesd Relative standard deviation for Taxa 1.
+#' @param taxa2relativesd Relative standard deviation for Taxa 2.
+#' @param relativecovariance The relative covariance.
+#' @return A numeric value representing the constraint evaluation.
+constraint_function <- function(params, taxa1relativesd, taxa2relativesd, relativecovariance) {
+  
+  taxa1scalecorrelation <- params[1]
+  taxa2scalecorrelation <- params[2]
+  scalestdev <- params[3]
+  
+  term1 <- taxa1relativesd * taxa1scalecorrelation + taxa2relativesd * taxa2scalecorrelation
+  term2 <- sqrt(2) * sqrt((taxa1relativesd^2 * taxa1scalecorrelation^2) + (taxa2relativesd^2 * taxa2scalecorrelation^2))
+  
+  term3 <- (1 / (2 * scalestdev)) * ((taxa1relativesd^2 + taxa2relativesd^2) -
+                                       sqrt((taxa1relativesd^2 - taxa2relativesd^2)^2 + 4 * relativecovariance^2) + 4 * scalestdev^2)
+  
+  g_1 <- term1 - term2 + term3
+  
+  return(g_1)
+}
+
+#' Vectorized constraint function for covariance optimization
+#'
+#' This function computes the constraint for the SPSD condition in a vectorized 
+#' manner, enabling efficient computation over multiple parameter sets.
+#'
+#' @param rho1 A numeric vector for correlation values for Taxa 1.
+#' @param rho2 A numeric vector for correlation values for Taxa 2.
+#' @param scalestdevstep A numeric vector for standard deviation steps.
+#' @param taxa1relativesd Relative standard deviation for Taxa 1.
+#' @param taxa2relativesd Relative standard deviation for Taxa 2.
+#' @param relativecovariance The relative covariance.
+#' @return A numeric vector representing the constraint evaluation for each set of parameters.
+vectorized_constraint_function <- function(rho1, rho2, scalestdevstep, taxa1relativesd, taxa2relativesd, relativecovariance) {
+  n <- length(rho1)
+  if (length(taxa1relativesd) == 1) taxa1relativesd <- rep(taxa1relativesd, n)
+  if (length(taxa2relativesd) == 1) taxa2relativesd <- rep(taxa2relativesd, n)
+  if (length(relativecovariance) == 1) relativecovariance <- rep(relativecovariance, n)
+  
+  term1 <- taxa1relativesd * rho1 + taxa2relativesd * rho2
+  term2 <- sqrt(2) * sqrt(taxa1relativesd^2 * rho1^2 + taxa2relativesd^2 * rho2^2)
+  term3 <- (1 / (2 * scalestdevstep)) * ((taxa1relativesd^2 + taxa2relativesd^2) -
+                                           sqrt((taxa1relativesd^2 - taxa2relativesd^2)^2 + 4 * relativecovariance^2) + 4 * scalestdevstep^2)
+  
+  g_1 <- term1 - term2 + term3
+  
+  return(g_1)
+}
+
+#' Gradient of the constraint function for covariance optimization
+#'
+#' This function calculates the gradient of the constraint function for SPSD 
+#' covariance matrices with respect to the correlation and standard deviation parameters.
+#'
+#' @param params A numeric vector with correlation and standard deviation parameters.
+#' @param taxa1relativesd Relative standard deviation for Taxa 1.
+#' @param taxa2relativesd Relative standard deviation for Taxa 2.
+#' @param relativecovariance The relative covariance.
+#' @return A numeric vector representing the gradient of the constraint function.
+constraint_gradient_function <- function(params, taxa1relativesd, taxa2relativesd, relativecovariance) {
+  taxa1scalecorrelation <- params[1]
+  taxa2scalecorrelation <- params[2]
+  scalestdev <- params[3]
+  
+  epsilon <- 1e-8
+  denominator <- sqrt(taxa1relativesd^2 * taxa1scalecorrelation^2 + taxa2relativesd^2 * taxa2scalecorrelation^2 + epsilon)
+  
+  grad_taxa1scalecorrelation <- taxa1relativesd - sqrt(2) * (taxa1relativesd^2 * taxa1scalecorrelation) / denominator
+  grad_taxa2scalecorrelation <- taxa2relativesd - sqrt(2) * (taxa2relativesd^2 * taxa2scalecorrelation) / denominator
+  
+  term_to_simplify <- (taxa1relativesd^2 + taxa2relativesd^2) - sqrt((taxa1relativesd^2 - taxa2relativesd^2)^2 + 4 * relativecovariance^2)
+  grad_scalestdev <- -1 / (2 * (scalestdev + epsilon)^2) * term_to_simplify + 2 * scalestdev
+  
+  return(c(grad_taxa1scalecorrelation, grad_taxa2scalecorrelation, grad_scalestdev))
+}
