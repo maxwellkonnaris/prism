@@ -254,50 +254,52 @@ estimate_covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "Multi
   rWparaoriginal <- log(rWparaoriginal)
   ## END ACCOUNTING FOR UNCERTAINTY IN OBSERVED RELATIVE ABUNDANCES ---------------------------------------------------------------------------
   ## ESTIMATING RHO AND SD --------------------------------------------------------------------------------------------------------------------
-  rhoandsd_list <- foreach(s = 1:S, .packages = c('stats')) %dopar% {
-      n <- length(externalscalemeasurements)
-      sample_indices <- boostrap_samples[, s]
-      S2 <- var(log(externalscalemeasurements[sample_indices]))
-      chi2_lower <- qchisq(alpha / 2, df = n - 1)
-      chi2_upper <- qchisq(1 - alpha / 2, df = n - 1)
-      var_lower <- (n - 1) * S2 / chi2_upper
-      var_upper <- (n - 1) * S2 / chi2_lower
-      scalestdev_s <- c(sqrt(var_lower), sqrt(var_upper))
+  if (!is.null(externalscalemeasurements) & (is.matrix(externalscalemeasurements) || ncol(Y) == nrow(externalscalemeasurements))) {
+    rhoandsd_list <- foreach(s = 1:S, .packages = c('stats')) %dopar% {
+        n <- length(externalscalemeasurements)
+        sample_indices <- boostrap_samples[, s]
+        S2 <- var(log(externalscalemeasurements[sample_indices]))
+        chi2_lower <- qchisq(alpha / 2, df = n - 1)
+        chi2_upper <- qchisq(1 - alpha / 2, df = n - 1)
+        var_lower <- (n - 1) * S2 / chi2_upper
+        var_upper <- (n - 1) * S2 / chi2_lower
+        scalestdev_s <- c(sqrt(var_lower), sqrt(var_upper))
+      
+        # Initialize matrix for rhobounds for each taxa
+        rhobounds_s <- matrix(NA, nrow = D, ncol = 2)  # [D x 2]
+        z_critical <- qnorm(1 - alpha / 2)
+        
+        for (taxa in 1:D) {
+            # Compute correlation
+            r <- cor(rWparaoriginal[taxa, sample_indices, s], log(externalscalemeasurements[sample_indices]))
+            # Fisher Z-transformation
+            z <- 0.5 * log((1 + r) / (1 - r))
+            # Standard error of z
+            se_z <- 1 / sqrt(n - 3)
+            
+            # Confidence intervals in Fisher Z-space
+            z_lower <- z - z_critical * se_z
+            z_upper <- z + z_critical * se_z
+            
+            # Inverse Fisher Z-transformation to get rho bounds
+            rho_lower <- (exp(2 * z_lower) - 1) / (exp(2 * z_lower) + 1)
+            rho_upper <- (exp(2 * z_upper) - 1) / (exp(2 * z_upper) + 1)
+            
+            rhobounds_s[taxa, 1] <- rho_lower
+            rhobounds_s[taxa, 2] <- rho_upper
+        }
+        
+        list(scalestdev_s = scalestdev_s, rhobounds_s = rhobounds_s)
+    }
+    # scalestdev_matrix --------------------------------------------------- [S x 2] 
+    scalestdev <- do.call(rbind, lapply(rhoandsd_list, function(x) x$scalestdev_s))
     
-      # Initialize matrix for rhobounds for each taxa
-      rhobounds_s <- matrix(NA, nrow = D, ncol = 2)  # [D x 2]
-      z_critical <- qnorm(1 - alpha / 2)
-      
-      for (taxa in 1:D) {
-          # Compute correlation
-          r <- cor(rWparaoriginal[taxa, sample_indices, s], log(externalscalemeasurements[sample_indices]))
-          # Fisher Z-transformation
-          z <- 0.5 * log((1 + r) / (1 - r))
-          # Standard error of z
-          se_z <- 1 / sqrt(n - 3)
-          
-          # Confidence intervals in Fisher Z-space
-          z_lower <- z - z_critical * se_z
-          z_upper <- z + z_critical * se_z
-          
-          # Inverse Fisher Z-transformation to get rho bounds
-          rho_lower <- (exp(2 * z_lower) - 1) / (exp(2 * z_lower) + 1)
-          rho_upper <- (exp(2 * z_upper) - 1) / (exp(2 * z_upper) + 1)
-          
-          rhobounds_s[taxa, 1] <- rho_lower
-          rhobounds_s[taxa, 2] <- rho_upper
-      }
-      
-      list(scalestdev_s = scalestdev_s, rhobounds_s = rhobounds_s)
-  }
-  # scalestdev_matrix --------------------------------------------------- [S x 2] 
-  scalestdev <- do.call(rbind, lapply(rhoandsd_list, function(x) x$scalestdev_s))
+    # rhobounds ---------------------------------------------------------------------- [D x 2 x S]
+    rhobounds <- array(unlist(lapply(rhoandsd_list, function(x) x$rhobounds_s)), dim = c(D, 2, S))
   
-  # rhobounds ---------------------------------------------------------------------- [D x 2 x S]
-  rhobounds <- array(unlist(lapply(rhoandsd_list, function(x) x$rhobounds_s)), dim = c(D, 2, S))
-
-  # remove any unneeded space
-  rm(rhoandsd_list)
+    # remove any unneeded space
+    rm(rhoandsd_list)
+  } 
   ## END ESTIMATING RHO AND SD ----------------------------------------------------------------------------------------------------------------
   ## ESTIMATING COVARIANCE --------------------------------------------------------------------------------------------------------------------
   cat("Running sigma estimation\n")
@@ -316,8 +318,6 @@ estimate_covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "Multi
       d1 <- pair[1]
       d2 <- pair[2]
       comparison <- paste(rownames(Y)[d1], rownames(Y)[d2], sep = ":")
-      minsigma_values <- numeric(S)
-      maxsigma_values <- numeric(S)
       
       # Use sequential foreach for the inner loop
       results_inner <- foreach(s = 1:S, .combine = 'rbind', .packages = c('stats', 'MCMCpack', 'nloptr', 'dplyr')) %dopar% {
@@ -327,7 +327,20 @@ estimate_covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "Multi
         taxa2relativesd <- sd(rWpara[2, ])
         relativecorrelation <- cor(rWpara[1, ], rWpara[2, ])
         relativecovariance <- cov(rWpara[1, ], rWpara[2, ])
-        initialparameters <- c(((upperrhobound[d1,s]+lowerrhobound[d1,s]) / 2), ((upperrhobound[d2,s]+lowerrhobound[d2,s]) / 2), ((upperscalestdev[s] + lowerscalestdev[s]) / 2))
+        if (!is.null(rhobounds)) {
+          rho_upper_bound_1 = rhobounds[d1, 2, s]
+          rho_upper_bound_2 = rhobounds[d2, 2, s]
+          rho_lower_bound_1 = rhobounds[d1, 1, s]
+          rho_lower_bound_2 = rhobounds[d2, 1, s]
+          upperscalestdev = scalestdev[s,2]
+          lowerscalestdev = scalestdev[s,1]
+        } else {
+          rho_lower_bound_1 = lowerrhobound[d1]
+          rho_lower_bound_2 = lowerrhobound[d2]
+          rho_upper_bound_1 = upperrhobound[d1]
+          rho_upper_bound_2 = lowerrhobound[d2]
+        }
+        initialparameters <- c(((rho_upper_bound_1+rho_lower_bound_1) / 2), ((rho_upper_bound_2+rho_lower_bound_2) / 2), ((upperscalestdev + lowerscalestdev) / 2))
         
         res_min <- NULL
         res_max <- NULL
