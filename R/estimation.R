@@ -801,9 +801,8 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = rep(-1.0, nrow(Y
     if (nrow(results_inner) == 0) {
       stop("Error: No valid inner results generated")
     }
-    
-    cat("End Optimization for: ", d1, ":", d2, "\n")
 
+    # Check how many bootstraps failed the constraint entirely
     numbootstrapsfailedspsd <- sum(is.na(results_inner$minsigma_absolute_minimum_covariance) | is.na(results_inner$maxsigma_absolute_maximum_covariance))
 
     # Filter results_inner to keep rows without NA in the specified columns
@@ -820,6 +819,7 @@ estimate_covariance <- function(Y, alpha = 0.5, lowerrhobound = rep(-1.0, nrow(Y
     # Gather the min and max optimized sigmas
     minsigma_values <- results_inner$minsigma_absolute_minimum_covariance
     maxsigma_values <- results_inner$maxsigma_absolute_maximum_covariance
+    
     # Sort the results
     sortedmin <- sort(minsigma_values)
     sortedmax <- sort(maxsigma_values)
