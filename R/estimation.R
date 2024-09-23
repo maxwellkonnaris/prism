@@ -19,7 +19,7 @@
 #' @param upperscalestdev A numeric value specifying the upper bound of the standard deviation of the scale. Defaults to \code{0.51}.
 #' 
 #' @param algorithm A character string specifying the optimization algorithm to be used. 
-#' Can be one of \code{"COBYLA"}, \code{"MMA"}, \code{"AUGLAG_COBYLA"}, \code{"AUGLAG_MMA"}, or \code{"GRID_SEARCH"}. Defaults to \code{"COBYLA"}.
+#' Can be one of \code{"COBYLA"}, \code{"MMA"}, \code{"SLSQP"}, \code{"AUGLAG_COBYLA"}, \code{"AUGLAG_MMA"}, \code{"AUGLAG_SLSQP"}, or \code{"GRID_SEARCH"}. Defaults to \code{"COBYLA"}.
 #' 
 #' @param outputdirectory A character string specifying the directory to save results for grid search. If \code{NULL}, the current working directory is used. Defaults to \code{NULL}.
 #'
