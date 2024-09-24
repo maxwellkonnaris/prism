@@ -132,6 +132,7 @@
 #' @import utils
 #' @import nloptr
 #' @import filelock
+#' @import ggridges
 #' @export
 estimate_covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "Multinomial Dirichlet", externalscalemeasurements = NULL, lowerrhobound = rep(-1.0, nrow(Y)), upperrhobound = rep(1.0, nrow(Y)), S = 1000, lowerscalestdev = 0.450, upperscalestdev = 0.650, algorithm = "GRID_SEARCH", outputdirectory = NULL) {
   
