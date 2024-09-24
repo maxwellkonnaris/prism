@@ -1194,6 +1194,10 @@ plot_rho_ridges <- function(rhobounds, D, S) {
   # Convert Taxa to numeric for plotting
   melted_data$Taxa_numeric <- as.numeric(melted_data$Taxa)
   
+  # Get unique breaks and labels for the y-axis
+  y_breaks <- unique(melted_data$Taxa_numeric)
+  y_labels <- levels(melted_data$Taxa)
+  
   # Colors for bounds
   bound_colors <- c("RhoLower" = "#0072B2", "RhoUpper" = "#D55E00")
   
@@ -1222,8 +1226,8 @@ plot_rho_ridges <- function(rhobounds, D, S) {
     ggplot2::scale_color_manual(values = bound_colors) +
     # Adjust y-axis labels to display taxa names
     ggplot2::scale_y_continuous(
-      breaks = melted_data$Taxa_numeric,
-      labels = levels(melted_data$Taxa),
+      breaks = y_breaks,
+      labels = y_labels,
       expand = c(0.1, 0)
     ) +
     # Limit x-axis between -1 and 1 and set ticks every 0.1
@@ -1262,6 +1266,7 @@ plot_rho_ridges <- function(rhobounds, D, S) {
   
   return(plot)
 }
+
 
 
 
