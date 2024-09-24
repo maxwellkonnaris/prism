@@ -1158,7 +1158,60 @@ proportiondontcoverzerobars <- function(data, comparison_col = "comparison", pro
   return(p)
 }
 
-
+#' Plot Ridge Plot for RhoLower and RhoUpper per Taxa
+#'
+#' This function creates a ridge plot showing the distribution of RhoLower and RhoUpper 
+#' for each taxa, stratified by samples. It saves the plot in a "plots" directory, 
+#' creating the directory if it does not exist, and also prints the plot to the screen.
+#'
+#' @param rhobounds A 3D array of dimensions [D x 2 x S], where D is the number of taxa,
+#'   the second dimension contains RhoLower and RhoUpper values, and S is the number 
+#'   of samples.
+#' @param D Integer representing the number of taxa.
+#' @param S Integer representing the number of samples.
+#'
+#' @return A ggplot object containing the ridge plot.
+#' 
+#' @import ggplot2
+#' @import ggridges
+#' @import dplyr
+#' @import tidyr
+#' @keywords internal
+plot_rho_ridges <- function(rhobounds, D, S) {
+  
+  # Create the plot
+  plot <- ggplot(data.frame(
+    Taxa = rep(1:D, each = 2 * S),
+    Sample = rep(rep(1:S, times = D), 2),
+    Rho = c(as.vector(rhobounds[, 1, ]), as.vector(rhobounds[, 2, ])),
+    Bound = rep(c("RhoLower", "RhoUpper"), each = D * S)
+  ), aes(x = Rho, y = factor(Taxa), fill = Bound)) +
+    geom_density_ridges(scale = 0.9, rel_min_height = 0.01, alpha = 0.4) +
+    labs(title = "Distribution of RhoLower and RhoUpper for Each Taxa",
+         x = "Rho Value",
+         y = "Taxa",
+         fill = "Rho Bound") +
+    theme_minimal() +
+    theme(
+      axis.text = element_text(size = 14),
+      axis.title = element_text(size = 16),
+      plot.title = element_text(size = 18),
+      legend.position = "top"
+    )
+  
+  # Print plot to the screen
+  print(plot)
+  
+  # Check if "plots" directory exists, if not, create it
+  if (!dir.exists("plots")) {
+    dir.create("plots")
+  }
+  
+  # Save the plot to the "plots" directory
+  ggsave(filename = "plots/correlation_ridge_plot.png", plot = plot, width = 10, height = 8, dpi = 300)
+  
+  return(plot)
+}
 
 
 
