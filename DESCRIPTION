@@ -10,7 +10,6 @@ Description: A package for running simulations and robust covariance analysis on
 License: MIT + file LICENSE
 Imports: 
     tidyverse,
-    driver,
     rBeta2009,
     pbapply,
     progress,
@@ -41,9 +40,7 @@ Imports:
     gtools,
     devtools,
     BiocManager,
-    propr,
-    SpiecEasi,
-    banocc
+    ggridges
 Remotes:
     jsilve24/driver,
     tpq/propr,
