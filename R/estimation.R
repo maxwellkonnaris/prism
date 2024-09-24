@@ -813,6 +813,12 @@ estimate_covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "Multi
     taxa2relativesd <- results_inner$taxa2relativesd[min_index]
     relativecorrelation <- results_inner$relativecorrelation[min_index]
     relativecovariance <- results_inner$relativecovariance[min_index]
+    rho_lower_bound_1 <- results_inner$rho_lower_bound_1[min_index]
+    rho_upper_bound_1 <- results_inner$rho_upper_bound_1[min_index]
+    rho_lower_bound_2 <- results_inner$rho_lower_bound_2[min_index]
+    rho_upper_bound_2 <- results_inner$rho_upper_bound_2[min_index]
+    lowerscalestdev <- results_inner$lowerscalestdev[min_index]
+    upperscalestdev <- results_inner$upperscalestdev[min_index]
     
     list(
       resultsinner = results_inner,
