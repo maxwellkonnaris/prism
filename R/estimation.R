@@ -176,7 +176,7 @@ estimate_covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "Multi
           sampletotals <- nrow(externalscalemeasurements)
           print(paste0("Number of Sample-scale Measurement Pairs: ", sampletotals))
           print(paste0("Number of Replicates: ", replicates))
-          cat("Estimating Rho bounds and scale SD from the external scale measurements:\n")
+          cat("Estimating Rho bounds and scale SD from the external scale measurements.\n")
       } else {
           stop("Error: Mismatch in dimensions between external scale measurements and Y.")
       }
