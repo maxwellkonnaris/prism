@@ -162,20 +162,21 @@ estimate_covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "Multi
   cat("Algorithm selected:\n")
   print(algorithm)
 
-  if (!is.null(externalscalemeasurements) & (is.matrix(externalscalemeasurements) || ncol(Y) == nrow(externalscalemeasurements))) {
+  if (!is.null(externalscalemeasurements) && is.matrix(externalscalemeasurements) && ncol(Y) == nrow(externalscalemeasurements)) {
       cat("External scale measurements were provided:\n")
       cat("Dimensions of supplied external scale measurements matrix:\n")
       replicates <- ncol(externalscalemeasurements)
       sampletotals <- nrow(externalscalemeasurements)
       print(paste0("Number of Sample-scale Measurement Pairs: ", sampletotals))
       print(paste0("Number of Replicates: ", replicates))
-      cat("Estimating Rho bounds and scale SD from the exernal scale measurements:\n")
+      cat("Estimating Rho bounds and scale SD from the external scale measurements:\n")
   } else {
       cat("Using default Rho bounds:\n")
       print(paste0(lowerrhobound, ":", upperrhobound))
       cat("Using default Scale standard deviation bounds:\n")
       print(paste0(lowerscalestdev, ":", upperscalestdev))
   }
+
   ## END SETUP ----------------------------------------------------------------------------------------------------------------------------------------------
   ## CLUSTER RESOURCES --------------------------------------------------------------------------------------------------------------------------------------
   # Register the parallel backend
@@ -255,7 +256,7 @@ estimate_covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "Multi
   rWparaoriginal <- log(rWparaoriginal)
   ## END ACCOUNTING FOR UNCERTAINTY IN OBSERVED RELATIVE ABUNDANCES ---------------------------------------------------------------------------------------
   ## ESTIMATING RHO AND SD --------------------------------------------------------------------------------------------------------------------------------
-  if (!is.null(externalscalemeasurements) & (is.matrix(externalscalemeasurements) || ncol(Y) == nrow(externalscalemeasurements))) {
+  if (!is.null(externalscalemeasurements) && is.matrix(externalscalemeasurements) && ncol(Y) == nrow(externalscalemeasurements)) {
     rhoandsd_list <- foreach(s = 1:S, .packages = c('stats')) %dopar% {
         n <- length(externalscalemeasurements)
         sample_indices <- boostrap_samples[, s]
