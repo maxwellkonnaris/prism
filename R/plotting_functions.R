@@ -1214,4 +1214,55 @@ plot_rho_ridges <- function(rhobounds, D, S) {
 }
 
 
-
+#' Plot Histograms with Density Overlay for Scale Standard Deviation Bounds
+#'
+#' This function creates histograms for the lower and upper bounds of scale standard deviation 
+#' (`scalestdev`) for each sample, overlaid with density plots. It saves the plot in a "plots" 
+#' directory, creating the directory if it does not exist, and also prints the plot to the screen.
+#'
+#' @param scalestdev A matrix of dimensions [S x 2], where S is the number of samples.
+#'   The first column contains the lower bound of the standard deviation, and the 
+#'   second column contains the upper bound.
+#' @param S Integer representing the number of samples.
+#'
+#' @return A ggplot object containing the histograms with density overlays.
+#' 
+#' @import ggplot2
+#' @import dplyr
+#' @keywords internal
+plot_scalestdev_histograms <- function(scalestdev, S) {
+  
+  # Create the plot
+  plot <- ggplot(data.frame(
+    Sample = rep(1:S, times = 2),
+    ScaleSD = c(as.vector(scalestdev[, 1]), as.vector(scalestdev[, 2])),
+    Bound = rep(c("Lower", "Upper"), each = S)
+  ), aes(x = ScaleSD, fill = Bound)) +
+    geom_histogram(aes(y = ..density..), bins = 30, position = "identity", alpha = 0.6) +
+    geom_density(alpha = 0.4) +
+    facet_wrap(~ Bound, scales = "free_y") +
+    labs(title = "Histograms of Scale Standard Deviation Bounds for Each Sample",
+         x = "Scale Standard Deviation",
+         y = "Density",
+         fill = "Bound") +
+    theme_minimal() +
+    theme(
+      axis.text = element_text(size = 14),
+      axis.title = element_text(size = 16),
+      plot.title = element_text(size = 18),
+      legend.position = "top"
+    )
+  
+  # Print plot to the screen
+  print(plot)
+  
+  # Check if "plots" directory exists, if not, create it
+  if (!dir.exists("plots")) {
+    dir.create("plots")
+  }
+  
+  # Save the plot to the "plots" directory
+  ggsave(filename = "plots/scalestdev_histogram_plot.png", plot = plot, width = 10, height = 8, dpi = 300)
+  
+  return(plot)
+}
