@@ -235,14 +235,16 @@ estimate_covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "Multi
   ## END PROGRESS BARS -------------------------------------------------------------------------------------------------------------------------------------
   ## ACCOUNTING FOR UNCERTAINTY IN FINITE SAMPLING ---------------------------------------------------------------------------------------------------------
   ## calculate bootstrap resampling -- accounting for finite sampling
-  # boostrap_samples <- matrix(NA, N, S)
-  # for (s in 1:S) {
-  #   boostrap_samples[,s] <- sample(1:N, replace=TRUE)
-  # }
   boostrap_samples <- matrix(NA, N, S)
-    for (s in 1:S) {
-      boostrap_samples[,s] <- 1:N
-    }
+  for (s in 1:S) {
+    boostrap_samples[,s] <- sample(1:N, replace=TRUE)
+  }
+
+  # ---- If you want to remove bootstrap and carry on then ---
+  # boostrap_samples <- matrix(NA, N, S)
+  #   for (s in 1:S) {
+  #     boostrap_samples[,s] <- 1:N
+  #   }
   ## END ACCOUNTING FOR UNCERTAINTY IN FINITE SAMPLING -----------------------------------------------------------------------------------------------------
   ## ACCOUNTING FOR UNCERTAINTY IN OBSERVED RELATIVE ABUNDANCES --------------------------------------------------------------------------------------------
   # Dimensions: (n_taxa, n_samples, n_iter) -- populate matrix of NAs
