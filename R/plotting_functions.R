@@ -1174,6 +1174,7 @@ proportiondontcoverzerobars <- function(data, comparison_col = "comparison", pro
 #' 
 #' @importFrom ggplot2 ggplot aes labs theme_classic theme element_text element_rect
 #' @importFrom ggplot2 scale_fill_manual scale_color_manual ggsave after_stat geom_boxplot
+#' @importFrom ggplot2 scale_y_continuous scale_x_continuous
 #' @importFrom ggridges geom_density_ridges
 #' @importFrom reshape2 melt
 #' @keywords internal
@@ -1186,26 +1187,27 @@ plot_rho_ridges <- function(rhobounds, D, S) {
   # Map the 'Bound' variable to 'RhoLower' and 'RhoUpper'
   melted_data$Bound <- factor(melted_data$Bound, levels = c(1, 2), labels = c("RhoLower", "RhoUpper"))
   
-  # Create a combined factor for Taxa and Bound to use in plotting
-  melted_data$Taxa_Bound <- interaction(melted_data$Taxa, melted_data$Bound, sep = "_")
+  # Reorder Taxa for plotting
+  taxa_levels <- rev(unique(melted_data$Taxa))
+  melted_data$Taxa <- factor(melted_data$Taxa, levels = taxa_levels)
   
-  # Reorder Taxa for plotting (optional)
-  melted_data$Taxa <- factor(melted_data$Taxa, levels = rev(unique(melted_data$Taxa)))
+  # Convert Taxa to numeric for plotting
+  melted_data$Taxa_numeric <- as.numeric(melted_data$Taxa)
   
   # Colors for bounds
   bound_colors <- c("RhoLower" = "#0072B2", "RhoUpper" = "#D55E00")
   
   # Create the ridge plot with boxplots
-  plot <- ggplot2::ggplot(melted_data, ggplot2::aes(x = Rho, y = Taxa, fill = Bound)) +
-    # Density ridges with increased transparency
+  plot <- ggplot2::ggplot(melted_data, ggplot2::aes(x = Rho, y = Taxa_numeric, fill = Bound)) +
+    # Density ridges with increased transparency and more spacing
     ggridges::geom_density_ridges(
       ggplot2::aes(color = Bound),
-      alpha = 0.4, scale = 0.9, size = 0.5, rel_min_height = 0.01
+      alpha = 0.4, scale = 0.7, rel_min_height = 0.01
     ) +
-    # Overlay boxplots
+    # Overlay skinnier boxplots with adjusted positions
     ggplot2::geom_boxplot(
-      ggplot2::aes(y = as.numeric(Taxa) + ifelse(Bound == "RhoLower", -0.15, 0.15), group = interaction(Taxa, Bound)),
-      width = 0.25, position = ggplot2::position_dodge(width = 0.7), outlier.shape = NA, alpha = 0.6, color = "black"
+      ggplot2::aes(y = Taxa_numeric + ifelse(Bound == "RhoLower", -0.2, 0.2), group = interaction(Taxa, Bound)),
+      width = 0.15, position = ggplot2::position_dodge(width = 0.7), outlier.shape = NA, alpha = 0.6, color = "black"
     ) +
     # Labels and theme
     ggplot2::labs(
@@ -1218,10 +1220,22 @@ plot_rho_ridges <- function(rhobounds, D, S) {
     # Color palettes
     ggplot2::scale_fill_manual(values = bound_colors) +
     ggplot2::scale_color_manual(values = bound_colors) +
+    # Adjust y-axis labels to display taxa names
+    ggplot2::scale_y_continuous(
+      breaks = melted_data$Taxa_numeric,
+      labels = levels(melted_data$Taxa),
+      expand = c(0.1, 0)
+    ) +
+    # Limit x-axis between -1 and 1 and set ticks every 0.1
+    ggplot2::scale_x_continuous(
+      limits = c(-1, 1),
+      breaks = seq(-1, 1, by = 0.1)
+    ) +
     # Professional theme
     ggplot2::theme_classic() +
     ggplot2::theme(
-      axis.text = ggplot2::element_text(size = 12),
+      axis.text.y = ggplot2::element_text(size = 12),
+      axis.text.x = ggplot2::element_text(size = 12),
       axis.title = ggplot2::element_text(size = 14, face = "bold"),
       plot.title = ggplot2::element_text(size = 16, face = "bold", hjust = 0.5),
       legend.position = "top",
@@ -1248,6 +1262,7 @@ plot_rho_ridges <- function(rhobounds, D, S) {
   
   return(plot)
 }
+
 
 
 
