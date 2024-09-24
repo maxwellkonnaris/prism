@@ -268,7 +268,6 @@ estimate_covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "Multi
         # Initialize matrix for rhobounds for each taxa
         rhobounds_s <- matrix(NA, nrow = D, ncol = 2)  # [D x 2]
         z_critical <- qnorm(1 - alpha / 2)
-        
         for (taxa in 1:D) {
             # Compute correlation
             r <- cor(rWparaoriginal[taxa, sample_indices, s], log(externalscalemeasurements[sample_indices]))
@@ -299,6 +298,12 @@ estimate_covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "Multi
   
     # remove any unneeded space
     rm(rhoandsd_list)
+
+    # plot the rho
+    plot_rho_ridges(rhoubounds, D, S)
+
+    # plot the scale SD
+    plot_scaleSD_histogram(scalestdev)
   } 
   ## END ESTIMATING RHO AND SD ----------------------------------------------------------------------------------------------------------------
   ## ESTIMATING COVARIANCE --------------------------------------------------------------------------------------------------------------------
