@@ -314,9 +314,11 @@ estimate_covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "Multi
     plot_scalestdev_histograms(scalestdev, S)
                                      
     # plot the rho
-    plot_rho_ridges(rhoubounds, D, S)
+    plot_rho_ridges(rhobounds, D, S)
 
-  } 
+  } else {
+    rhobounds = NULL
+  }
   ## END ESTIMATING RHO AND SD ----------------------------------------------------------------------------------------------------------------------------
   ## ESTIMATING COVARIANCE --------------------------------------------------------------------------------------------------------------------------------
   cat("Running sigma estimation\n")
