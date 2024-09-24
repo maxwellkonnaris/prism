@@ -135,10 +135,10 @@
 #' @export
 estimate_covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "Multinomial Dirichlet", externalscalemeasurements = NULL, lowerrhobound = rep(-1.0, nrow(Y)), upperrhobound = rep(1.0, nrow(Y)), S = 1000, lowerscalestdev = 0.450, upperscalestdev = 0.650, algorithm = "GRID_SEARCH", outputdirectory = NULL) {
   
-  ## COMPUTATIONAL TIME -------------------------------------------------------------------------------------------------------------------------
+  ## COMPUTATIONAL TIME -------------------------------------------------------------------------------------------------------------------------------------
   start_time <- Sys.time()
-  ## END COMPUTATIONAL TIME SETUP ---------------------------------------------------------------------------------------------------------------
-  ## SETUP --------------------------------------------------------------------------------------------------------------------------------------
+  ## END COMPUTATIONAL TIME SETUP ---------------------------------------------------------------------------------------------------------------------------
+  ## SETUP --------------------------------------------------------------------------------------------------------------------------------------------------
   # Check if Y is a matrix, dataframe, or tibble, and has appropriate dimensions
   if (!(is.matrix(Y) || is.data.frame(Y) || inherits(Y, "tbl_df")) || nrow(Y) < 2 || ncol(Y) < 2) {
     stop("Y must be a matrix, dataframe, or tibble with at least 2 rows and 2 columns.")
@@ -252,8 +252,8 @@ estimate_covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "Multi
   }
   # Log transform relative abundances
   rWparaoriginal <- log(rWparaoriginal)
-  ## END ACCOUNTING FOR UNCERTAINTY IN OBSERVED RELATIVE ABUNDANCES ---------------------------------------------------------------------------
-  ## ESTIMATING RHO AND SD --------------------------------------------------------------------------------------------------------------------
+  ## END ACCOUNTING FOR UNCERTAINTY IN OBSERVED RELATIVE ABUNDANCES ---------------------------------------------------------------------------------------
+  ## ESTIMATING RHO AND SD --------------------------------------------------------------------------------------------------------------------------------
   if (!is.null(externalscalemeasurements) & (is.matrix(externalscalemeasurements) || ncol(Y) == nrow(externalscalemeasurements))) {
     rhoandsd_list <- foreach(s = 1:S, .packages = c('stats')) %dopar% {
         n <- length(externalscalemeasurements)
@@ -299,14 +299,15 @@ estimate_covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "Multi
     # remove any unneeded space
     rm(rhoandsd_list)
 
+    # plot the scale SD
+    plot_scalestdev_histograms(scalestdev, S)
+                                     
     # plot the rho
     plot_rho_ridges(rhoubounds, D, S)
 
-    # plot the scale SD
-    plot_scaleSD_histogram(scalestdev)
   } 
-  ## END ESTIMATING RHO AND SD ----------------------------------------------------------------------------------------------------------------
-  ## ESTIMATING COVARIANCE --------------------------------------------------------------------------------------------------------------------
+  ## END ESTIMATING RHO AND SD ----------------------------------------------------------------------------------------------------------------------------
+  ## ESTIMATING COVARIANCE --------------------------------------------------------------------------------------------------------------------------------
   cat("Running sigma estimation\n")
 
   # Generate all pairs of indices
