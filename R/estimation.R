@@ -232,7 +232,7 @@ estimate_covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "Multi
     for (n in 1:N) {
         rWparaoriginal[,n,] <- rdirichlet(S, Y[,n] + alpha) 
     } 
-  } else if (uncertaintydistribution == "Multinomial Logistic Normal")
+  } else if (uncertaintydistribution == "Multinomial Logistic Normal") {
     # generate S Multinomial logistic Normal posterior samples for each sample (column) using fido
     otu_table = otu_table(Y, taxa_are_rows = TRUE)
     otu_table = otu_table + alpha
