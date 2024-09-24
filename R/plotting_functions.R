@@ -1,6 +1,6 @@
 #' Forest Plot of Confidence Intervals
 #'
-#' This function creates a forest plot of confidence intervals ordered by the largest range.
+#' This function creates a professional-looking forest plot of confidence intervals ordered by the largest range.
 #'
 #' @param data A data frame containing the covariance comparison names, lower bound for the range of sigma, upper bound of the range of sigma, 2.5 percent quartile of the sorted minimized sigmas, and the 97.5 percent quartile of the sorted maximized sigmas.
 #' @param bg A character string indicating the background color of the plot. Options are "white" (default) or "transparent".
@@ -15,35 +15,37 @@
 #' # Example usage:
 #' results <- data.frame(
 #'   comparison = c("A:B", "A:C", "B:C"),
-#'   ninetyfive_ci_lower = c(0.1, 0.2, 0.3),
+#'   ninetyfive_ci_lower = c(0.1, -0.2, 0.3),
 #'   ninetyfive_ci_upper = c(0.4, 0.5, 0.6),
-#'   minsigma_absolute_minimum_covariance = c(0.05, 0.15, 0.25),
+#'   minsigma_absolute_minimum_covariance = c(0.05, -0.25, 0.25),
 #'   maxsigma_absolute_maximum_covariance = c(0.45, 0.55, 0.65),
-#'   p_value = c(0.01, 0.05, 0.10), # Example p-values
-#'   bonferroni_p_value = c(0.03, 0.15, 0.30), # Example adjusted p-values
-#'   bh_p_value = c(0.02, 0.10, 0.25) # Example adjusted p-values
+#'   p_value = c(0.01, 0.05, 0.10) # Example p-values
 #' )
 #' plot <- forest_plot(results, save = "png", filename = "sampledataset")
-#' plot <- forest_plot(results, save = "jpg", filename = "sampledataset")
-#' plot <- forest_plot(results, save = "svg", filename = "sampledataset")
-#' plot <- forest_plot(results, save = "pdf", filename = "sampledataset")
 forest_plot <- function(data, bg = "white", save = NULL, filename = NULL, dir_path = "./plots/") {
+  # Required columns
+  required_columns <- c("comparison", "ninetyfive_ci_lower", "ninetyfive_ci_upper",
+                        "minsigma_absolute_minimum_covariance", "maxsigma_absolute_maximum_covariance")
+  
   # Ensure the data has the necessary columns
-  if (!all(c("comparison", "ninetyfive_ci_lower", "ninetyfive_ci_upper", "minsigma_absolute_minimum_covariance", "maxsigma_absolute_maximum_covariance", "p_value", "bonferroni_p_value", "bh_p_value") %in% colnames(data))) {
-    stop("Data must contain 'comparison', 'ninetyfive_ci_lower', 'ninetyfive_ci_upper', 'minsigma_absolute_minimum_covariance', 'maxsigma_absolute_maximum_covariance', 'p_value', 'bonferroni_p_value', and 'bh_p_value' columns")
+  if (!all(required_columns %in% colnames(data))) {
+    stop(paste("Data must contain columns:", paste(required_columns, collapse = ", ")))
   }
-
+  
+  # Check if p_value is provided
+  p_value_provided <- "p_value" %in% colnames(data)
+  
   # Check if the directory exists
   if (!dir.exists(dir_path)) {
     # Create the directory
-    dir.create(dir_path)
+    dir.create(dir_path, recursive = TRUE)
     if (dir.exists(dir_path)) {
-      cat("Directory created successfully!")
+      message("Directory created successfully!")
     } else {
-      cat("Failed to create directory.")
+      warning("Failed to create directory.")
     }
   } else {
-    cat("Directory already present")
+    message("Directory already present")
   }
   
   # Calculate the range of the confidence intervals
@@ -55,69 +57,113 @@ forest_plot <- function(data, bg = "white", save = NULL, filename = NULL, dir_pa
   
   # Highlight intervals that do not cover 0
   data <- data %>%
-    mutate(highlight = ifelse((ninetyfive_ci_lower > 0 & ninetyfive_ci_upper > 0) | (ninetyfive_ci_lower < 0 & ninetyfive_ci_upper < 0), "95% CI Doesnt Cover Zero", "95% CI Covers Zero"))
+    mutate(highlight = ifelse(
+      (ninetyfive_ci_lower > 0 & ninetyfive_ci_upper > 0) | (ninetyfive_ci_lower < 0 & ninetyfive_ci_upper < 0),
+      "Doesn't Cover Zero", "Covers Zero"
+    ))
   
-  # Create the forest plot with confidence intervals and sigma ranges
+  # Create the forest plot
   plot <- ggplot(data, aes(x = comparison)) +
     coord_flip() +
-    theme_minimal(base_size = 15) +
+    theme_classic(base_size = 12) +
     labs(
       title = "Covariance Intervals",
       x = "Taxa Comparison",
-      y = "Estimated Covariance/Variance Range (log scale)",
-      color = "Legend",
-      size = "-log10(p-value)"
+      y = "Estimated Covariance/Variance",
+      color = NULL
     ) +
     theme(
-      axis.text.x = element_text(angle = 45, hjust = 1),
-      plot.title = element_text(size = 20, face = "bold"),
-      axis.title = element_text(size = 18),
-      axis.text = element_text(size = 15)
+      axis.text.x = element_text(size = 10),
+      axis.text.y = element_text(size = 10),
+      axis.title = element_text(size = 12, face = "bold"),
+      plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+      legend.position = "top",
+      legend.title = element_blank(),
+      legend.text = element_text(size = 10)
     ) +
-    scale_color_manual(values = c("95% CI Covers Zero" = "#FF00FF", "95% CI Doesnt Cover Zero" = "green", "Covariance Range" = "#000000")) +
-    scale_size_continuous(range = c(1, 10), breaks = c(1, 2, 3), labels = c("0.1", "0.01", "0.001"))
+    scale_color_manual(
+      values = c(
+        "Doesn't Cover Zero" = "#0072B2",  # Blue
+        "Covers Zero" = "gray",
+        "Covariance Range" = "black"
+      ),
+      breaks = c("Doesn't Cover Zero", "Covariance Range") # Exclude "Covers Zero" from legend
+    )
   
-  # Add the range from minimum to maximum sigma value
-  plot <- plot + geom_errorbar(aes(ymin = minsigma_absolute_minimum_covariance, ymax = maxsigma_absolute_maximum_covariance, color = "Covariance Range"), width = 0.5, size = 1)
+  # Add the covariance range error bars
+  plot <- plot + geom_errorbar(
+    aes(ymin = minsigma_absolute_minimum_covariance, ymax = maxsigma_absolute_maximum_covariance, color = "Covariance Range"),
+    width = 0.4, size = 0.8
+  )
   
-  # Add points for the p-values
-  plot <- plot + geom_point(aes(y = (ninetyfive_ci_lower + ninetyfive_ci_upper) / 2, size = -log10(p_value)), color = "black")
+  # Add the 95% confidence intervals
+  plot <- plot + geom_errorbar(
+    aes(ymin = ninetyfive_ci_lower, ymax = ninetyfive_ci_upper, color = highlight),
+    width = 0.6, size = 1
+  )
   
-  # Add the 95% confidence intervals and highlight those not covering 0
-  plot <- plot + geom_errorbar(aes(ymin = ninetyfive_ci_lower, ymax = ninetyfive_ci_upper, color = highlight), width = 0.5, size = 1)
+  # Add points for the p-values if provided
+  if (p_value_provided) {
+    # Ensure p_value is numeric and positive
+    if (!is.numeric(data$p_value) || any(data$p_value <= 0)) {
+      stop("p_value must be numeric and greater than zero.")
+    }
+    plot <- plot + geom_point(
+      aes(y = (ninetyfive_ci_lower + ninetyfive_ci_upper) / 2, size = -log10(p_value)),
+      color = "black", shape = 21, fill = "white", stroke = 1
+    ) +
+      labs(size = expression("-log"[10]*"(p-value)")) +
+      scale_size_continuous(range = c(2, 6))
+  }
   
   # Customize the background based on the bg parameter
   if (bg == "transparent") {
-    # Do nothing as the default is already minimal with transparent background
+    plot <- plot + 
+      theme(
+        plot.background = element_rect(fill = "transparent", color = NA),
+        panel.background = element_rect(fill = "transparent", color = NA),
+        panel.grid.major = element_line(color = "gray90"),
+        panel.grid.minor = element_blank()
+      )
   } else if (bg == "white") {
     plot <- plot + 
       theme(
         plot.background = element_rect(fill = "white", color = NA),
         panel.background = element_rect(fill = "white", color = NA),
         panel.grid.major = element_line(color = "gray90"),
-        panel.grid.minor = element_line(color = "gray95"),
-        axis.text = element_text(size = 12),
-        axis.title = element_text(size = 14, face = "bold"),
-        plot.title = element_text(size = 16, face = "bold", hjust = 0.5)
+        panel.grid.minor = element_blank()
       )
   } else {
     stop("bg parameter must be 'transparent' or 'white'")
   }
   
-  # Ensure there is a minimum tick mark
-  plot <- plot + scale_y_continuous(breaks = scales::pretty_breaks(n = 10))
+  # Add subtle gridlines
+  plot <- plot + 
+    theme(
+      panel.grid.major.y = element_blank(),
+      panel.grid.major.x = element_line(color = "gray80", linetype = "dashed")
+    )
+  
+  # Adjust y-axis breaks
+  plot <- plot + scale_y_continuous(breaks = scales::pretty_breaks(n = 5))
   
   # Save the plot if save is not NULL
   if (!is.null(save)) {
-    file_name <- paste0(dir_path,"forest_plot.", save)
-    if (!is.null(filename)) {
-      file_name <- paste0(dir_path, filename, ".", save)
+    # Ensure the directory path ends with a slash
+    if (!grepl("/$", dir_path)) {
+      dir_path <- paste0(dir_path, "/")
     }
-    ggsave(file_name, plot, width = 12, height = 15, dpi = 300, device = save)
+    # Set default filename if not provided
+    if (is.null(filename)) {
+      filename <- "forest_plot"
+    }
+    file_name <- paste0(dir_path, filename, ".", save)
+    ggsave(file_name, plot, width = 10, height = 8, dpi = 300, device = save, bg = bg)
   }
   
   return(plot)
 }
+
 
 #' Plot Sigma Values Against Parameters
 #'
