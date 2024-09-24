@@ -825,8 +825,8 @@ estimate_covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "Multi
     rho_upper_bound_1 <- results_inner$d1upperrhobound[min_index]
     rho_lower_bound_2 <- results_inner$d2lowerrhobound[min_index]
     rho_upper_bound_2 <- results_inner$d2upperrhobound[min_index]
-    lowerscalestdev <- results_inner$lowerscalestdev[min_index]
-    upperscalestdev <- results_inner$upperscalestdev[min_index]
+    lowerscalestdev <- results_inner$scalesdupperbound[min_index]
+    upperscalestdev <- results_inner$scalesdlowerbound[min_index]
     
     list(
       resultsinner = results_inner,
