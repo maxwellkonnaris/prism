@@ -1158,10 +1158,10 @@ proportiondontcoverzerobars <- function(data, comparison_col = "comparison", pro
   return(p)
 }
 
-#' Plot Ridge Plot for RhoLower and RhoUpper per Taxa
+#' Plot Ridge Plot with Boxplots for RhoLower and RhoUpper per Taxa
 #'
-#' This function creates a ridge plot showing the distribution of RhoLower and RhoUpper 
-#' for each taxa, stratified by samples. It saves the plot in a "plots" directory, 
+#' This function creates a professional-looking ridge plot showing the distribution of RhoLower and RhoUpper 
+#' for each taxa, stratified by samples, and overlays boxplots for each ridge. It saves the plot in a "plots" directory, 
 #' creating the directory if it does not exist, and also prints the plot to the screen.
 #'
 #' @param rhobounds A 3D array of dimensions [D x 2 x S], where D is the number of taxa,
@@ -1170,10 +1170,10 @@ proportiondontcoverzerobars <- function(data, comparison_col = "comparison", pro
 #' @param D Integer representing the number of taxa.
 #' @param S Integer representing the number of samples.
 #'
-#' @return A ggplot object containing the ridge plot.
+#' @return A ggplot object containing the ridge plot with boxplots.
 #' 
-#' @importFrom ggplot2 ggplot aes labs theme element_text element_rect ggsave scale_fill_manual
-#' @importFrom ggplot2 scale_x_continuous theme_bw
+#' @importFrom ggplot2 ggplot aes labs theme_classic theme element_text element_rect
+#' @importFrom ggplot2 scale_fill_manual scale_color_manual ggsave after_stat geom_boxplot
 #' @importFrom ggridges geom_density_ridges
 #' @importFrom reshape2 melt
 #' @keywords internal
@@ -1186,27 +1186,49 @@ plot_rho_ridges <- function(rhobounds, D, S) {
   # Map the 'Bound' variable to 'RhoLower' and 'RhoUpper'
   melted_data$Bound <- factor(melted_data$Bound, levels = c(1, 2), labels = c("RhoLower", "RhoUpper"))
   
-  # Convert 'Taxa' to a factor for proper ordering in the plot
-  melted_data$Taxa <- factor(melted_data$Taxa, levels = D:1)
+  # Create a combined factor for Taxa and Bound to use in plotting
+  melted_data$Taxa_Bound <- interaction(melted_data$Taxa, melted_data$Bound, sep = "_")
   
-  # Create the ridge plot
-  plot <- ggplot2::ggplot(melted_data, ggplot2::aes(x = Rho, y = Taxa, fill = Bound, height = ..density..)) +
-    ggridges::geom_density_ridges(stat = "density", scale = 1, alpha = 0.6, color = "white", size = 0.2) +
-    ggplot2::labs(title = "Distribution of RhoLower and RhoUpper for Each Taxa",
-         x = "Rho Value",
-         y = "Taxa",
-         fill = "Rho Bound") +
-    ggplot2::scale_fill_manual(values = c("RhoLower" = "#1b9e77", "RhoUpper" = "#d95f02")) +
-    ggplot2::theme_bw() +
+  # Reorder Taxa for plotting (optional)
+  melted_data$Taxa <- factor(melted_data$Taxa, levels = rev(unique(melted_data$Taxa)))
+  
+  # Colors for bounds
+  bound_colors <- c("RhoLower" = "#0072B2", "RhoUpper" = "#D55E00")
+  
+  # Create the ridge plot with boxplots
+  plot <- ggplot2::ggplot(melted_data, ggplot2::aes(x = Rho, y = Taxa, fill = Bound)) +
+    # Density ridges with increased transparency
+    ggridges::geom_density_ridges(
+      ggplot2::aes(color = Bound),
+      alpha = 0.4, scale = 0.9, size = 0.5, rel_min_height = 0.01
+    ) +
+    # Overlay boxplots
+    ggplot2::geom_boxplot(
+      ggplot2::aes(y = as.numeric(Taxa) + ifelse(Bound == "RhoLower", -0.15, 0.15), group = interaction(Taxa, Bound)),
+      width = 0.25, position = ggplot2::position_dodge(width = 0.7), outlier.shape = NA, alpha = 0.6, color = "black"
+    ) +
+    # Labels and theme
+    ggplot2::labs(
+      title = "Distribution of RhoLower and RhoUpper for Each Taxa",
+      x = "Rho Value",
+      y = "Taxa",
+      fill = "Rho Bound",
+      color = "Rho Bound"
+    ) +
+    # Color palettes
+    ggplot2::scale_fill_manual(values = bound_colors) +
+    ggplot2::scale_color_manual(values = bound_colors) +
+    # Professional theme
+    ggplot2::theme_classic() +
     ggplot2::theme(
-      panel.background = ggplot2::element_rect(fill = "white", colour = NA),
-      plot.background = ggplot2::element_rect(fill = "white", colour = NA),
       axis.text = ggplot2::element_text(size = 12),
-      axis.title = ggplot2::element_text(size = 14),
-      plot.title = ggplot2::element_text(size = 16),
+      axis.title = ggplot2::element_text(size = 14, face = "bold"),
+      plot.title = ggplot2::element_text(size = 16, face = "bold", hjust = 0.5),
       legend.position = "top",
       legend.title = ggplot2::element_text(size = 12),
-      legend.text = ggplot2::element_text(size = 12)
+      legend.text = ggplot2::element_text(size = 10),
+      panel.background = ggplot2::element_rect(fill = "white", colour = NA),
+      plot.background = ggplot2::element_rect(fill = "white", colour = NA)
     )
   
   # Print plot to the screen
@@ -1218,18 +1240,24 @@ plot_rho_ridges <- function(rhobounds, D, S) {
   }
   
   # Save the plot to the "plots" directory with white background
-  ggplot2::ggsave(filename = "plots/correlation_ridge_plot.png", plot = plot, width = 10, height = 8, dpi = 300, bg = "white")
+  ggplot2::ggsave(
+    filename = "plots/correlation_ridge_plot.png",
+    plot = plot,
+    width = 12, height = 8, dpi = 300, bg = "white"
+  )
   
   return(plot)
 }
 
 
 
+
 #' Plot Histogram with Density Overlay for Scale Standard Deviation Bounds
 #'
-#' This function creates a single histogram for the scale standard deviation 
+#' This function creates a professional-looking histogram for the scale standard deviation 
 #' (`scalestdev`) for each sample, overlaid with density plots. The histogram 
 #' and density lines are colored differently for the lower and upper bounds.
+#' Vertical lines indicating the means of each bound are added to the plot.
 #' It saves the plot in a "plots" directory, creating the directory if it does not exist,
 #' and also prints the plot to the screen.
 #'
@@ -1240,8 +1268,9 @@ plot_rho_ridges <- function(rhobounds, D, S) {
 #'
 #' @return A ggplot object containing the histogram with density overlays.
 #' 
-#' @import ggplot2
-#' @import dplyr
+#' @importFrom ggplot2 ggplot aes geom_histogram geom_density labs theme_classic theme element_line
+#' @importFrom ggplot2 element_text scale_fill_manual scale_color_manual ggsave after_stat geom_vline
+#' @importFrom ggplot2 annotate
 #' @keywords internal
 plot_scalestdev_histogram <- function(scalestdev, S) {
   
@@ -1251,29 +1280,43 @@ plot_scalestdev_histogram <- function(scalestdev, S) {
     Bound = factor(rep(c("Lower", "Upper"), each = S), levels = c("Lower", "Upper"))
   )
   
+  # Calculate means for each bound
+  mean_values <- aggregate(ScaleSD ~ Bound, data = plot_data, FUN = mean)
+  
   # Create the plot
-  plot <- ggplot(plot_data, aes(x = ScaleSD, fill = Bound, color = Bound)) +
-    geom_histogram(aes(y = after_stat(density)), 
-                   bins = 30, position = "identity", alpha = 0.4, 
-                   show.legend = TRUE) +
-    geom_density(size = 1, adjust = 1.5) +
-    labs(title = "Histogram of Scale Standard Deviation Bounds",
-         x = "Scale Standard Deviation",
-         y = "Density",
-         fill = "Bound",
-         color = "Bound") +
-    scale_fill_manual(values = c("Lower" = "#1b9e77", "Upper" = "#d95f02")) +
-    scale_color_manual(values = c("Lower" = "#1b9e77", "Upper" = "#d95f02")) +
-    theme_bw() +
-    theme(
-      panel.background = element_rect(fill = "white", colour = NA),
-      plot.background = element_rect(fill = "white", colour = NA),
-      axis.text = element_text(size = 12),
-      axis.title = element_text(size = 14),
-      plot.title = element_text(size = 16),
+  plot <- ggplot2::ggplot(plot_data, ggplot2::aes(x = ScaleSD, fill = Bound, color = Bound)) +
+    # Histogram
+    ggplot2::geom_histogram(ggplot2::aes(y = after_stat(density)), 
+                            bins = 30, position = "identity", alpha = 0.6, 
+                            show.legend = TRUE, color = "black") +
+    # Density plot with increased transparency
+    ggplot2::geom_density(size = 1, adjust = 1.5, alpha = 0.2) +
+    # Vertical lines at means
+    ggplot2::geom_vline(data = mean_values, ggplot2::aes(xintercept = ScaleSD, color = Bound),
+                        linetype = "dashed", size = 1) +
+    # Annotate mean values
+    ggplot2::annotate("text", x = mean_values$ScaleSD, y = Inf, label = paste0("Mean = ", round(mean_values$ScaleSD, 2)),
+                      color = c("#1b9e77", "#d95f02"), angle = 90, vjust = -0.5, hjust = 1.1, size = 5) +
+    # Labels and theme
+    ggplot2::labs(title = "Histogram of Scale Standard Deviation Bounds",
+                  x = "Scale Standard Deviation",
+                  y = "Density",
+                  fill = "Bound",
+                  color = "Bound") +
+    # Color palette
+    ggplot2::scale_fill_manual(values = c("Lower" = "#0072B2", "Upper" = "#D55E00")) +
+    ggplot2::scale_color_manual(values = c("Lower" = "#0072B2", "Upper" = "#D55E00")) +
+    # Professional theme
+    ggplot2::theme_classic() +
+    ggplot2::theme(
+      axis.text = ggplot2::element_text(size = 14),
+      axis.title = ggplot2::element_text(size = 16, face = "bold"),
+      plot.title = ggplot2::element_text(size = 18, face = "bold", hjust = 0.5),
       legend.position = "top",
-      legend.title = element_text(size = 12),
-      legend.text = element_text(size = 12)
+      legend.title = ggplot2::element_text(size = 14),
+      legend.text = ggplot2::element_text(size = 12),
+      panel.grid.major = ggplot2::element_line(color = "grey85", size = 0.5),
+      panel.grid.minor = ggplot2::element_blank()
     )
   
   # Print plot to the screen
@@ -1285,9 +1328,10 @@ plot_scalestdev_histogram <- function(scalestdev, S) {
   }
   
   # Save the plot to the "plots" directory with white background
-  ggsave(filename = "plots/scalestdev_histogram_plot.png", plot = plot, 
-         width = 10, height = 8, dpi = 300, bg = "white")
+  ggplot2::ggsave(filename = "plots/scalestdev_histogram_plot.png", plot = plot, 
+                  width = 10, height = 8, dpi = 300, bg = "white")
   
   return(plot)
 }
+
 
