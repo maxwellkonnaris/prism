@@ -11,33 +11,13 @@
 #' @import ggplot2
 #' @import dplyr
 #' @export
-#' @examples
-#' # Example usage:
-#' results1 <- data.frame(
-#'   comparison = c("A:B", "A:C", "B:C"),
-#'   ninetyfive_ci_lower = c(0.1, -0.2, 0.3),
-#'   ninetyfive_ci_upper = c(0.4, 0.5, 0.6),
-#'   minsigma_absolute_minimum_covariance = c(0.05, -0.25, 0.25),
-#'   maxsigma_absolute_maximum_covariance = c(0.45, 0.55, 0.65),
-#'   p_value = c(0.01, 0.05, 0.10) # Example p-values
-#' )
-#' results2 <- data.frame(
-#'   comparison = c("A:B", "A:C", "B:C"),
-#'   ninetyfive_ci_lower = c(0.2, -0.1, 0.2),
-#'   ninetyfive_ci_upper = c(0.5, 0.6, 0.7),
-#'   minsigma_absolute_minimum_covariance = c(0.15, -0.15, 0.35),
-#'   maxsigma_absolute_maximum_covariance = c(0.55, 0.65, 0.75),
-#'   p_value = c(0.02, 0.04, 0.08) # Example p-values
-#' )
-#' data_list <- list(Dataset1 = results1, Dataset2 = results2)
-#' plot <- forest_plot(data_list, save = "png", filename = "combined_forest_plot")
 forest_plot <- function(data_list, bg = "white", save = NULL, filename = NULL, dir_path = "./plots/") {
 
   # Check if input is a data frame, convert to a named list if true
   if (is.data.frame(data_list)) {
-    data_list <- list(Dataset1 = data_list)
+    data_list <- list(PRISM = data_list)
   }
-	
+  
   # Check that data_list is a named list of data frames
   if (!is.list(data_list) || is.null(names(data_list))) {
     stop("data_list must be a named list of data frames.")
@@ -49,6 +29,20 @@ forest_plot <- function(data_list, bg = "white", save = NULL, filename = NULL, d
   
   # Initialize an empty list to store data frames with an added 'Dataset' column
   data_frames <- list()
+  
+  # First dataset (for reordering comparison levels)
+  first_dataset_name <- names(data_list)[1]
+  first_data <- data_list[[first_dataset_name]]
+  
+  # Ensure the first data has the necessary columns
+  if (!all(required_columns %in% colnames(first_data))) {
+    stop(paste("Data frame '", first_dataset_name, "' must contain columns:", paste(required_columns, collapse = ", ")))
+  }
+  
+  # Reorder the comparison names in the first dataset by the lower bound of the 95% confidence interval
+  comparison_order <- first_data %>%
+    arrange(ninetyfive_ci_lower) %>%
+    pull(comparison)
   
   # Loop over each data frame in data_list
   for (dataset_name in names(data_list)) {
@@ -66,19 +60,15 @@ forest_plot <- function(data_list, bg = "white", save = NULL, filename = NULL, d
     # Add a column for the dataset name
     data$Dataset <- dataset_name
     
+    # Reorder the comparison factor based on the first dataset
+    data$comparison <- factor(data$comparison, levels = comparison_order)
+    
     # Append to the list
     data_frames[[dataset_name]] <- data
   }
   
   # Combine all data frames into one
   combined_data <- bind_rows(data_frames)
-  
-  # Calculate the range of the confidence intervals (though not used for reordering)
-  combined_data <- combined_data %>%
-    mutate(range = ninetyfive_ci_upper - ninetyfive_ci_lower)
-  
-  # Reorder the comparison names by the lower bound of the 95% confidence interval
-  combined_data$comparison <- factor(combined_data$comparison, levels = unique(combined_data$comparison))
   
   # Highlight intervals that do not cover 0
   combined_data <- combined_data %>%
@@ -127,7 +117,6 @@ forest_plot <- function(data_list, bg = "white", save = NULL, filename = NULL, d
   )
   
   # Add points for the p-values if provided
-  # Since p_value_provided may vary between datasets, we need to handle it carefully
   plot <- plot + geom_point(
     data = combined_data %>% filter(p_value_provided == TRUE),
     aes(y = (ninetyfive_ci_lower + ninetyfive_ci_upper) / 2, size = -log10(p_value)),
@@ -175,9 +164,9 @@ forest_plot <- function(data_list, bg = "white", save = NULL, filename = NULL, d
   plot <- plot + facet_grid(. ~ Dataset, scales = "free_x", space = "free_x")
   
   # Adjust the plot size based on the number of comparisons
-  scaling_factor <- 0.75
+  scaling_factor <- 0.5
   dynamic_height <- length(unique(combined_data$comparison)) * scaling_factor
-  min_height <- 12
+  min_height <- 10
   max_height <- 35
   final_height <- max(min_height, min(dynamic_height, max_height))
   
@@ -198,13 +187,14 @@ forest_plot <- function(data_list, bg = "white", save = NULL, filename = NULL, d
     file_name <- paste0(dir_path, filename, ".", save)
     
     # Adjust width based on the number of data frames
-    plot_width <- 5 * length(data_list)
+    plot_width <- 8 * length(data_list)
     
     ggsave(file_name, plot, width = plot_width, height = final_height, dpi = 300, device = save, bg = bg, limitsize = FALSE)
   }
   
   return(plot)
 }
+
 
 
 #' Plot Sigma Values Against Parameters
