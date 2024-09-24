@@ -346,18 +346,18 @@ estimate_covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "Multi
         taxa2relativesd <- sd(rWpara[2, ])
         relativecorrelation <- cor(rWpara[1, ], rWpara[2, ])
         relativecovariance <- cov(rWpara[1, ], rWpara[2, ])
-        if (!is.null(rhobounds)) {
+        if (is.null(rhobounds)) {
+          rho_lower_bound_1 = lowerrhobound[d1]
+          rho_lower_bound_2 = lowerrhobound[d2]
+          rho_upper_bound_1 = upperrhobound[d1]
+          rho_upper_bound_2 = upperrhobound[d2]
+        } else {
           rho_upper_bound_1 = rhobounds[d1, 2, s]
           rho_upper_bound_2 = rhobounds[d2, 2, s]
           rho_lower_bound_1 = rhobounds[d1, 1, s]
           rho_lower_bound_2 = rhobounds[d2, 1, s]
           upperscalestdev = scalestdev[s,2]
           lowerscalestdev = scalestdev[s,1]
-        } else {
-          rho_lower_bound_1 = lowerrhobound[d1]
-          rho_lower_bound_2 = lowerrhobound[d2]
-          rho_upper_bound_1 = upperrhobound[d1]
-          rho_upper_bound_2 = lowerrhobound[d2]
         }
         initialparameters <- c(((rho_upper_bound_1+rho_lower_bound_1) / 2), ((rho_upper_bound_2+rho_lower_bound_2) / 2), ((upperscalestdev + lowerscalestdev) / 2))
         
