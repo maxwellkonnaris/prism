@@ -162,21 +162,30 @@ estimate_covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "Multi
   cat("Algorithm selected:\n")
   print(algorithm)
 
-  if (!is.null(externalscalemeasurements) && is.matrix(externalscalemeasurements) && ncol(Y) == nrow(externalscalemeasurements)) {
-      cat("External scale measurements were provided:\n")
-      cat("Dimensions of supplied external scale measurements matrix:\n")
-      replicates <- ncol(externalscalemeasurements)
-      sampletotals <- nrow(externalscalemeasurements)
-      print(paste0("Number of Sample-scale Measurement Pairs: ", sampletotals))
-      print(paste0("Number of Replicates: ", replicates))
-      cat("Estimating Rho bounds and scale SD from the external scale measurements:\n")
+  if (!is.null(externalscalemeasurements) && 
+      (is.matrix(externalscalemeasurements) || is.vector(externalscalemeasurements))) {
+      
+      if (is.vector(externalscalemeasurements)) {
+          externalscalemeasurements <- matrix(externalscalemeasurements, ncol = 1)
+      }
+  
+      if (ncol(Y) == nrow(externalscalemeasurements)) {
+          cat("External scale measurements were provided:\n")
+          cat("Dimensions of supplied external scale measurements matrix:\n")
+          replicates <- ncol(externalscalemeasurements)
+          sampletotals <- nrow(externalscalemeasurements)
+          print(paste0("Number of Sample-scale Measurement Pairs: ", sampletotals))
+          print(paste0("Number of Replicates: ", replicates))
+          cat("Estimating Rho bounds and scale SD from the external scale measurements:\n")
+      } else {
+          stop("Error: Mismatch in dimensions between external scale measurements and Y.")
+      }
   } else {
       cat("Using default Rho bounds:\n")
       print(paste0(lowerrhobound, ":", upperrhobound))
       cat("Using default Scale standard deviation bounds:\n")
       print(paste0(lowerscalestdev, ":", upperscalestdev))
   }
-
   ## END SETUP ----------------------------------------------------------------------------------------------------------------------------------------------
   ## CLUSTER RESOURCES --------------------------------------------------------------------------------------------------------------------------------------
   # Register the parallel backend
