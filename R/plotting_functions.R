@@ -1238,7 +1238,7 @@ plot_scalestdev_histograms <- function(scalestdev, S) {
     ScaleSD = c(as.vector(scalestdev[, 1]), as.vector(scalestdev[, 2])),
     Bound = rep(c("Lower", "Upper"), each = S)
   ), aes(x = ScaleSD, fill = Bound)) +
-    geom_histogram(aes(y = ..density..), bins = 30, position = "identity", alpha = 0.6) +
+    geom_histogram(aes(y = after_stat(density)), bins = 30, position = "identity", alpha = 0.6) +
     geom_density(alpha = 0.4) +
     facet_wrap(~ Bound, scales = "free_y") +
     labs(title = "Histograms of Scale Standard Deviation Bounds for Each Sample",
