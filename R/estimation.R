@@ -311,7 +311,7 @@ estimate_covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "Multi
     rm(rhoandsd_list)
 
     # plot the scale SD
-    plot_scalestdev_histograms(scalestdev, S)
+    plot_scalestdev_histogram(scalestdev, S)
                                      
     # plot the rho
     plot_rho_ridges(rhobounds, D, S)
