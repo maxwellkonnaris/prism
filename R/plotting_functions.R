@@ -1,6 +1,6 @@
 #' Forest Plot of Confidence Intervals
 #'
-#' This function creates a professional-looking forest plot of confidence intervals ordered by the largest range.
+#' This function creates a professional-looking forest plot of confidence intervals ordered by the lower bound of the 95% confidence interval.
 #'
 #' @param data A data frame containing the covariance comparison names, lower bound for the range of sigma, upper bound of the range of sigma, 2.5 percent quartile of the sorted minimized sigmas, and the 97.5 percent quartile of the sorted maximized sigmas.
 #' @param bg A character string indicating the background color of the plot. Options are "white" (default) or "transparent".
@@ -48,12 +48,12 @@ forest_plot <- function(data, bg = "white", save = NULL, filename = NULL, dir_pa
     message("Directory already present")
   }
   
-  # Calculate the range of the confidence intervals
+  # Calculate the range of the confidence intervals (though not used for reordering)
   data <- data %>%
     mutate(range = ninetyfive_ci_upper - ninetyfive_ci_lower)
   
-  # Reorder the comparison names by the range
-  data$comparison <- factor(data$comparison, levels = data$comparison[order(data$range, decreasing = TRUE)])
+  # Reorder the comparison names by the lower bound of the 95% confidence interval
+  data$comparison <- factor(data$comparison, levels = data$comparison[order(data$ninetyfive_ci_lower, decreasing = TRUE)])
   
   # Highlight intervals that do not cover 0
   data <- data %>%
@@ -158,7 +158,19 @@ forest_plot <- function(data, bg = "white", save = NULL, filename = NULL, dir_pa
       filename <- "forest_plot"
     }
     file_name <- paste0(dir_path, filename, ".", save)
-    ggsave(file_name, plot, width = 10, height = 8, dpi = 300, device = save, bg = bg)
+	  
+    # Set the scaling factor, e.g., 0.5 units per comparison
+    scaling_factor <- 0.75
+
+    # Calculate the dynamic height based on the number of unique comparisons
+    dynamic_height <- length(unique(data$comparison)) * scaling_factor
+
+    # Ensure the height doesn't go below a minimum threshold and above a maximum threshold
+    min_height <- 12    # Minimum height (inches)
+    max_height <- 50   # Maximum height (inches)
+    final_height <- max(min_height, min(dynamic_height, max_height))
+	  
+    ggsave(file_name, plot, width = 8, height = final_height, dpi = 300, device = save, bg = bg)
   }
   
   return(plot)
