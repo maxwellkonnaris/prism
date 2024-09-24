@@ -1,19 +1,19 @@
-#' Forest Plot of Confidence Intervals
+#' Forest Plot of Confidence Intervals for Multiple Data Frames
 #'
-#' This function creates a professional-looking forest plot of confidence intervals ordered by the lower bound of the 95% confidence interval.
+#' This function creates a professional-looking forest plot of confidence intervals for multiple data frames. Each data frame is plotted side by side with shared y-axis labels, and each plot is labeled with the name of the data frame.
 #'
-#' @param data A data frame containing the covariance comparison names, lower bound for the range of sigma, upper bound of the range of sigma, 2.5 percent quartile of the sorted minimized sigmas, and the 97.5 percent quartile of the sorted maximized sigmas.
+#' @param data_list A named list of data frames. Each data frame should contain the necessary columns as specified below.
 #' @param bg A character string indicating the background color of the plot. Options are "white" (default) or "transparent".
 #' @param save A character string indicating the file format to save the plot. Options are "png", "jpg", "svg", "pdf". Default is NULL, which means the plot is not saved.
 #' @param filename A character string indicating the file name when saving the plot. Default is NULL, which means the plot is saved as forest_plot if save format is indicated.
 #' @param dir_path A character string indicating the directory to store the plot. Default is \code{"./plots/"} which creates the plots directory in the current directory.
-#' @return A ggplot object representing the forest plot.
+#' @return A ggplot object representing the combined forest plot.
 #' @import ggplot2
 #' @import dplyr
 #' @export
 #' @examples
 #' # Example usage:
-#' results <- data.frame(
+#' results1 <- data.frame(
 #'   comparison = c("A:B", "A:C", "B:C"),
 #'   ninetyfive_ci_lower = c(0.1, -0.2, 0.3),
 #'   ninetyfive_ci_upper = c(0.4, 0.5, 0.6),
@@ -21,53 +21,71 @@
 #'   maxsigma_absolute_maximum_covariance = c(0.45, 0.55, 0.65),
 #'   p_value = c(0.01, 0.05, 0.10) # Example p-values
 #' )
-#' plot <- forest_plot(results, save = "png", filename = "sampledataset")
-forest_plot <- function(data, bg = "white", save = NULL, filename = NULL, dir_path = "./plots/") {
+#' results2 <- data.frame(
+#'   comparison = c("A:B", "A:C", "B:C"),
+#'   ninetyfive_ci_lower = c(0.2, -0.1, 0.2),
+#'   ninetyfive_ci_upper = c(0.5, 0.6, 0.7),
+#'   minsigma_absolute_minimum_covariance = c(0.15, -0.15, 0.35),
+#'   maxsigma_absolute_maximum_covariance = c(0.55, 0.65, 0.75),
+#'   p_value = c(0.02, 0.04, 0.08) # Example p-values
+#' )
+#' data_list <- list(Dataset1 = results1, Dataset2 = results2)
+#' plot <- forest_plot(data_list, save = "png", filename = "combined_forest_plot")
+forest_plot <- function(data_list, bg = "white", save = NULL, filename = NULL, dir_path = "./plots/") {
+  # Check that data_list is a named list of data frames
+  if (!is.list(data_list) || is.null(names(data_list))) {
+    stop("data_list must be a named list of data frames.")
+  }
+  
   # Required columns
   required_columns <- c("comparison", "ninetyfive_ci_lower", "ninetyfive_ci_upper",
                         "minsigma_absolute_minimum_covariance", "maxsigma_absolute_maximum_covariance")
   
-  # Ensure the data has the necessary columns
-  if (!all(required_columns %in% colnames(data))) {
-    stop(paste("Data must contain columns:", paste(required_columns, collapse = ", ")))
-  }
+  # Initialize an empty list to store data frames with an added 'Dataset' column
+  data_frames <- list()
   
-  # Check if p_value is provided
-  p_value_provided <- "p_value" %in% colnames(data)
-  
-  # Check if the directory exists
-  if (!dir.exists(dir_path)) {
-    # Create the directory
-    dir.create(dir_path, recursive = TRUE)
-    if (dir.exists(dir_path)) {
-      message("Directory created successfully!")
-    } else {
-      warning("Failed to create directory.")
+  # Loop over each data frame in data_list
+  for (dataset_name in names(data_list)) {
+    data <- data_list[[dataset_name]]
+    
+    # Ensure the data has the necessary columns
+    if (!all(required_columns %in% colnames(data))) {
+      stop(paste("Data frame '", dataset_name, "' must contain columns:", paste(required_columns, collapse = ", ")))
     }
-  } else {
-    message("Directory already present")
+    
+    # Check if p_value is provided
+    p_value_provided <- "p_value" %in% colnames(data)
+    data$p_value_provided <- p_value_provided  # Add a flag column
+    
+    # Add a column for the dataset name
+    data$Dataset <- dataset_name
+    
+    # Append to the list
+    data_frames[[dataset_name]] <- data
   }
+  
+  # Combine all data frames into one
+  combined_data <- bind_rows(data_frames)
   
   # Calculate the range of the confidence intervals (though not used for reordering)
-  data <- data %>%
+  combined_data <- combined_data %>%
     mutate(range = ninetyfive_ci_upper - ninetyfive_ci_lower)
   
   # Reorder the comparison names by the lower bound of the 95% confidence interval
-  data$comparison <- factor(data$comparison, levels = data$comparison[order(data$ninetyfive_ci_lower, decreasing = TRUE)])
+  combined_data$comparison <- factor(combined_data$comparison, levels = unique(combined_data$comparison))
   
   # Highlight intervals that do not cover 0
-  data <- data %>%
+  combined_data <- combined_data %>%
     mutate(highlight = ifelse(
       (ninetyfive_ci_lower > 0 & ninetyfive_ci_upper > 0) | (ninetyfive_ci_lower < 0 & ninetyfive_ci_upper < 0),
       "Doesn't Cover Zero", "Covers Zero"
     ))
   
   # Create the forest plot
-  plot <- ggplot(data, aes(x = comparison)) +
+  plot <- ggplot(combined_data, aes(x = comparison)) +
     coord_flip() +
     theme_classic(base_size = 12) +
     labs(
-      title = "Covariance Intervals",
       x = "Taxa Comparison",
       y = "Estimated Covariance/Variance",
       color = NULL
@@ -76,7 +94,7 @@ forest_plot <- function(data, bg = "white", save = NULL, filename = NULL, dir_pa
       axis.text.x = element_text(size = 10),
       axis.text.y = element_text(size = 10),
       axis.title = element_text(size = 12, face = "bold"),
-      plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+      strip.text = element_text(size = 12, face = "bold"),
       legend.position = "top",
       legend.title = element_blank(),
       legend.text = element_text(size = 10)
@@ -103,15 +121,15 @@ forest_plot <- function(data, bg = "white", save = NULL, filename = NULL, dir_pa
   )
   
   # Add points for the p-values if provided
-  if (p_value_provided) {
-    # Ensure p_value is numeric and positive
-    if (!is.numeric(data$p_value) || any(data$p_value <= 0)) {
-      stop("p_value must be numeric and greater than zero.")
-    }
-    plot <- plot + geom_point(
-      aes(y = (ninetyfive_ci_lower + ninetyfive_ci_upper) / 2, size = -log10(p_value)),
-      color = "black", shape = 21, fill = "white", stroke = 1
-    ) +
+  # Since p_value_provided may vary between datasets, we need to handle it carefully
+  plot <- plot + geom_point(
+    data = combined_data %>% filter(p_value_provided == TRUE),
+    aes(y = (ninetyfive_ci_lower + ninetyfive_ci_upper) / 2, size = -log10(p_value)),
+    color = "black", shape = 21, fill = "white", stroke = 1
+  )
+  
+  if (any(combined_data$p_value_provided)) {
+    plot <- plot +
       labs(size = expression("-log"[10]*"(p-value)")) +
       scale_size_continuous(range = c(2, 6))
   }
@@ -147,8 +165,22 @@ forest_plot <- function(data, bg = "white", save = NULL, filename = NULL, dir_pa
   # Adjust y-axis breaks
   plot <- plot + scale_y_continuous(breaks = scales::pretty_breaks(n = 5))
   
+  # Facet by Dataset to create side-by-side plots
+  plot <- plot + facet_grid(. ~ Dataset, scales = "free_x", space = "free_x")
+  
+  # Adjust the plot size based on the number of comparisons
+  scaling_factor <- 0.75
+  dynamic_height <- length(unique(combined_data$comparison)) * scaling_factor
+  min_height <- 12
+  max_height <- 35
+  final_height <- max(min_height, min(dynamic_height, max_height))
+  
   # Save the plot if save is not NULL
   if (!is.null(save)) {
+    # Check if directory exists
+    if (!dir.exists(dir_path)) {
+      dir.create(dir_path, recursive = TRUE)
+    }
     # Ensure the directory path ends with a slash
     if (!grepl("/$", dir_path)) {
       dir_path <- paste0(dir_path, "/")
@@ -158,19 +190,11 @@ forest_plot <- function(data, bg = "white", save = NULL, filename = NULL, dir_pa
       filename <- "forest_plot"
     }
     file_name <- paste0(dir_path, filename, ".", save)
-	  
-    # Set the scaling factor, e.g., 0.5 units per comparison
-    scaling_factor <- 0.75
-
-    # Calculate the dynamic height based on the number of unique comparisons
-    dynamic_height <- length(unique(data$comparison)) * scaling_factor
-
-    # Ensure the height doesn't go below a minimum threshold and above a maximum threshold
-    min_height <- 12    # Minimum height (inches)
-    max_height <- 50   # Maximum height (inches)
-    final_height <- max(min_height, min(dynamic_height, max_height))
-	  
-    ggsave(file_name, plot, width = 8, height = final_height, dpi = 300, device = save, bg = bg)
+    
+    # Adjust width based on the number of data frames
+    plot_width <- 5 * length(data_list)
+    
+    ggsave(file_name, plot, width = plot_width, height = final_height, dpi = 300, device = save, bg = bg, limitsize = FALSE)
   }
   
   return(plot)
