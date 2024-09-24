@@ -23,6 +23,9 @@
 #' 
 #' @param outputdirectory A character string specifying the directory to save results for grid search. If \code{NULL}, the current working directory is used. Defaults to \code{NULL}.
 #'
+#' @param seed An optional integer value to set the seed for random number generation, ensuring reproducible results. Defaults to \code{NULL}, which means the seed is not set within the function.
+#'
+#'
 #' @return A list with two elements:
 #' \item{\code{final_results}}{A dataframe containing the minimum and maximum covariance estimates for each pair of taxa along with confidence intervals and other relevant metrics.}
 #' \item{\code{all_inner_results}}{A dataframe containing the full set of results from the bootstrapped analysis, including correlation, covariance, and scale estimates for each bootstrap sample.}
@@ -134,7 +137,7 @@
 #' @import filelock
 #' @import ggridges
 #' @export
-estimate_covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "Multinomial Dirichlet", externalscalemeasurements = NULL, lowerrhobound = rep(-1.0, nrow(Y)), upperrhobound = rep(1.0, nrow(Y)), S = 1000, lowerscalestdev = 0.450, upperscalestdev = 0.650, algorithm = "GRID_SEARCH", outputdirectory = NULL) {
+estimate_covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "Multinomial Dirichlet", externalscalemeasurements = NULL, lowerrhobound = rep(-1.0, nrow(Y)), upperrhobound = rep(1.0, nrow(Y)), S = 1000, lowerscalestdev = 0.450, upperscalestdev = 0.650, algorithm = "GRID_SEARCH", outputdirectory = NULL, seed = NULL) {
   
   ## COMPUTATIONAL TIME -------------------------------------------------------------------------------------------------------------------------------------
   start_time <- Sys.time()
@@ -143,6 +146,11 @@ estimate_covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "Multi
   # Check if Y is a matrix, dataframe, or tibble, and has appropriate dimensions
   if (!(is.matrix(Y) || is.data.frame(Y) || inherits(Y, "tbl_df")) || nrow(Y) < 2 || ncol(Y) < 2) {
     stop("Y must be a matrix, dataframe, or tibble with at least 2 rows and 2 columns.")
+  }
+
+  # Set the seed if provided
+  if (!is.null(seed)) {
+    set.seed(seed)
   }
 
   # Get the number of columns (N) and rows (D) in the input matrix Y
