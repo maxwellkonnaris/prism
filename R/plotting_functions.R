@@ -32,6 +32,12 @@
 #' data_list <- list(Dataset1 = results1, Dataset2 = results2)
 #' plot <- forest_plot(data_list, save = "png", filename = "combined_forest_plot")
 forest_plot <- function(data_list, bg = "white", save = NULL, filename = NULL, dir_path = "./plots/") {
+
+  # Check if input is a data frame, convert to a named list if true
+  if (is.data.frame(data_list)) {
+    data_list <- list(Dataset1 = data_list)
+  }
+	
   # Check that data_list is a named list of data frames
   if (!is.list(data_list) || is.null(names(data_list))) {
     stop("data_list must be a named list of data frames.")
