@@ -322,7 +322,7 @@ estimate_covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "Multi
       # Use sequential foreach for the inner loop
       results_inner <- foreach(s = 1:S, .combine = 'rbind', .packages = c('stats', 'MCMCpack', 'nloptr', 'dplyr')) %dopar% {
         
-        rWpara <- rWparaoriginal[c(d1, d2), s]
+        rWpara <- rWparaoriginal[c(d1, d2), boostrap_samples[, s], s]
         taxa1relativesd <- sd(rWpara[1, ])
         taxa2relativesd <- sd(rWpara[2, ])
         relativecorrelation <- cor(rWpara[1, ], rWpara[2, ])
@@ -622,9 +622,11 @@ estimate_covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "Multi
                            
                            # Define parameter steps
                            scale <- (upperscalestdev - lowerscalestdev) / 5
+                           bound1 <- (rho_upper_bound_1 - rho_lower_bound_1) / 5
+                           bound2 <- (rho_upper_bound_2 - rho_lower_bound_2) / 5
                            
-                           rho1 <- seq(lowerrhobound[d1], upperrhobound[d1], by = 0.01)
-                           rho2 <- seq(lowerrhobound[d2], upperrhobound[d2], by = 0.01)
+                           rho1 <- seq(rho_lower_bound_1, rho_upper_bound_1, by = bound1)
+                           rho2 <- seq(rho_lower_bound_2, rho_upper_bound_2, by = bound2)
                            scalestdevstep <- seq(lowerscalestdev, upperscalestdev, by = scale)
                            iterations <- length(rho1) * length(rho2) * length(scalestdevstep)
                            
