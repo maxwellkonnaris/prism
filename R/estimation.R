@@ -209,7 +209,7 @@ estimate_covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "Multi
   progress <- function(n) {
     pb$tick()
   }
-  progress_precomp <- function(n) {
+  progress_rhosd <- function(n) {
     pb_rhosd$tick()
   }
   # Options for foreach to include progress updates
