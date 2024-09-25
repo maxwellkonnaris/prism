@@ -254,7 +254,7 @@ estimate_covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "Multi
   if (uncertaintydistribution == "Multinomial Dirichlet") {
     # generate S Dirichlet samples for each sample (column)
     for (n in 1:N) {
-        rWparaoriginal[,n,] <- rdirichlet(S, Y[,n] + alpha) 
+        rWparaoriginal[,n,] <- t(rdirichlet(S, Y[,n] + alpha)) 
     } 
   } else if (uncertaintydistribution == "Multinomial Logistic Normal") {
     # generate S Multinomial logistic Normal posterior samples for each sample (column) using fido
@@ -275,8 +275,13 @@ estimate_covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "Multi
     posterior <- refit(priors, optim_method="lbfgs")
     rWparaoriginal <- to_proportions(posterior)$Eta
   }
+  
+  # plot posterior samples
+  plot_posterior_samples(rWparaoriginal)
+  
   # Log transform relative abundances
   rWparaoriginal <- log(rWparaoriginal)
+  
   ## END ACCOUNTING FOR UNCERTAINTY IN OBSERVED RELATIVE ABUNDANCES ---------------------------------------------------------------------------------------
   ## ESTIMATING RHO AND SD --------------------------------------------------------------------------------------------------------------------------------
   if (!is.null(externalscalemeasurements) && is.matrix(externalscalemeasurements) && ncol(Y) == nrow(externalscalemeasurements)) {
