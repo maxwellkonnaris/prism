@@ -1464,7 +1464,7 @@ plot_posterior_density <- function(rWparaoriginal, save = TRUE, file_name = "tax
     theme_minimal() +
     labs(
       title = "Posterior Density of Relative Abundance for All Taxa",
-      x = "Relative Abundance",
+      x = "Relative Abundance (Log)",
       y = "Density",
       fill = "Taxa"
     ) +
@@ -1518,14 +1518,15 @@ plot_posterior_boxplot <- function(rWparaoriginal, save = TRUE, file_name = "tax
     theme_minimal() +
     labs(
       title = "Posterior Boxplot of Relative Abundance for All Taxa",
-      x = "Taxa",
-      y = "Relative Abundance",
+      x = " ",
+      y = "Relative Abundance (Log)",
       fill = "Taxa"
     ) +
     theme(
       plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),
       axis.title = element_text(size = 14),
       axis.text = element_text(size = 12),
+      axis.text.x = element_text(angle = 45, hjust = 1), 
       legend.position = "none",  # Boxplots typically don't need legends
       plot.margin = margin(5.5, 40, 5.5, 5.5)
     )
@@ -1571,14 +1572,15 @@ plot_posterior_violin <- function(rWparaoriginal, save = TRUE, file_name = "taxa
     theme_minimal() +
     labs(
       title = "Posterior Violin Plot of Relative Abundance for All Taxa",
-      x = "Taxa",
-      y = "Relative Abundance",
+      x = " ",
+      y = "Relative Abundance (Log)",
       fill = "Taxa"
     ) +
     theme(
       plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),
       axis.title = element_text(size = 14),
       axis.text = element_text(size = 12),
+      axis.text.x = element_text(angle = 45, hjust = 1), 
       legend.position = "none",
       plot.margin = margin(5.5, 40, 5.5, 5.5)
     )
@@ -1609,7 +1611,7 @@ plot_posterior_samples <- function(rWparaoriginal, save = TRUE, file_name = "tax
     labs(
       title = "Variation Across Taxa Posterior Samples",
       x = "Sample",
-      y = "Relative Abundance",
+      y = "Relative Abundance (Log)",
       color = "Taxa"
     ) +
     theme(
