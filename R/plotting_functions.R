@@ -74,7 +74,7 @@ forest_plot <- function(data_list, bg = "white", save = NULL, filename = NULL, d
   combined_data <- combined_data %>%
     mutate(highlight = ifelse(
       (ninetyfive_ci_lower > 0 & ninetyfive_ci_upper > 0) | (ninetyfive_ci_lower < 0 & ninetyfive_ci_upper < 0),
-      "Doesn't Cover Zero", "Covers Zero"
+      "95% CI Doesn't Cover Zero", "95% CI Covers Zero"
     ))
   
   # Create the forest plot
@@ -83,7 +83,7 @@ forest_plot <- function(data_list, bg = "white", save = NULL, filename = NULL, d
     theme_classic(base_size = 12) +
     labs(
       x = "Taxa Comparison",
-      y = "Estimated Covariance/Variance",
+      y = "Estimated Covariance",
       color = NULL
     ) +
     theme(
@@ -97,11 +97,11 @@ forest_plot <- function(data_list, bg = "white", save = NULL, filename = NULL, d
     ) +
     scale_color_manual(
       values = c(
-        "Doesn't Cover Zero" = "#0072B2",  # Blue
-        "Covers Zero" = "gray",
-        "Covariance Range" = "black"
+        "95% CI Doesn't Cover Zero" = "#023E8A",  # Blue
+        "95% CI Covers Zero" = "cccccc",
+        "Covariance Range" = "B5B5B5"
       ),
-      breaks = c("Doesn't Cover Zero", "Covariance Range") # Exclude "Covers Zero" from legend
+      breaks = c("95% CI Doesn't Cover Zero", "Covariance Range") # Exclude "Covers Zero" from legend
     )
   
   # Add the covariance range error bars
@@ -185,7 +185,7 @@ forest_plot <- function(data_list, bg = "white", save = NULL, filename = NULL, d
     file_name <- paste0(dir_path, filename, ".", save)
     
     # Adjust width based on the number of data frames
-    plot_width <- 10 * length(data_list)
+    plot_width <- 8 * length(data_list)
     
     ggsave(file_name, plot, width = plot_width, height = final_height, dpi = 300, device = save, bg = bg, limitsize = FALSE)
   }
