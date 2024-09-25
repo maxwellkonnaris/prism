@@ -185,6 +185,7 @@ estimate_covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "Multi
           print(paste0("Number of Sample-scale Measurement Pairs: ", sampletotals))
           print(paste0("Number of Replicates: ", replicates))
           cat("Estimating Rho bounds and scale SD from the external scale measurements.\n")
+          externalscalemeasurements = log(externalscalemeasurements)
       } else {
           stop("Error: Mismatch in dimensions between external scale measurements and Y.")
       }
@@ -294,7 +295,7 @@ estimate_covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "Multi
     rhoandsd_list <- foreach(s = 1:S, .packages = c('stats')) %dopar% {
         n <- length(externalscalemeasurements)
         sample_indices <- boostrap_samples[, s]
-        S2 <- var(log(externalscalemeasurements[sample_indices]))
+        S2 <- var(externalscalemeasurements[sample_indices])
         chi2_lower <- qchisq(alpha / 2, df = n - 1)
         chi2_upper <- qchisq(1 - alpha / 2, df = n - 1)
         var_lower <- (n - 1) * S2 / chi2_upper
@@ -305,8 +306,11 @@ estimate_covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "Multi
         rhobounds_s <- matrix(NA, nrow = D, ncol = 2)  # [D x 2]
         z_critical <- qnorm(1 - alpha / 2)
         for (taxa in 1:D) {
+            
+            sampled_sd <- runif(1, min = scalestdev_s[1], max = scalestdev_s[2])
+            sampled_externalscalemeasurements <- rnorm(length(externalscalemeasurements), mean = externalscalemeasurements, sd = sampled_sd)
             # Compute correlation
-            r <- cor(rWparaoriginal[taxa, sample_indices, s], log(externalscalemeasurements[sample_indices]))
+            r <- cor(rWparaoriginal[taxa, sample_indices, s], sampled_externalscalemeasurements[sample_indices]))
             # Fisher Z-transformation
             z <- 0.5 * log((1 + r) / (1 - r))
             # Standard error of z
