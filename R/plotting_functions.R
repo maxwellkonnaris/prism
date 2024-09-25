@@ -1391,7 +1391,7 @@ plot_scalestdev_histogram <- function(scalestdev, S) {
     ggplot2::geom_vline(data = mean_values, ggplot2::aes(xintercept = ScaleSD, color = Bound),
                         linetype = "dashed", size = 1) +
     # Annotate mean values
-    ggplot2::annotate("text", x = mean_values$ScaleSD, y = Inf, label = paste0("Mean = ", round(mean_values$ScaleSD, 2)),
+    ggplot2::annotate("text", x = mean_values$ScaleSD, y = Inf, label = paste0("Mean = ", round(mean_values$ScaleSD, 4)),
                       color = c("#1b9e77", "#d95f02"), angle = 90, vjust = -0.5, hjust = 1.1, size = 5) +
     # Labels and theme
     ggplot2::labs(title = "Histogram of Scale Standard Deviation Bounds",
