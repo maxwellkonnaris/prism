@@ -1480,10 +1480,8 @@ plot_posterior_density <- function(rWparaoriginal, save = TRUE, file_name = "tax
   if (save == TRUE){	
   # Save the plot with high resolution
   ggsave(filename = file_name, plot = p, width = width, height = height, dpi = dpi, bg = "white")
-  } else {
-  print(p)
-  }
-  
+  } 
+  return(p)
 }
 
 #' Plot Posterior Boxplot for All Taxa
@@ -1535,9 +1533,8 @@ plot_posterior_boxplot <- function(rWparaoriginal, save = TRUE, file_name = "tax
   if (save == TRUE){	
   # Save the plot with high resolution
   ggsave(filename = file_name, plot = p, width = width, height = height, dpi = dpi, bg = "white")
-  } else {
-  print(p)
-  }
+  } 
+  return(p)
 }
 
 #' Plot Posterior Violin Plot for All Taxa
@@ -1586,12 +1583,11 @@ plot_posterior_violin <- function(rWparaoriginal, save = TRUE, file_name = "taxa
       plot.margin = margin(5.5, 40, 5.5, 5.5)
     )
   
-    if (save == TRUE){	
+  if (save == TRUE){	
   # Save the plot with high resolution
   ggsave(filename = file_name, plot = p, width = width, height = height, dpi = dpi, bg = "white")
-  } else {
-  print(p)
-  }
+  } 
+  return(p)
 }
 
 plot_posterior_samples <- function(rWparaoriginal, save = TRUE, file_name = "taxa_posterior_samples.png", width = 8, height = 8, dpi = 300) {
@@ -1631,9 +1627,9 @@ plot_posterior_samples <- function(rWparaoriginal, save = TRUE, file_name = "tax
   if (save == TRUE){	
   # Save the plot with high resolution
   ggsave(filename = file_name, plot = p, width = width, height = height, dpi = dpi, bg = "white")
-  } else {
-  print(p)
-  }
+  } 
+	
+  return(p)
 }
 
 #' Combine All Posterior Plots into a Grid
