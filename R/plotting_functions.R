@@ -1660,9 +1660,15 @@ combine_posterior_plots <- function(rWparaoriginal, file_name = "combined_poster
   p2 <- plot_posterior_boxplot(rWparaoriginal)   # Box plot
   p3 <- plot_posterior_violin(rWparaoriginal)    # Violin plot
   p4 <- plot_posterior_samples(rWparaoriginal)   # Line plot
-  
+
+    # Convert ggplot objects to grobs
+  g1 <- ggplotGrob(p1)
+  g2 <- ggplotGrob(p2)
+  g3 <- ggplotGrob(p3)
+  g4 <- ggplotGrob(p4)
+	
   # Arrange all plots into a 2x2 grid layout
-  combined_plot <- grid.arrange(p1, p2, p3, p4, ncol = 2)
+  combined_plot <- grid.arrange(g1, g2, g3, g4, ncol = 2)
   
   # Save the combined plot as a PNG
   ggsave(filename = file_name, plot = combined_plot, width = width, height = height, dpi = dpi, bg = "white")
