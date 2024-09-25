@@ -1770,10 +1770,14 @@ plot_true_abundances <- function(flow_data, dat, file_path = "true_abundances_pl
 	  ggtitle("True Correlations of Taxa and Scale")
   
   # Create the correlation heatmap using pheatmap
-  correlation_heatmap <- pheatmap::pheatmap(truecorrelations, 
-                                            main = "Correlation Matrix of Taxa", 
-                                            color = colorRampPalette(c("blue", "white", "red"))(100),
-                                            border_color = NA, silent = TRUE)
+  correlation_heatmap <- pheatmap::pheatmap(
+	  truecorrelations, 
+	  main = "Correlation Matrix of Taxa", 
+	  color = colorRampPalette(c("blue", "white", "red"))(100),
+	  breaks = seq(-1, 1, length.out = 101),  # Ensures the color range goes from -1 to 1
+	  border_color = NA, 
+	  silent = TRUE
+	)
   # Convert to a grob
   forest_plot_grob <- ggplotGrob(forest_plot)
   correlation_grob <- grid::grid.grabExpr(grid::grid.draw(correlation_heatmap$gtable))
