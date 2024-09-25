@@ -99,7 +99,7 @@ forest_plot <- function(data_list, bg = "white", save = NULL, filename = NULL, d
       values = c(
         "95% CI Doesn't Cover Zero" = "#023E8A",  # Blue
         "95% CI Covers Zero" = "cccccc",
-        "Covariance Range" = "B5B5B5"
+        "Covariance Range" = "676767"
       ),
       breaks = c("95% CI Doesn't Cover Zero", "Covariance Range") # Exclude "Covers Zero" from legend
     )
