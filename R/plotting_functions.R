@@ -1717,7 +1717,7 @@ plot_true_abundances <- function(flow_data, dat, file_path = "true_abundances_pl
   scale_sd_flow_data <- sd(log(flow_data_numeric))
   
   # Extract the taxa columns (excluding the first column which is 'Condition')
-  truecovariances <- cov(t(t(dat[, -1])))  # Remove the 'Condition' column
+  truecorrelations <- cor(t(t(dat[, -1])))  # Calculate correlation matrix
   
   # Create forest plot data for covariances
   forest_plot_data <- data.frame(
@@ -1749,35 +1749,39 @@ plot_true_abundances <- function(flow_data, dat, file_path = "true_abundances_pl
       ))
     }
   }
-  
-  # Set file path and save the grid of plots as a high-quality PNG image
-  png(filename = file_path, width = 15, height = 8, units = "in", res = 300)
-  
-  # Create the correlation plot using base R and convert to a grob
-  correlation_plot <- ggplotGrob(ggplot() +
-    geom_point(aes(x = truerhocorrelation, y = 1:nrow(taxa_data)), color = "steelblue") +
-    scale_x_continuous(limits = c(-1, 1), breaks = seq(-1, 1, by = 0.1)) +
-    labs(x = "True Rho Correlations", y = "Taxa") +
+
+  # Create the forest plot using ggplot
+  taxa_labels <- rownames(taxa_data)
+  forest_plot <- ggplot(data = data.frame(taxa = taxa_labels, rho = truerhocorrelation), aes(x = rho, y = taxa)) +
+    geom_point(color = "steelblue", size = 4) +
+    geom_segment(aes(x = 0, xend = rho, y = taxa, yend = taxa), color = "steelblue", size = 1.2) +
+    geom_vline(xintercept = 0, linetype = "dotted", color = "black") +
     theme_minimal() +
-    ggtitle("True Rho Correlations for Taxa vs Flow Data") +
-    theme(plot.title = element_text(size = 15), axis.title = element_text(size = 12))
-  )
+    theme(
+      axis.title.x = element_blank(),
+      axis.title.y = element_blank(),
+      axis.text.y = element_text(size = 12),
+      plot.title = element_text(hjust = 0.5, size = 15)
+    ) +
+    ggtitle("True Correlations of Taxa and Scale")
   
-  # Create the covariance heatmap using pheatmap
-  covariance_heatmap <- pheatmap::pheatmap(truecovariances, 
-                                           main = "Covariance Heatmap of Taxa", 
-                                           color = colorRampPalette(c("blue", "white", "red"))(100),
-                                           border_color = NA, silent = TRUE)
+  # Create the correlation heatmap using pheatmap
+  correlation_heatmap <- pheatmap::pheatmap(truecorrelations, 
+                                            main = "Correlation Matrix of Taxa", 
+                                            color = colorRampPalette(c("blue", "white", "red"))(100),
+                                            border_color = NA, silent = TRUE)
   
   # Convert the pheatmap to a grob
-  covariance_grob <- grid::grid.grabExpr(grid::grid.draw(covariance_heatmap$gtable))
+  correlation_grob <- grid::grid.grabExpr(grid::grid.draw(correlation_heatmap$gtable))
 
-  # Arrange the correlation plot and covariance heatmap side by side
-  gridExtra::grid.arrange(correlation_plot, covariance_grob, ncol = 2)
+  # Save the combined plot as a PNG file
+  png(filename = file_path, width = 15, height = 8, units = "in", res = 300)
+  
+  # Arrange the forest plot and correlation heatmap side by side
+  gridExtra::grid.arrange(forest_plot, correlation_grob, ncol = 2)
   
   # Close the device to save the file
   dev.off()
 
   return(forest_plot_data)
 }
-
