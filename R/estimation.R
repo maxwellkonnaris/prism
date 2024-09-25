@@ -708,24 +708,23 @@ estimate_covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "Multi
                            rpars <- rpars %>%
                              dplyr::filter(SPSD >= 0)
     
+                           
                            if (nrow(rpars) == 0) {
-                             
-                             # NULL
+                             # Return a data frame with NA values
                              res_min <- list(
-                               objective = NULL,
-                               solution = c(NULL, NULL, NULL),
-                               message = "GRIDSEARCH",
-                               status = "GRIDSEARCH",
-                               iterations = NULL
+                               objective = NA,
+                               solution = c(NA, NA, NA),
+                               message = "GRIDSEARCH_NO_VALID_ROWS",
+                               status = "GRIDSEARCH_NO_VALID_ROWS",
+                               iterations = NA
                              )
                              
-                             # NULL
                              res_max <- list(
-                               objective = NULL,
-                               solution = c(NULL, NULL, NULL),
-                               message = "GRIDSEARCH",
-                               status = "GRIDSEARCH",
-                               iterations = NULL
+                               objective = NA,
+                               solution = c(NA, NA, NA),
+                               message = "GRIDSEARCH_NO_VALID_ROWS",
+                               status = "GRIDSEARCH_NO_VALID_ROWS",
+                               iterations = NA
                              )
                            } else {
                              # Find min and max
@@ -736,18 +735,18 @@ estimate_covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "Multi
                              res_min <- list(
                                objective = min_sigma_row$sigma,
                                solution = c(min_sigma_row$rho1, min_sigma_row$rho2, min_sigma_row$scalestdevstep),
-                               message = "GRIDSEARCH",
-                               status = "GRIDSEARCH",
-                               iterations = min_sigma_row$iterations
+                               message = "GRIDSEARCH_SUCCESS",
+                               status = "GRIDSEARCH_SUCCESS",
+                               iterations = nrow(rpars)
                              )
                              
                              # Extract values from max_sigma_row
                              res_max <- list(
-                               objective = -max_sigma_row$sigma,
+                               objective = max_sigma_row$sigma,  # Removed negation for consistency
                                solution = c(max_sigma_row$rho1, max_sigma_row$rho2, max_sigma_row$scalestdevstep),
-                               message = "GRIDSEARCH",
-                               status = "GRIDSEARCH",
-                               iterations = max_sigma_row$iterations
+                               message = "GRIDSEARCH_SUCCESS",
+                               status = "GRIDSEARCH_SUCCESS",
+                               iterations = nrow(rpars)
                              )
                            }
                            
