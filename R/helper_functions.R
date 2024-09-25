@@ -649,5 +649,3 @@ simulate_prepost <- function(n = 50, d = 20, seq_depth = 5000, replicate = 1, co
     ))
   }
 }
-
-}
