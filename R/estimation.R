@@ -275,6 +275,8 @@ estimate_covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "Multi
     posterior <- refit(priors, optim_method="lbfgs")
     rWparaoriginal <- to_proportions(posterior)$Eta
   }
+
+  combine_posterior_plots(rWparaoriginal, file_name = "combined_posterior_plots.png")
     
   # Log transform relative abundances
   rWparaoriginal <- log(rWparaoriginal)
