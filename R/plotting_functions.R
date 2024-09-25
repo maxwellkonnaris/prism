@@ -1430,23 +1430,171 @@ plot_scalestdev_histogram <- function(scalestdev, S) {
   return(plot)
 }
 
-#' Plot Posterior Samples for All Taxa
+#' Plot Posterior Density for All Taxa
 #'
-#' This internal function generates a plot to visualize the posterior samples 
-#' of relative abundances for all taxa, with the legend displayed outside the plot.
+#' This internal function generates a density plot to visualize the posterior distributions 
+#' of relative abundances for all taxa.
 #' The plot is saved as a high-resolution PNG file.
 #'
 #' @param rWparaoriginal A 3D array containing posterior samples of relative abundances. 
 #'                       Dimensions should be [taxa, samples, iterations].
 #' @param file_name A string representing the name of the file to save the plot.
-#'                  Default is "taxa_plot.png".
+#'                  Default is "taxa_posterior_density.png".
 #' @param width The width of the saved plot in inches. Default is 8.
 #' @param height The height of the saved plot in inches. Default is 6.
 #' @param dpi The resolution of the saved plot in dots per inch (dpi). Default is 300.
 #'
 #' @keywords internal
-#' @import ggplot2
-plot_posterior_samples <- function(rWparaoriginal, file_name = "taxa_posterior_samples.png", width = 8, height = 6, dpi = 300) {
+plot_posterior_density <- function(rWparaoriginal, save = TRUE, file_name = "taxa_posterior_density.png", width = 8, height = 8, dpi = 300) {
+  
+  # Get the number of taxa (D) and iterations (S)
+  D <- dim(rWparaoriginal)[1]
+  S <- dim(rWparaoriginal)[3]
+  
+  # Create a data frame from the array for density plotting
+  plot_data <- data.frame(
+    Iteration = rep(1:S, times = D),
+    Taxa = rep(paste0("Taxa", 1:D), each = S),
+    Value = as.vector(rWparaoriginal[1:D, 1, ])  # Select the first sample to plot posterior distributions
+  )
+  
+  # Generate density plot
+  p <- ggplot(plot_data, aes(x = Value, fill = Taxa, color = Taxa)) +
+    geom_density(alpha = 0.3) +
+    theme_minimal() +
+    labs(
+      title = "Posterior Density of Relative Abundance for All Taxa",
+      x = "Relative Abundance",
+      y = "Density",
+      fill = "Taxa"
+    ) +
+    theme(
+      plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),
+      axis.title = element_text(size = 14),
+      axis.text = element_text(size = 12),
+      legend.position = "right",
+      legend.box.margin = margin(0, 20, 0, 0),
+      plot.margin = margin(5.5, 40, 5.5, 5.5)
+    )
+  
+  if (save == TRUE){	
+  # Save the plot with high resolution
+  ggsave(filename = file_name, plot = p, width = width, height = height, dpi = dpi, bg = "white")
+  } else {
+  print(p)
+  }
+  
+}
+
+#' Plot Posterior Boxplot for All Taxa
+#'
+#' This internal function generates a boxplot to visualize the posterior samples 
+#' of relative abundances for all taxa.
+#' The plot is saved as a high-resolution PNG file.
+#'
+#' @param rWparaoriginal A 3D array containing posterior samples of relative abundances. 
+#'                       Dimensions should be [taxa, samples, iterations].
+#' @param file_name A string representing the name of the file to save the plot.
+#'                  Default is "taxa_posterior_boxplot.png".
+#' @param width The width of the saved plot in inches. Default is 8.
+#' @param height The height of the saved plot in inches. Default is 6.
+#' @param dpi The resolution of the saved plot in dots per inch (dpi). Default is 300.
+#'
+#' @keywords internal
+plot_posterior_boxplot <- function(rWparaoriginal, save = TRUE, file_name = "taxa_posterior_boxplot.png", width = 8, height = 6, dpi = 300) {
+  
+  # Get the number of taxa (D) and iterations (S)
+  D <- dim(rWparaoriginal)[1]
+  S <- dim(rWparaoriginal)[3]
+  
+  # Create a data frame for boxplot
+  plot_data <- data.frame(
+    Iteration = rep(1:S, times = D),
+    Taxa = rep(paste0("Taxa", 1:D), each = S),
+    Value = as.vector(rWparaoriginal[1:D, 1, ])  # Select the first sample to plot posterior distributions
+  )
+  
+  # Generate the box plot
+  p <- ggplot(plot_data, aes(x = Taxa, y = Value, fill = Taxa)) +
+    geom_boxplot(alpha = 0.5) +
+    theme_minimal() +
+    labs(
+      title = "Posterior Boxplot of Relative Abundance for All Taxa",
+      x = "Taxa",
+      y = "Relative Abundance",
+      fill = "Taxa"
+    ) +
+    theme(
+      plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),
+      axis.title = element_text(size = 14),
+      axis.text = element_text(size = 12),
+      legend.position = "none",  # Boxplots typically don't need legends
+      plot.margin = margin(5.5, 40, 5.5, 5.5)
+    )
+  
+  if (save == TRUE){	
+  # Save the plot with high resolution
+  ggsave(filename = file_name, plot = p, width = width, height = height, dpi = dpi, bg = "white")
+  } else {
+  print(p)
+  }
+}
+
+#' Plot Posterior Violin Plot for All Taxa
+#'
+#' This internal function generates a violin plot to visualize the posterior samples 
+#' of relative abundances for all taxa.
+#' The plot is saved as a high-resolution PNG file.
+#'
+#' @param rWparaoriginal A 3D array containing posterior samples of relative abundances. 
+#'                       Dimensions should be [taxa, samples, iterations].
+#' @param file_name A string representing the name of the file to save the plot.
+#'                  Default is "taxa_posterior_violin.png".
+#' @param width The width of the saved plot in inches. Default is 8.
+#' @param height The height of the saved plot in inches. Default is 6.
+#' @param dpi The resolution of the saved plot in dots per inch (dpi). Default is 300.
+#'
+#' @keywords internal
+plot_posterior_violin <- function(rWparaoriginal, save = TRUE, file_name = "taxa_posterior_violin.png", width = 8, height = 8, dpi = 300) {
+  
+  # Get the number of taxa (D) and iterations (S)
+  D <- dim(rWparaoriginal)[1]
+  S <- dim(rWparaoriginal)[3]
+  
+  # Create a data frame for violin plot
+  plot_data <- data.frame(
+    Iteration = rep(1:S, times = D),
+    Taxa = rep(paste0("Taxa", 1:D), each = S),
+    Value = as.vector(rWparaoriginal[1:D, 1, ])  # Select the first sample to plot posterior distributions
+  )
+  
+  # Generate the violin plot
+  p <- ggplot(plot_data, aes(x = Taxa, y = Value, fill = Taxa)) +
+    geom_violin(alpha = 0.5) +
+    theme_minimal() +
+    labs(
+      title = "Posterior Violin Plot of Relative Abundance for All Taxa",
+      x = "Taxa",
+      y = "Relative Abundance",
+      fill = "Taxa"
+    ) +
+    theme(
+      plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),
+      axis.title = element_text(size = 14),
+      axis.text = element_text(size = 12),
+      legend.position = "none",
+      plot.margin = margin(5.5, 40, 5.5, 5.5)
+    )
+  
+    if (save == TRUE){	
+  # Save the plot with high resolution
+  ggsave(filename = file_name, plot = p, width = width, height = height, dpi = dpi, bg = "white")
+  } else {
+  print(p)
+  }
+}
+
+plot_posterior_samples <- function(rWparaoriginal, save = TRUE, file_name = "taxa_posterior_samples.png", width = 8, height = 8, dpi = 300) {
   
   # Get the number of taxa (D)
   D <- dim(rWparaoriginal)[1]
@@ -1454,7 +1602,7 @@ plot_posterior_samples <- function(rWparaoriginal, file_name = "taxa_posterior_s
   # Create a data frame from the array for easier plotting
   plot_data <- data.frame(
     Sample = rep(1:dim(rWparaoriginal)[2], times = D),
-    Taxa = rep(paste0("Taxa_", 1:D), each = dim(rWparaoriginal)[2]),
+    Taxa = rep(paste0("Taxa", 1:D), each = dim(rWparaoriginal)[2]),
     Value = as.vector(rWparaoriginal[1:D, , 1])  # You can change this to select the appropriate slice of data
   )
   
@@ -1479,9 +1627,47 @@ plot_posterior_samples <- function(rWparaoriginal, file_name = "taxa_posterior_s
       legend.box.margin = margin(0, 20, 0, 0), # Add space between the plot and the legend
       plot.margin = margin(5.5, 40, 5.5, 5.5)  # Ensure enough space for the legend outside the plot
     )
-  
+
+  if (save == TRUE){	
   # Save the plot with high resolution
-  ggsave(filename = file_name, plot = p, width = width, height = height, dpi = dpi)
-  
+  ggsave(filename = file_name, plot = p, width = width, height = height, dpi = dpi, bg = "white")
+  } else {
+  print(p)
+  }
 }
+
+#' Combine All Posterior Plots into a Grid
+#'
+#' This internal function generates and combines the density plot, boxplot, violin plot,
+#' and line plot of posterior samples for all taxa into a single grid layout.
+#' The combined plot is saved as a high-resolution PNG file.
+#'
+#' @param rWparaoriginal A 3D array containing posterior samples of relative abundances. 
+#'                       Dimensions should be [taxa, samples, iterations].
+#' @param file_name A string representing the name of the file to save the combined plot.
+#'                  Default is "combined_posterior_plots.png".
+#' @param width The width of the saved plot in inches. Default is 16.
+#' @param height The height of the saved plot in inches. Default is 12.
+#' @param dpi The resolution of the saved plot in dots per inch (dpi). Default is 300.
+#'
+#' @keywords internal
+#' @import ggplot2
+#' @import gridExtra
+combine_posterior_plots <- function(rWparaoriginal, file_name = "combined_posterior_plots.png", width = 16, height = 16, dpi = 300) {
+  
+  # Generate individual plots
+  p1 <- plot_posterior_density(rWparaoriginal)   # Density plot
+  p2 <- plot_posterior_boxplot(rWparaoriginal)   # Box plot
+  p3 <- plot_posterior_violin(rWparaoriginal)    # Violin plot
+  p4 <- plot_posterior_samples(rWparaoriginal)   # Line plot
+  
+  # Arrange all plots into a 2x2 grid layout
+  combined_plot <- grid.arrange(p1, p2, p3, p4, ncol = 2)
+  
+  # Save the combined plot as a PNG
+  ggsave(filename = file_name, plot = combined_plot, width = width, height = height, dpi = dpi, bg = "white")
+  
+  return(combined_plot)
+}
+
 
