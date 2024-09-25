@@ -898,7 +898,7 @@ estimate_covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "Multi
   final_results <- as.data.frame(final_results, stringsAsFactors = FALSE)
   rownames(final_results) <- NULL
 
-  final_results <- calculate_pval(final_results)
+  #final_results <- calculate_pval(final_results)
   
   # Combine all inner loop results
   all_inner_results <- do.call(rbind, lapply(results_list, function(x) x$resultsinner))
