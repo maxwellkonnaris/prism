@@ -1712,11 +1712,9 @@ plot_true_abundances <- function(flow_data, dat, file_path = "true_abundances_pl
   for (i in 1:nrow(taxa_data)) {
     truerhocorrelation[i] <- cor(log(taxa_data[i,]), log(flow_data_numeric))
   }
-  print(paste0("True Rho Correlations: ", truerhocorrelation))
   
   # Calculate standard deviation (scale) for log-transformed flow_data
   scale_sd_flow_data <- sd(log(flow_data_numeric))
-  print(paste0("True Scale SD: ", scale_sd_flow_data))
   
   # Extract the taxa columns (excluding the first column which is 'Condition')
   truecovariances <- cov(t(t(dat[, -1])))  # Remove the 'Condition' column
@@ -1755,55 +1753,31 @@ plot_true_abundances <- function(flow_data, dat, file_path = "true_abundances_pl
   # Set file path and save the grid of plots as a high-quality PNG image
   png(filename = file_path, width = 15, height = 8, units = "in", res = 300)
   
-  # Create the correlation plot
-  correlation_plot <- plot(
-    truerhocorrelation,         # Plot the correlations on the x-axis
-    1:nrow(taxa_data),          # Taxon indices on the y-axis
-    type = "p",                 # Scatter plot
-    pch = 16,                   # Solid dots
-    col = "steelblue",          # Dot color
-    ylim = c(0.5, nrow(taxa_data) + 0.5),  # Ensure space for all taxa labels, avoid cutting at edges
-    xlim = c(-1, 1),            # Limit x-axis to [-1, 1] for correlations
-    xlab = "True Rho Correlations",  # X-axis label
-    ylab = "",                  # Remove default y-axis label (taxa labels will be custom)
-    main = "True Rho Correlations for Taxa vs Flow Data",  # Title
-    cex.main = 1.5,             # Title size
-    cex.lab = 1.2,              # Axis label size
-    cex.axis = 1.1,             # Axis tick size
-    yaxt = "n",                 # Remove default y-axis ticks and labels
-    xaxt = "n"                  # Suppress default x-axis ticks for custom ticks
+  # Create the correlation plot using base R and convert to a grob
+  correlation_plot <- ggplotGrob(ggplot() +
+    geom_point(aes(x = truerhocorrelation, y = 1:nrow(taxa_data)), color = "steelblue") +
+    scale_x_continuous(limits = c(-1, 1), breaks = seq(-1, 1, by = 0.1)) +
+    labs(x = "True Rho Correlations", y = "Taxa") +
+    theme_minimal() +
+    ggtitle("True Rho Correlations for Taxa vs Flow Data") +
+    theme(plot.title = element_text(size = 15), axis.title = element_text(size = 12))
   )
   
-  # Add custom y-axis with labels for each taxon
-  axis(2, at = 1:nrow(taxa_data), labels = paste("Taxon", 1:nrow(taxa_data)), las = 1, cex.axis = 0.8)
-  
-  # Add custom x-axis with ticks every 0.1
-  axis(1, at = seq(-1, 1, by = 0.1), labels = seq(-1, 1, by = 0.1), cex.axis = 0.8)
-  
-  # Add gridlines for better visualization
-  grid(nx = NULL, ny = NA, col = "lightgray", lty = "dotted")
-  
-  # Add labels for each point next to the points (optional)
-  text(
-    x = truerhocorrelation,
-    y = 1:nrow(taxa_data),
-    labels = paste("Taxon", 1:nrow(taxa_data)),
-    pos = 4, cex = 0.8, col = "black"
-  )
-  
-  # Add a vertical reference line at x=0
-  abline(v = 0, col = "black", lty = 2)
-  
-  # Create the covariance heatmap
+  # Create the covariance heatmap using pheatmap
   covariance_heatmap <- pheatmap::pheatmap(truecovariances, 
                                            main = "Covariance Heatmap of Taxa", 
                                            color = colorRampPalette(c("blue", "white", "red"))(100),
-                                           border_color = NA)
+                                           border_color = NA, silent = TRUE)
   
+  # Convert the pheatmap to a grob
+  covariance_grob <- grid::grid.grabExpr(grid::grid.draw(covariance_heatmap$gtable))
+
   # Arrange the correlation plot and covariance heatmap side by side
-  gridExtra::grid.arrange(correlation_plot, covariance_heatmap, ncol = 2)
+  gridExtra::grid.arrange(correlation_plot, covariance_grob, ncol = 2)
   
   # Close the device to save the file
   dev.off()
+
+  return(forest_plot_data)
 }
 
