@@ -254,7 +254,12 @@ estimate_covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "Multi
   if (uncertaintydistribution == "Multinomial Dirichlet") {
     # generate S Dirichlet samples for each sample (column)
     for (n in 1:N) {
-        rWparaoriginal[,n,] <- rdirichlet(S, Y[,n] + alpha)
+        # Generate S Dirichlet samples for sample n
+        dirichlet_samples <- rdirichlet(S, Y[,n] + alpha)  # Output: S x D
+        # Transpose to D x S to match array dimensions
+        transposed_samples <- t(dirichlet_samples)         # Output: D x S
+        # Assign to the nth slice of the array
+        rWparaoriginal[,n,] <- transposed_samples          # Assign D x S
     } 
   } else if (uncertaintydistribution == "Multinomial Logistic Normal") {
     # generate S Multinomial logistic Normal posterior samples for each sample (column) using fido
