@@ -583,12 +583,12 @@ simulate_prepost <- function(n = 50, d = 20, seq_depth = 5000, replicate = 1, co
   }
   
   ### Set the Means for Pre and Post Conditions Based on Scenario
-  
   if (scenario == "means_only") {
     # If simulating means only, the covariance structure is not used
     d_pre <- runif(d, 400, 5000)
     d_post <- d_pre
-    d_post[c(1:min(4,d))] <- runif(min(4,d), 50, 3000)  # Alter first 4 taxa
+    num_changed_taxa <- round(0.4 * d)  # Change ~40% of taxa post-condition
+    d_post[1:num_changed_taxa] <- runif(num_changed_taxa, 50, 3000)  # Alter the first 40% of taxa
     
     # Generate true abundances (without covariance structure)
     dat <- create_abundances(d_pre, d_post, n, apply_covariance = FALSE)
@@ -605,11 +605,12 @@ simulate_prepost <- function(n = 50, d = 20, seq_depth = 5000, replicate = 1, co
     # If simulating both, change means between pre and post conditions and apply covariance structure
     d_pre <- runif(d, 400, 5000)
     d_post <- d_pre
-    d_post[c(1:min(4,d))] <- runif(min(4,d), 50, 3000)  # Alter first 4 taxa
-    
+    num_changed_taxa <- round(0.4 * d)  # Change ~40% of taxa post-condition
+    d_post[1:num_changed_taxa] <- runif(num_changed_taxa, 50, 3000)  # Alter the first 40% of taxa
+
     # Generate true abundances with the covariance structure
     dat <- create_abundances(d_pre, d_post, n, corr_strengths = corr_strengths, apply_covariance = TRUE)
-  } else {
+   } else {
     stop("Invalid scenario. Choose from 'means_only', 'covariance_only', or 'both'.")
   }
   
