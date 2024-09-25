@@ -40,7 +40,8 @@ Imports:
     gtools,
     devtools,
     BiocManager,
-    ggridges
+    ggridges,
+    pheatmap
 Remotes:
     jsilve24/driver,
     tpq/propr,
