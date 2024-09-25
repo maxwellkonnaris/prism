@@ -276,11 +276,12 @@ estimate_covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "Multi
     rWparaoriginal <- to_proportions(posterior)$Eta
   }
   
-  # plot posterior samples
-  plot_posterior_samples(rWparaoriginal)
+  combine_posterior_plots(rWparaoriginal)
   
   # Log transform relative abundances
   rWparaoriginal <- log(rWparaoriginal)
+
+  combine_posterior_plots(rWparaoriginal, file_name = "combined_log_posterior_plots.png")
   
   ## END ACCOUNTING FOR UNCERTAINTY IN OBSERVED RELATIVE ABUNDANCES ---------------------------------------------------------------------------------------
   ## ESTIMATING RHO AND SD --------------------------------------------------------------------------------------------------------------------------------
