@@ -325,7 +325,6 @@ format_elapsed_time <- function(elapsed_time) {
 #' the current working directory is used.
 #' @return NULL
 append_to_pair_file <- function(results, pair_file_name, outputdirectory) {
-  
   tryCatch({
     if (is.null(outputdirectory)) {
       outputdirectory <- getwd()
@@ -335,12 +334,23 @@ append_to_pair_file <- function(results, pair_file_name, outputdirectory) {
     }
     pair_file_name <- paste0(outputdirectory, pair_file_name)
     lock_file <- paste0(pair_file_name, ".lock")
+    
+    # Acquire file lock before writing
     lock <- filelock::lock(lock_file)
     
-    write.table(results, file = pair_file_name, append = TRUE, sep = "\t", row.names = FALSE, col.names = TRUE)
+    # Check if the file exists to decide whether to add the header or not
+    if (file.exists(pair_file_name)) {
+      # Append data without header if the file already exists
+      write.table(results, file = pair_file_name, append = TRUE, sep = "\t", row.names = FALSE, col.names = FALSE)
+    } else {
+      # Write data with header if the file does not exist
+      write.table(results, file = pair_file_name, append = FALSE, sep = "\t", row.names = FALSE, col.names = TRUE)
+    }
+    
   }, error = function(e) {
     message("Error while writing to file: ", pair_file_name, "\n", e)
   }, finally = {
+    # Ensure the lock is released in the finally block
     filelock::unlock(lock)
   })
 }
