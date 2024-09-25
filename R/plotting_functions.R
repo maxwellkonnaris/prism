@@ -1430,4 +1430,58 @@ plot_scalestdev_histogram <- function(scalestdev, S) {
   return(plot)
 }
 
+#' Plot Posterior Samples for All Taxa
+#'
+#' This internal function generates a plot to visualize the posterior samples 
+#' of relative abundances for all taxa, with the legend displayed outside the plot.
+#' The plot is saved as a high-resolution PNG file.
+#'
+#' @param rWparaoriginal A 3D array containing posterior samples of relative abundances. 
+#'                       Dimensions should be [taxa, samples, iterations].
+#' @param file_name A string representing the name of the file to save the plot.
+#'                  Default is "taxa_plot.png".
+#' @param width The width of the saved plot in inches. Default is 8.
+#' @param height The height of the saved plot in inches. Default is 6.
+#' @param dpi The resolution of the saved plot in dots per inch (dpi). Default is 300.
+#'
+#' @keywords internal
+#' @import ggplot2
+plot_posterior_samples <- function(rWparaoriginal, file_name = "taxa_posterior_samples.png", width = 8, height = 6, dpi = 300) {
+  
+  # Get the number of taxa (D)
+  D <- dim(rWparaoriginal)[1]
+  
+  # Create a data frame from the array for easier plotting
+  plot_data <- data.frame(
+    Sample = rep(1:dim(rWparaoriginal)[2], times = D),
+    Taxa = rep(paste0("Taxa_", 1:D), each = dim(rWparaoriginal)[2]),
+    Value = as.vector(rWparaoriginal[1:D, , 1])  # You can change this to select the appropriate slice of data
+  )
+  
+  # Generate the plot with the legend outside
+  p <- ggplot(plot_data, aes(x = Sample, y = Value, color = Taxa)) +
+    geom_line(size = 1) +
+    theme_minimal() +
+    labs(
+      title = "Variation Across Taxa Posterior Samples",
+      x = "Sample",
+      y = "Relative Abundance",
+      color = "Taxa"
+    ) +
+    theme(
+      plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),
+      axis.title = element_text(size = 14),
+      axis.text = element_text(size = 12),
+      legend.title = element_text(size = 14),
+      legend.text = element_text(size = 12),
+      legend.position = "right",          # Move legend to the right
+      legend.box = "vertical",            # Arrange legend vertically
+      legend.box.margin = margin(0, 20, 0, 0), # Add space between the plot and the legend
+      plot.margin = margin(5.5, 40, 5.5, 5.5)  # Ensure enough space for the legend outside the plot
+    )
+  
+  # Save the plot with high resolution
+  ggsave(filename = file_name, plot = p, width = width, height = height, dpi = dpi)
+  
+}
 
