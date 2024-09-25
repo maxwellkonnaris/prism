@@ -1674,4 +1674,136 @@ combine_posterior_plots <- function(rWparaoriginal, file_name = "combined_poster
   return(combined_plot)
 }
 
+#' Plot Rho Correlations for Taxa vs Flow Data, Covariance Heatmap, and Print Scale SD
+#'
+#' This function calculates the true rho correlations between taxa and flow data, 
+#' generates a plot of these correlations, a pheatmap of covariances, and prints the standard deviation 
+#' of the log-transformed flow data. The correlation plot and covariance heatmap are displayed side by side.
+#'
+#' @param rdat Data frame. The resampled abundance data from `simulate_prepost` with taxa counts.
+#' @param flow_data Data frame. The flow cytometry measurements from `simulate_prepost` with flow values.
+#' @param dat Data frame. The true abundance data from `simulate_prepost` to calculate covariances.
+#' @param file_path Character. File path to save the grid of plots as a high-quality PNG image. Default is `"rho_and_covariances_plot.png"`.
+#'
+#' @return None. The function produces a correlation plot, a covariance heatmap, and prints the standard deviation.
+#'
+#' @importFrom stats cor sd cov
+#' @importFrom grDevices png dev.off
+#' @importFrom graphics plot axis grid abline text
+#' @import pheatmap
+#' @import gridExtra
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#'   # Generate correlation plot and covariance heatmap
+#'   plot_true_abundances(rdat, flow_data, dat, file_path = "true_abundances_plot.png")
+#' }
+plot_true_abundances <- function(flow_data, dat, file_path = "true_abundances_plot.png") {
+  
+  # Transpose rdat to have taxa as rows
+  taxa_data <- t(dat[,-1])
+  
+  # Remove sample names from flow_data
+  flow_data_numeric <- flow_data[,-1]
+  
+  # Calculate true rho correlations between each taxon and flow cytometry data
+  truerhocorrelation <- numeric(nrow(taxa_data))
+  for (i in 1:nrow(taxa_data)) {
+    truerhocorrelation[i] <- cor(log(taxa_data[i,]), log(flow_data_numeric))
+  }
+  print(paste0("True Rho Correlations: ", truerhocorrelation))
+  
+  # Calculate standard deviation (scale) for log-transformed flow_data
+  scale_sd_flow_data <- sd(log(flow_data_numeric))
+  print(paste0("True Scale SD: ", scale_sd_flow_data))
+  
+  # Extract the taxa columns (excluding the first column which is 'Condition')
+  truecovariances <- cov(t(t(dat[, -1])))  # Remove the 'Condition' column
+  
+  # Create forest plot data for covariances
+  forest_plot_data <- data.frame(
+    comparison = character(),
+    ninetyfive_ci_lower = numeric(),
+    ninetyfive_ci_upper = numeric(),
+    minsigma_absolute_minimum_covariance = numeric(),
+    maxsigma_absolute_maximum_covariance = numeric(),
+    p_value = numeric()  # Placeholder
+  )
+
+  # Loop through the upper triangle of the covariance matrix to extract comparisons
+  for (i in 1:(ncol(truecovariances) - 1)) {
+    for (j in (i + 1):ncol(truecovariances)) {
+      # Extract the covariance value
+      cov_value <- truecovariances[i, j]
+      
+      # Create the comparison name (e.g., "Taxa1:Taxa2")
+      comparison_name <- paste0(colnames(truecovariances)[i], ":", colnames(truecovariances)[j])
+      
+      # Append this comparison to the data frame
+      forest_plot_data <- rbind(forest_plot_data, data.frame(
+        comparison = comparison_name,
+        ninetyfive_ci_lower = cov_value,  # True value for lower CI
+        ninetyfive_ci_upper = cov_value,  # True value for upper CI
+        minsigma_absolute_minimum_covariance = cov_value,  # Min sigma is the true value
+        maxsigma_absolute_maximum_covariance = cov_value,  # Max sigma is the true value
+        p_value = NA  # Placeholder, can be removed if not needed
+      ))
+    }
+  }
+  
+  # Set file path and save the grid of plots as a high-quality PNG image
+  png(filename = file_path, width = 15, height = 8, units = "in", res = 300)
+  
+  # Create the correlation plot
+  correlation_plot <- plot(
+    truerhocorrelation,         # Plot the correlations on the x-axis
+    1:nrow(taxa_data),          # Taxon indices on the y-axis
+    type = "p",                 # Scatter plot
+    pch = 16,                   # Solid dots
+    col = "steelblue",          # Dot color
+    ylim = c(0.5, nrow(taxa_data) + 0.5),  # Ensure space for all taxa labels, avoid cutting at edges
+    xlim = c(-1, 1),            # Limit x-axis to [-1, 1] for correlations
+    xlab = "True Rho Correlations",  # X-axis label
+    ylab = "",                  # Remove default y-axis label (taxa labels will be custom)
+    main = "True Rho Correlations for Taxa vs Flow Data",  # Title
+    cex.main = 1.5,             # Title size
+    cex.lab = 1.2,              # Axis label size
+    cex.axis = 1.1,             # Axis tick size
+    yaxt = "n",                 # Remove default y-axis ticks and labels
+    xaxt = "n"                  # Suppress default x-axis ticks for custom ticks
+  )
+  
+  # Add custom y-axis with labels for each taxon
+  axis(2, at = 1:nrow(taxa_data), labels = paste("Taxon", 1:nrow(taxa_data)), las = 1, cex.axis = 0.8)
+  
+  # Add custom x-axis with ticks every 0.1
+  axis(1, at = seq(-1, 1, by = 0.1), labels = seq(-1, 1, by = 0.1), cex.axis = 0.8)
+  
+  # Add gridlines for better visualization
+  grid(nx = NULL, ny = NA, col = "lightgray", lty = "dotted")
+  
+  # Add labels for each point next to the points (optional)
+  text(
+    x = truerhocorrelation,
+    y = 1:nrow(taxa_data),
+    labels = paste("Taxon", 1:nrow(taxa_data)),
+    pos = 4, cex = 0.8, col = "black"
+  )
+  
+  # Add a vertical reference line at x=0
+  abline(v = 0, col = "black", lty = 2)
+  
+  # Create the covariance heatmap
+  covariance_heatmap <- pheatmap::pheatmap(truecovariances, 
+                                           main = "Covariance Heatmap of Taxa", 
+                                           color = colorRampPalette(c("blue", "white", "red"))(100),
+                                           border_color = NA)
+  
+  # Arrange the correlation plot and covariance heatmap side by side
+  gridExtra::grid.arrange(correlation_plot, covariance_heatmap, ncol = 2)
+  
+  # Close the device to save the file
+  dev.off()
+}
 
