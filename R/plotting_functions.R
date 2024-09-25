@@ -1770,15 +1770,15 @@ plot_true_abundances <- function(flow_data, dat, file_path = "true_abundances_pl
                                             main = "Correlation Matrix of Taxa", 
                                             color = colorRampPalette(c("blue", "white", "red"))(100),
                                             border_color = NA, silent = TRUE)
-  
-  # Convert the pheatmap to a grob
+  # Convert to a grob
+  forest_plot_grob <- ggplotGrob(forest_plot)
   correlation_grob <- grid::grid.grabExpr(grid::grid.draw(correlation_heatmap$gtable))
 
   # Save the combined plot as a PNG file
   png(filename = file_path, width = 15, height = 8, units = "in", res = 300)
   
   # Arrange the forest plot and correlation heatmap side by side
-  gridExtra::grid.arrange(forest_plot, correlation_grob, ncol = 2)
+  gridExtra::grid.arrange(forest_plot_grob, correlation_grob, ncol = 2)
   
   # Close the device to save the file
   dev.off()
