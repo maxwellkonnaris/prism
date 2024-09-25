@@ -301,14 +301,17 @@ estimate_covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "Multi
         var_lower <- (n - 1) * S2 / chi2_upper
         var_upper <- (n - 1) * S2 / chi2_lower
         scalestdev_s <- c(sqrt(var_lower), sqrt(var_upper))
+
+        sampled_externalscalemeasurements = externalscalemeasurements
       
         # Initialize matrix for rhobounds for each taxa
         rhobounds_s <- matrix(NA, nrow = D, ncol = 2)  # [D x 2]
         z_critical <- qnorm(1 - alpha / 2)
         for (taxa in 1:D) {
             
-            sampled_sd <- runif(1, min = scalestdev_s[1], max = scalestdev_s[2])
-            sampled_externalscalemeasurements <- rnorm(length(externalscalemeasurements), mean = externalscalemeasurements, sd = sampled_sd)
+            #sampled_sd <- runif(1, min = scalestdev_s[1], max = scalestdev_s[2])
+            #sampled_externalscalemeasurements <- rnorm(length(externalscalemeasurements), mean = externalscalemeasurements, sd = sampled_sd)
+  
             # Compute correlation
             r <- cor(rWparaoriginal[taxa, sample_indices, s], sampled_externalscalemeasurements[sample_indices])
             # Fisher Z-transformation
