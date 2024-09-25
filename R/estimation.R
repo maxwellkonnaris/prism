@@ -742,7 +742,7 @@ estimate_covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "Multi
                              
                              # Extract values from max_sigma_row
                              res_max <- list(
-                               objective = max_sigma_row$sigma,  # Removed negation for consistency
+                               objective = -max_sigma_row$sigma,  
                                solution = c(max_sigma_row$rho1, max_sigma_row$rho2, max_sigma_row$scalestdevstep),
                                message = "GRIDSEARCH_SUCCESS",
                                status = "GRIDSEARCH_SUCCESS",
