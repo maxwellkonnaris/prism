@@ -62,26 +62,40 @@ calculate_pval <- function(results) {
     }
   }
   
-  # Calculate p-values for each row in the results dataframe
-  results$p_value <- apply(results, 1, function(row) {
-    lower <- as.numeric(row["ninetyfive_ci_lower"])
-    upper <- as.numeric(row["ninetyfive_ci_upper"])
-    get_p_value(lower, upper)
-  })
+  # Initialize p_value, bonferroni_p_value, and bh_p_value columns with NA
+  results$p_value <- NA
+  results$bonferroni_p_value <- NA
+  results$bh_p_value <- NA
   
-  # Number of hypotheses/tests
-  m <- nrow(results)
+  # Filter rows without NA in confidence interval columns
+  valid_rows <- !is.na(results$ninetyfive_ci_lower) & !is.na(results$ninetyfive_ci_upper)
   
-  # Bonferroni correction
-  results$bonferroni_p_value <- pmin(results$p_value * m, 1)
-  
-  # Benjamini-Hochberg FDR method
-  results <- results[order(results$p_value), ]
-  results$bh_p_value <- p.adjust(results$p_value, method = "BH")
-  results <- results[order(as.numeric(rownames(results))), ]
+  if (sum(valid_rows) > 0) {
+    # Calculate p-values for valid rows
+    results$p_value[valid_rows] <- apply(results[valid_rows, ], 1, function(row) {
+      lower <- as.numeric(row["ninetyfive_ci_lower"])
+      upper <- as.numeric(row["ninetyfive_ci_upper"])
+      get_p_value(lower, upper)
+    })
+    
+    # Number of hypotheses/tests
+    m <- sum(valid_rows)
+    
+    # Bonferroni correction
+    results$bonferroni_p_value[valid_rows] <- pmin(results$p_value[valid_rows] * m, 1)
+    
+    # Benjamini-Hochberg FDR method
+    results_valid <- results[valid_rows, ]
+    results_valid <- results_valid[order(results_valid$p_value), ]
+    results_valid$bh_p_value <- p.adjust(results_valid$p_value, method = "BH")
+    
+    # Assign the BH p-values back to the original results
+    results$bh_p_value[valid_rows] <- results_valid$bh_p_value
+  }
   
   return(results)
 }
+
 
 #' Calculate Skewness
 #'
