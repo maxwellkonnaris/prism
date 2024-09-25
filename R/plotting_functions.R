@@ -1654,10 +1654,10 @@ plot_posterior_samples <- function(rWparaoriginal, save = TRUE, file_name = "tax
 combine_posterior_plots <- function(rWparaoriginal, file_name = "combined_posterior_plots.png", width = 16, height = 16, dpi = 300) {
   
   # Generate individual plots
-  p1 <- plot_posterior_density(rWparaoriginal)   # Density plot
-  p2 <- plot_posterior_boxplot(rWparaoriginal)   # Box plot
-  p3 <- plot_posterior_violin(rWparaoriginal)    # Violin plot
-  p4 <- plot_posterior_samples(rWparaoriginal)   # Line plot
+  p1 <- plot_posterior_density(rWparaoriginal, save=FALSE)   # Density plot
+  p2 <- plot_posterior_boxplot(rWparaoriginal, save=FALSE)   # Box plot
+  p3 <- plot_posterior_violin(rWparaoriginal, save=FALSE)    # Violin plot
+  p4 <- plot_posterior_samples(rWparaoriginal, save=FALSE)   # Line plot
 
     # Convert ggplot objects to grobs
   g1 <- ggplotGrob(p1)
