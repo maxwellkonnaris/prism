@@ -494,13 +494,102 @@ constraint_gradient_function <- function(params, taxa1relativesd, taxa2relatives
 }
 
 
-                              #' Simulate Pre and Post Abundance Data with Flow Cytometry Measurements
+#' Plot Rho Correlations for Taxa vs Flow Data and Print Scale SD
 #'
-#' This function creates true abundances for taxa under pre and post conditions via Poisson resampling, resamples the data to a specified sequencing depth using a multinomial distribution, and simulates flow cytometry measurements based on the sample totals. It supports multiple replicates for flow cytometry measurements.
+#' This function calculates the true rho correlations between taxa and flow data, 
+#' generates a plot of these correlations, and prints the standard deviation 
+#' of the log-transformed flow data. The plot is saved as a high-quality PNG image.
+#'
+#' @param rdat Data frame. The resampled abundance data from `simulate_prepost` with taxa counts.
+#' @param flow_data Data frame. The flow cytometry measurements from `simulate_prepost` with flow values.
+#' @param file_path Character. File path to save the correlation plot PNG image. Default is `"true_rho_correlations.png"`.
+#'
+#' @return None. The function produces a correlation plot and prints the standard deviation.
+#'
+#' @importFrom stats cor sd
+#' @importFrom grDevices png dev.off
+#' @importFrom graphics plot axis grid abline text
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#'   # Generate correlation plot and print SD
+#'   plot_rho_correlations(rdat, flow_data, file_path = "rho_plot.png")
+#' }
+plot_rho_correlations <- function(rdat, flow_data, file_path = "true_rho_correlations.png") {
+  # Transpose rdat to have taxa as rows
+  taxa_data <- t(rdat[,-1])
+  
+  # Remove sample names from flow_data
+  flow_data_numeric <- flow_data[,-1]
+  
+  # Calculate true rho correlations between each taxon and flow cytometry data
+  truerhocorrelation <- numeric(nrow(taxa_data))
+  for (i in 1:nrow(taxa_data)) {
+    truerhocorrelation[i] <- cor(log(taxa_data[i,]), log(flow_data_numeric))
+  }
+  print(paste0("True Rho Correlations: ", truerhocorrelation))
+  
+  # Set file path and save the plot as a high-quality PNG image
+  png(filename = file_path, width = 10, height = 6, units = "in", res = 300)
+  
+  # Create the plot with taxon labels on the y-axis and custom x-axis ticks at 0.1 intervals
+  plot(
+    truerhocorrelation,         # Plot the correlations on the x-axis
+    1:nrow(taxa_data),          # Taxon indices on the y-axis
+    type = "p",                 # Scatter plot
+    pch = 16,                   # Solid dots
+    col = "steelblue",          # Dot color
+    ylim = c(0.5, nrow(taxa_data) + 0.5),  # Ensure space for all taxa labels, avoid cutting at edges
+    xlim = c(-1, 1),            # Limit x-axis to [-1, 1] for correlations
+    xlab = "True Rho Correlations",  # X-axis label
+    ylab = "",                  # Remove default y-axis label (taxa labels will be custom)
+    main = "True Rho Correlations for Taxa vs Flow Data",  # Title
+    cex.main = 1.5,             # Title size
+    cex.lab = 1.2,              # Axis label size
+    cex.axis = 1.1,             # Axis tick size
+    yaxt = "n",                 # Remove default y-axis ticks and labels
+    xaxt = "n"                  # Suppress default x-axis ticks for custom ticks
+  )
+  
+  # Add custom y-axis with labels for each taxon
+  axis(2, at = 1:nrow(taxa_data), labels = paste("Taxon", 1:nrow(taxa_data)), las = 1, cex.axis = 0.8)
+  
+  # Add custom x-axis with ticks every 0.1
+  axis(1, at = seq(-1, 1, by = 0.1), labels = seq(-1, 1, by = 0.1), cex.axis = 0.8)
+  
+  # Add gridlines for better visualization
+  grid(nx = NULL, ny = NA, col = "lightgray", lty = "dotted")
+  
+  # Add labels for each point next to the points (optional)
+  text(
+    x = truerhocorrelation,
+    y = 1:nrow(taxa_data),
+    labels = paste("Taxon", 1:nrow(taxa_data)),
+    pos = 4, cex = 0.8, col = "black"
+  )
+  
+  # Add a vertical reference line at x=0
+  abline(v = 0, col = "black", lty = 2)
+  
+  # Close the device to save the file
+  dev.off()
+  
+  # Calculate and print standard deviation (scale) for log-transformed flow_data
+  scale_sd_flow_data <- sd(log(flow_data_numeric))
+  print(paste0("True Scale SD: ", scale_sd_flow_data))
+}
+
+#' Simulate Pre and Post Abundance Data with Flow Cytometry Measurements
+#'
+#' This function creates true abundances for taxa under pre and post conditions via Poisson resampling,
+#' resamples the data to a specified sequencing depth using a multinomial distribution, and simulates flow cytometry
+#' measurements based on the sample totals. It supports multiple replicates for flow cytometry measurements.
 #'
 #' @param n Integer. Number of samples to simulate. Default is `50`.
 #' @param seq_depth Integer. Sequencing depth for resampling. Default is `5000`.
 #' @param replicate Integer. Number of flow cytometry replicates per sample. Default is `1`.
+#' @param corr_strengths Matrix. Covariance matrix for simulating correlated taxa. Default is `NULL`.
 #'
 #' @return A list containing:
 #' \describe{
@@ -511,54 +600,45 @@ constraint_gradient_function <- function(params, taxa1relativesd, taxa2relatives
 #' }
 #'
 #' @details
-#' - **True Abundances (`dat`)**: Generated by Poisson resampling based on specified mean abundances for pre and post conditions. Only taxa 3, 4, 15, and 20 have altered mean abundances in the post condition.
+#' - **True Abundances (`dat`)**: Generated by Poisson resampling based on specified mean abundances for pre and post conditions. Taxa may have specified correlations depending on the covariance matrix `corr_strengths`.
 #' - **Resampled Data (`rdat`)**: Adjusted to the desired sequencing depth using a multinomial distribution to reflect sequencing variability.
 #' - **Flow Cytometry (`flow_data`)**: Simulated using normal distributions centered around the total abundances with a standard deviation of `300`. Replicates can be specified to generate multiple measurements per sample.
-#' - **Collapsed Flow Data (`flow_data_collapse`)**: When replicates are provided, this summarizes the flow data by computing the mean and standard deviation for each sample.
 #'
 #' @importFrom dplyr mutate select filter group_by ungroup
 #' @importFrom purrr map
 #' @importFrom stats rpois rmultinom rnorm
 #' @export
-#'
-#' @examples
-#' \dontrun{
-#'   # Simulate data with 50 samples, sequencing depth of 5000, and 2 replicates
-#'   simulation_results <- simulate_prepost(n = 50, seq_depth = 5000, replicate = 2)
-#'
-#'   # Access the resampled data
-#'   resampled_data <- simulation_results$rdat
-#'
-#'   # Access the flow cytometry data
-#'   flow_data <- simulation_results$flow_data
-#'
-#'   # Access the collapsed flow cytometry data
-#'   collapsed_flow_data <- simulation_results$flow_data_collapse
-#' }
-simulate_prepost <- function(n = 50, seq_depth = 5000, replicate = 1) {
-  # Load necessary packages
+simulate_prepost <- function(n = 50, seq_depth = 5000, replicate = 1, corr_strengths = NULL) {
   requireNamespace("dplyr", quietly = TRUE)
-  requireNamespace("purrr", quietly = TRUE)
+  requireNamespace("MASS", quietly = TRUE)
   
-  ## Helper Function to Create True Abundances via Poisson Resampling
-  create_true_abundances <- function(d, n) {
-    dd <- length(d) / 2
-    dat <- d %>%
-      sapply(function(x) stats::rpois(n, lambda = x)) %>%
-      t() %>%
-      as.data.frame() %>%
-      split(rep(1:2, each = dd)) %>%
-      purrr::map(~`rownames<-`(.x, paste0("Taxa", 1:dd))) %>%
-      purrr::map(t) %>%
-      do.call(rbind, .) %>%
-      as.data.frame() %>%
-      cbind(Condition = factor(rep(c("Pre", "Post"), each = n),
-                                levels = c("Pre", "Post")), .) %>%
-      `rownames<-`(., NULL)
+  ## Helper Function to Create Correlated Abundances via Poisson Resampling
+  create_correlated_abundances <- function(d_pre, d_post, n, corr_strengths) {
+    # Use a correlation matrix to simulate covariance structure
+    taxa_count <- length(d_pre)
+    
+    # If no correlation strengths are provided, assume no correlation (identity matrix)
+    if (is.null(corr_strengths)) {
+      corr_strengths <- diag(taxa_count)
+    }
+    
+    # Generate correlated log-abundances using a multivariate normal distribution
+    pre_log_abundances <- MASS::mvrnorm(n, mu = log(d_pre), Sigma = corr_strengths)
+    post_log_abundances <- MASS::mvrnorm(n, mu = log(d_post), Sigma = corr_strengths)
+    
+    # Convert log-abundances back to abundance counts using exp() and Poisson resampling
+    pre_abundances <- matrix(rpois(n * taxa_count, exp(pre_log_abundances)), nrow = n)
+    post_abundances <- matrix(rpois(n * taxa_count, exp(post_log_abundances)), nrow = n)
+    
+    # Combine into a data frame with conditions
+    dat <- rbind(data.frame(Condition = "Pre", pre_abundances),
+                 data.frame(Condition = "Post", post_abundances))
+    
+    colnames(dat)[-1] <- paste0("Taxa", 1:taxa_count)
     return(dat)
   }
   
-  ## Helper Function to Resample Data to an Arbitrary Sequencing Depth
+  ## Resample Data (same as before)
   resample_data <- function(dat, seq_depth) {
     ddat <- as.matrix(dat[,-1]) / rowSums(as.matrix(dat[,-1]))
     for (i in 1:nrow(dat)) {
@@ -567,7 +647,7 @@ simulate_prepost <- function(n = 50, seq_depth = 5000, replicate = 1) {
     return(dat)
   }
   
-  ## Helper Function to Simulate Flow Cytometry Measurements
+  ## Simulate Flow Cytometry Measurements (same as before)
   flow_cytometry <- function(totals, samp_names, replicates) {
     samp_names <- rep(samp_names, each = replicates)
     flow_vals <- sapply(totals, FUN = function(total, replicates) {
@@ -577,20 +657,15 @@ simulate_prepost <- function(n = 50, seq_depth = 5000, replicate = 1) {
     return(flow_data)
   }
   
-  ### Setting the Data Parameters for the Simulation
   ## Denotes the mean for the 20 taxa
-  ## Note only taxa 3, 4, 15, and 20 change
   d_pre <- c(4500, 4700, 4500, 4000, 4000,
              400, 400, 400, 400, 4000, 400, 500, 500, 500,
              400, 400, 400, 400, 400, 400)
   d_post <- d_pre
   d_post[c(3, 4, 15, 20)] <- c(3000, 2000, 200, 50)
   
-  # Combining Pre and Post Conditions
-  d <- c(d_pre, d_post)
-  
-  ## Create True Abundances
-  dat <- create_true_abundances(d, n = n)
+  ## Generate correlated abundances for Pre and Post conditions
+  dat <- create_correlated_abundances(d_pre, d_post, n, corr_strengths)
   
   ## Resample Data
   rdat <- resample_data(dat, seq_depth = seq_depth)
