@@ -310,7 +310,7 @@ estimate_covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "Multi
             sampled_sd <- runif(1, min = scalestdev_s[1], max = scalestdev_s[2])
             sampled_externalscalemeasurements <- rnorm(length(externalscalemeasurements), mean = externalscalemeasurements, sd = sampled_sd)
             # Compute correlation
-            r <- cor(rWparaoriginal[taxa, sample_indices, s], sampled_externalscalemeasurements[sample_indices]))
+            r <- cor(rWparaoriginal[taxa, sample_indices, s], sampled_externalscalemeasurements[sample_indices])
             # Fisher Z-transformation
             z <- 0.5 * log((1 + r) / (1 - r))
             # Standard error of z
