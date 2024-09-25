@@ -1,6 +1,6 @@
 export(simulate_data)
 export(simulate_prepost)
-export(plot_rho_correlations)
+export(plot_true_abundances)
 export(estimate_covariance)
 export(calculate_bootstrap_summary)
 export(forest_plot)
