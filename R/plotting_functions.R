@@ -53,7 +53,7 @@ forest_plot <- function(data_list, bg = "white", save = NULL, filename = NULL, d
       stop(paste("Data frame '", dataset_name, "' must contain columns:", paste(required_columns, collapse = ", ")))
     }
     
-    # Check if p_value is provided
+    # Check if p_value is provided and add a flag column
     p_value_provided <- "p_value" %in% colnames(data)
     data$p_value_provided <- p_value_provided  # Add a flag column
     
@@ -117,14 +117,12 @@ forest_plot <- function(data_list, bg = "white", save = NULL, filename = NULL, d
   )
   
   # Add points for the p-values if provided
-  plot <- plot + geom_point(
-    data = combined_data %>% filter(p_value_provided == TRUE),
-    aes(y = (ninetyfive_ci_lower + ninetyfive_ci_upper) / 2, size = -log10(p_value)),
-    color = "black", shape = 21, fill = "white", stroke = 1
-  )
-  
   if (any(combined_data$p_value_provided)) {
-    plot <- plot +
+    plot <- plot + geom_point(
+      data = combined_data %>% filter(p_value_provided == TRUE),
+      aes(y = (ninetyfive_ci_lower + ninetyfive_ci_upper) / 2, size = -log10(p_value)),
+      color = "black", shape = 21, fill = "white", stroke = 1
+    ) +
       labs(size = expression("-log"[10]*"(p-value)")) +
       scale_size_continuous(range = c(2, 6))
   }
