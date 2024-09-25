@@ -1715,10 +1715,13 @@ plot_true_abundances <- function(flow_data, dat, file_path = "true_abundances_pl
   
   # Calculate standard deviation (scale) for log-transformed flow_data
   scale_sd_flow_data <- sd(log(flow_data_numeric))
+  # Print the calculated scale SD
+  print(paste("Scale standard deviation (SD) of flow data: ", scale_sd_flow_data))
   
   # Extract the taxa columns (excluding the first column which is 'Condition')
-  truecorrelations <- cor(t(t(dat[, -1])))  # Calculate correlation matrix
-  
+  truecorrelations <- cor(taxa_data)  # Calculate correlation matrix
+  truecovariances <- cov(taxa_data)  # Calculate covariance matrix
+	
   # Create forest plot data for covariances
   forest_plot_data <- data.frame(
     comparison = character(),
