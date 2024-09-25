@@ -1756,17 +1756,18 @@ plot_true_abundances <- function(flow_data, dat, file_path = "true_abundances_pl
   # Create the forest plot using ggplot
   taxa_labels <- rownames(taxa_data)
   forest_plot <- ggplot(data = data.frame(taxa = taxa_labels, rho = truerhocorrelation), aes(x = rho, y = taxa)) +
-    geom_point(color = "steelblue", size = 4) +
-    geom_segment(aes(x = 0, xend = rho, y = taxa, yend = taxa), color = "steelblue", size = 1.2) +
-    geom_vline(xintercept = 0, linetype = "dotted", color = "black") +
-    theme_minimal() +
-    theme(
-      axis.title.x = element_blank(),
-      axis.title.y = element_blank(),
-      axis.text.y = element_text(size = 12),
-      plot.title = element_text(hjust = 0.5, size = 15)
-    ) +
-    ggtitle("True Correlations of Taxa and Scale")
+	  geom_point(color = "steelblue", size = 4) +
+	  geom_segment(aes(x = 0, xend = rho, y = taxa, yend = taxa), color = "steelblue", size = 1.2) +
+	  geom_vline(xintercept = 0, linetype = "dotted", color = "black") +
+	  scale_x_continuous(limits = c(-1, 1), breaks = seq(-1, 1, by = 0.1)) +  # Set x-axis limits and breaks
+	  labs(x = "Correlation") +  # Set x-axis label
+	  theme_minimal() +
+	  theme(
+	    axis.title.y = element_blank(),
+	    axis.text.y = element_text(size = 12),
+	    plot.title = element_text(hjust = 0.5, size = 15)
+	  ) +
+	  ggtitle("True Correlations of Taxa and Scale")
   
   # Create the correlation heatmap using pheatmap
   correlation_heatmap <- pheatmap::pheatmap(truecorrelations, 
