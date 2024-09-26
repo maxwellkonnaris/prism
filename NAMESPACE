@@ -16,6 +16,7 @@ export(compare_covariance)
 export(cclasso)
 export(SparCC_count)
 
+import(fido)
 import(compositions)
 import(foreach)
 import(doSNOW)
