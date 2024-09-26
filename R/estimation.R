@@ -136,6 +136,7 @@
 #' @import nloptr
 #' @import filelock
 #' @import ggridges
+#' @import fido
 #' @export
 estimate_covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "Multinomial Dirichlet", externalscalemeasurements = NULL, lowerrhobound = rep(-1.0, nrow(Y)), upperrhobound = rep(1.0, nrow(Y)), S = 1000, lowerscalestdev = 0.450, upperscalestdev = 0.650, algorithm = "GRID_SEARCH", outputdirectory = NULL, seed = NULL) {
   
@@ -264,7 +265,7 @@ estimate_covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "Multi
     } 
   } else if (uncertaintydistribution == "Multinomial Logistic Normal") {
     # generate S Multinomial logistic Normal posterior samples for each sample (column) using fido
-    otu_table = otu_table(Y, taxa_are_rows = TRUE)
+    otu_table = phyloseq::otu_table(Y, taxa_are_rows = TRUE)
     otu_table = otu_table + alpha
     X <- matrix(1, ncol=N, nrow=1)
     upsilon <- D+3 
@@ -274,12 +275,12 @@ estimate_covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "Multi
     Theta <- matrix(0, D-1, nrow(X))
     Gamma <- diag(nrow(X))
     
-    priors <- pibble(NULL, X, upsilon, Theta, Gamma, Xi)  
-    priors <- to_clr(priors)  
+    priors <- fido::pibble(NULL, X, upsilon, Theta, Gamma, Xi)  
+    priors <- fido::to_clr(priors)  
     names_covariates(priors) <- rownames(X)
     priors$Y <- otu_table 
     posterior <- refit(priors, optim_method="lbfgs")
-    rWparaoriginal <- to_proportions(posterior)$Eta
+    rWparaoriginal <- fido::to_proportions(posterior)$Eta
   }
 
   combine_posterior_plots(rWparaoriginal, file_name = "combined_posterior_plots.png")
