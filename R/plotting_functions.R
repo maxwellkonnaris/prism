@@ -169,21 +169,28 @@ prism.forestplot <- function(data_list, bg = "white", save = NULL, filename = NU
   
   # Adjust y-axis breaks
   plot <- plot + scale_y_continuous(breaks = scales::pretty_breaks(n = 5))
+
+
   
-  # Facet by Dataset to create side-by-side plots, but y-axis labels only on the left
+  # Facet by Dataset to create side-by-side plots
+  plot <- plot + facet_grid(. ~ Dataset, scales = "free_x", space = "free_x") +
+	  theme(
+	    axis.text.y = element_text(size = 8),  # Standard non-vectorized text
+	    strip.background = element_rect(fill = "white")
+	  )
+
+  # If color_y_axis_by_ci is TRUE, color the y-axis labels post-hoc using grid
   if (color_y_axis_by_ci) {
-    plot <- plot + facet_grid(. ~ Dataset, scales = "free_x", space = "free_x") +
-      theme(
-        axis.text.y = element_text(size = 8, color = y_axis_colors[comparison_order]),  # Color y-axis based on first dataframe
-        strip.background = element_rect(fill = "white")
-      )
-  } else {
-    plot <- plot + facet_grid(. ~ Dataset, scales = "free_x", space = "free_x") +
-      theme(
-        axis.text.y = element_text(size = 8),  # Only for the leftmost plot
-        strip.background = element_rect(fill = "white")
-      )
-  }
+  
+	  # Add custom y-axis labels with colored text
+	  plot <- plot + annotation_custom(
+	    grob = textGrob(
+	      label = levels(combined_data$comparison),
+	      gp = gpar(col = y_axis_colors[comparison_order], fontsize = 8),
+	      x = unit(-0.1, "npc"), just = "right"
+	    )
+	  )
+	}
   
   # Adjust the plot size based on the number of comparisons
   scaling_factor <- 0.1
