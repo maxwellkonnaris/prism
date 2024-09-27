@@ -7,6 +7,7 @@
 #' @param save A character string indicating the file format to save the plot. Options are "png", "jpg", "svg", "pdf". Default is NULL, which means the plot is not saved.
 #' @param filename A character string indicating the file name when saving the plot. Default is NULL, which means the plot is saved as forest_plot if save format is indicated.
 #' @param dir_path A character string indicating the directory to store the plot. Default is \code{"./plots/"} which creates the plots directory in the current directory.
+#' @param show_labels_for_ci A logical value indicating whether to show y-axis labels only for confidence intervals that do not cover zero. Default is FALSE.
 #' @return A ggplot object representing the combined forest plot.
 #' @import ggplot2
 #' @import dplyr
@@ -80,7 +81,7 @@ forest_plot <- function(data_list, bg = "white", save = NULL, filename = NULL, d
 
 
   # Determine y-axis label colors based on the first dataset
-  combined_data <- combined_data %>%
+  label_data <- combined_data %>%
     filter(Dataset == first_dataset_name) %>%
     mutate(label_color = ifelse(
       (ninetyfive_ci_lower > 0 & ninetyfive_ci_upper > 0) | (ninetyfive_ci_lower < 0 & ninetyfive_ci_upper < 0),
@@ -91,7 +92,7 @@ forest_plot <- function(data_list, bg = "white", save = NULL, filename = NULL, d
     # Adjust y-axis labels based on the `show_labels_for_ci` parameter
   if (show_labels_for_ci) {
     comparison_labels <- ifelse(
-      combined_data$label_color == "#023E8A",  # Only show labels where CI doesn't cover zero
+      label_data$label_color == "#023E8A",  # Only show labels where CI doesn't cover zero
       as.character(comparison_order),
       ""
     )
@@ -110,7 +111,7 @@ forest_plot <- function(data_list, bg = "white", save = NULL, filename = NULL, d
     ) +
     theme(
       axis.text.x = element_text(size = 10),
-      axis.text.y = element_text(size = 10, color = rep(y_label_colors, length(data_list))),
+      axis.text.y = element_blank(),  # Remove the default y-axis labels
       axis.title = element_text(size = 12, face = "bold"),
       strip.text = element_text(size = 12, face = "bold"),
       legend.position = "top",
@@ -149,6 +150,13 @@ forest_plot <- function(data_list, bg = "white", save = NULL, filename = NULL, d
       labs(size = expression("-log"[10]*"(p-value)")) +
       scale_size_continuous(range = c(2, 6))
   }
+
+    # Add y-axis labels with correct color using geom_text
+  plot <- plot + geom_text(
+    data = label_data,
+    aes(y = comparison, label = comparison, color = label_color),
+    hjust = 1.1, size = 3.5
+  )
   
   # Customize the background based on the bg parameter
   if (bg == "transparent") {
@@ -170,7 +178,6 @@ forest_plot <- function(data_list, bg = "white", save = NULL, filename = NULL, d
   } else {
     stop("bg parameter must be 'transparent' or 'white'")
   }
-  
   # Add subtle gridlines
   plot <- plot + 
     theme(
@@ -220,6 +227,8 @@ forest_plot <- function(data_list, bg = "white", save = NULL, filename = NULL, d
   
   return(plot)
 }
+
+  
 
 
 
