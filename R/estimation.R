@@ -283,6 +283,8 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
     priors$Y <- otu_table 
     posterior <- refit(priors, optim_method="lbfgs")
     rWparaoriginal <- fido::to_proportions(posterior)$Eta
+  } else {
+    stop("Please select an uncertainty distribution to model the proportions. uncertaintydistribution = {'multinomialdirichlet','multinomiallognormal'}")
   }
     
   # Log transform relative abundances
