@@ -1898,9 +1898,7 @@ prism.network <- function(results, pvalue = FALSE, file_name = "network_plot.png
   
   # Add scale legend for edge width (representing CI magnitude)
   legend("topleft", legend = c("Thick = High Certainty", "Thin = Low Certainty"),
-         lwd = c(5, 1), col = c("blue", "red"), 
-         legend.title = "Edge Color: Blue = Positive, Red = Negative", 
-         bty = "n", cex = 1.2)
+         lwd = c(5, 1), col = c("blue", "red"), bty = "n", cex = 1.2)
   
   # If p-values are provided, add a p-value legend
   if (pvalue) {
@@ -1920,6 +1918,7 @@ prism.network <- function(results, pvalue = FALSE, file_name = "network_plot.png
 
 # Example usage with the 'results' dataframe
 # prism.network(results, pvalue = TRUE)
+
 
 
 
