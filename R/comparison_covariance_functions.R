@@ -15,7 +15,7 @@
 #' count_data <- read.csv("your_sequence_data.csv", row.names = 1)
 #'
 #' # Run covariance estimation methods with CLR transformation
-#' result <- compare_covariance(count_data, transformation = "CLR")
+#' result <- prism.covariance_comparison(count_data, transformation = "CLR")
 #'
 #' # Access the covariance matrices
 #' result$cov_matrix_banocc
@@ -32,7 +32,7 @@
 #' @import igraph
 #' @import compositions
 #' @export
-compare_covariance <- function(count_data, normalize = TRUE, transformation = "none") {
+prism.covariance_comparison <- function(count_data, normalize = TRUE, transformation = "none") {
   
   # Normalization function (Common pre-processing step)
   normalize_counts <- function(count_matrix) {
