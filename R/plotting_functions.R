@@ -1706,9 +1706,9 @@ prism.trueabundanceplot <- function(dat_scale, dat, dir_path="./plots/", file_pa
     }
   }
   
-  # Create forest plot, ensuring taxa are in the correct order (1:D)
+  # Create forest plot, ensuring taxa are in the correct order (1:D) and Taxa1 is at the top
   forest_plot <- ggplot(data = data.frame(taxa = taxa_labels, rho = truerhocorrelation), 
-                        aes(x = rho, y = reorder(taxa, as.numeric(sub("Taxa", "", taxa))))) +
+                        aes(x = rho, y = reorder(taxa, -as.numeric(sub("Taxa", "", taxa))))) +
 	  geom_point(color = "steelblue", size = 4) +
 	  geom_segment(aes(x = 0, xend = rho, y = taxa, yend = taxa), color = "steelblue", size = 1.2) +
 	  geom_vline(xintercept = 0, linetype = "dotted", color = "black") +
@@ -1721,6 +1721,9 @@ prism.trueabundanceplot <- function(dat_scale, dat, dir_path="./plots/", file_pa
 	    plot.title = element_text(hjust = 0.5, size = 15)
 	  ) +
 	  ggtitle("True Correlations of Taxa and Scale")
+  
+  # Reorder the correlation matrix to match the order of the forest plot (Taxa1 at the top)
+  truecorrelations <- truecorrelations[taxa_labels, taxa_labels]
   
   # Create the correlation heatmap using pheatmap, ensuring the correct order (1:D)
   correlation_heatmap <- pheatmap::pheatmap(
@@ -1754,6 +1757,7 @@ prism.trueabundanceplot <- function(dat_scale, dat, dir_path="./plots/", file_pa
 
   return(forest_plot_data)
 }
+
 
 
 
