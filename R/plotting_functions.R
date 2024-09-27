@@ -466,7 +466,7 @@ prism.sigmaplot <- function(all_inner_results, bg="white", filename = NULL, save
 #' @import dplyr
 #' @import gridExtra
 #' @export
-prism.diagnose_mcmcerror<- function(combined_results, convergence_results) {
+prism.diagnose_mcmcerror <- function(combined_results, convergence_results) {
   
   # Custom cumulative variance function
   cumvar <- function(x) {
