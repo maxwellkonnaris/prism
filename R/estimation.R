@@ -236,7 +236,7 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
   opts_rhosd <- list(progress = progress_rhosd)
   ## END PROGRESS BARS -------------------------------------------------------------------------------------------------------------------------------------
   ## ACCOUNTING FOR UNCERTAINTY IN FINITE SAMPLING ---------------------------------------------------------------------------------------------------------
-  boostrap_samples <- matrix(NA, N, S)
+  bootstrap_samples <- matrix(NA, N, S)
   # ---- If you want to remove bootstrap and carry on then ---
   if (nobootstrap) {
     # Use the original indices (no bootstrap resampling)
