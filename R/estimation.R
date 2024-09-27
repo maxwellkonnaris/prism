@@ -138,7 +138,7 @@
 #' @import ggridges
 #' @import fido
 #' @export
-prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinomialdirichlet", nobootstrap = FALSE, externalscalemeasurements = NULL, lowerrhobound = rep(-1.0, nrow(Y)), upperrhobound = rep(1.0, nrow(Y)), S = 1000, lowerscalestdev = 0.450, upperscalestdev = 0.650, algorithm = "GRID_SEARCH", outputdirectory = NULL, seed = NULL) {
+prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinomialdirichlet", bootstrap = TRUE, externalscalemeasurements = NULL, lowerrhobound = rep(-1.0, nrow(Y)), upperrhobound = rep(1.0, nrow(Y)), S = 1000, lowerscalestdev = 0.450, upperscalestdev = 0.650, algorithm = "GRID_SEARCH", outputdirectory = NULL, seed = NULL) {
   
   ## COMPUTATIONAL TIME -------------------------------------------------------------------------------------------------------------------------------------
   start_time <- Sys.time()
@@ -238,15 +238,15 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
   ## ACCOUNTING FOR UNCERTAINTY IN FINITE SAMPLING ---------------------------------------------------------------------------------------------------------
   bootstrap_samples <- matrix(NA, N, S)
   # ---- If you want to remove bootstrap and carry on then ---
-  if (nobootstrap) {
-    # Use the original indices (no bootstrap resampling)
-    for (s in 1:S) {
-      bootstrap_samples[, s] <- 1:N
-    }
-  } else {
+  if (bootstrap) {
     ## calculate bootstrap resampling -- accounting for finite sampling
     for (s in 1:S) {
       bootstrap_samples[, s] <- sample(1:N, replace = TRUE)
+    }
+  } else {
+    # Use the original indices (no bootstrap resampling)
+    for (s in 1:S) {
+      bootstrap_samples[, s] <- 1:N
     }
   }
   ## END ACCOUNTING FOR UNCERTAINTY IN FINITE SAMPLING -----------------------------------------------------------------------------------------------------
