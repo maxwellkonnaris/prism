@@ -1,5 +1,5 @@
 export(prism.simulate_prepost)
-export(prism.trueabundances)
+export(prism.trueabundanceplot)
 export(prism.covariance)
 export(prism.bootstrap_summary)
 export(prism.forestplot)
