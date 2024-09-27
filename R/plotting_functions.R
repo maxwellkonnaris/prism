@@ -47,7 +47,7 @@ forest_plot <- function(data_list, bg = "white", save = NULL, filename = NULL, d
   
   # Determine y-axis label colors based on the first dataset
   first_data <- first_data %>%
-    mutate(color = ifelse(
+    mutate(label_color = ifelse(
       (ninetyfive_ci_lower > 0 & ninetyfive_ci_upper > 0) | (ninetyfive_ci_lower < 0 & ninetyfive_ci_upper < 0),
       "#023E8A",  # Blue if the CI does not cover zero
       "black"     # Default black if it covers zero
@@ -86,6 +86,17 @@ forest_plot <- function(data_list, bg = "white", save = NULL, filename = NULL, d
       "95% CI Doesn't Cover Zero", "95% CI Covers Zero"
     ))
   
+  # Adjust y-axis labels based on the `show_labels_for_ci` parameter
+  if (show_labels_for_ci) {
+    comparison_labels <- ifelse(
+      first_data$label_color == "#023E8A",  # Only show labels where CI doesn't cover zero
+      as.character(comparison_order),
+      ""
+    )
+  } else {
+    comparison_labels <- as.character(comparison_order)  # Show all labels, color based on CI
+  }
+
   # Create the forest plot
   plot <- ggplot(combined_data, aes(x = comparison)) +
     coord_flip() +
@@ -97,12 +108,14 @@ forest_plot <- function(data_list, bg = "white", save = NULL, filename = NULL, d
     ) +
     theme(
       axis.text.x = element_text(size = 10),
+      axis.text.y = element_text(size = 10, color = first_data$label_color),
       axis.title = element_text(size = 12, face = "bold"),
       strip.text = element_text(size = 12, face = "bold"),
       legend.position = "top",
       legend.title = element_blank(),
       legend.text = element_text(size = 10)
     ) +
+    scale_y_discrete(labels = comparison_labels) +
     scale_color_manual(
       values = c(
         "95% CI Doesn't Cover Zero" = "#023E8A",  # Blue
@@ -163,30 +176,14 @@ forest_plot <- function(data_list, bg = "white", save = NULL, filename = NULL, d
       panel.grid.major.x = element_line(color = "gray80", linetype = "dashed")
     )
   
-  # Adjust y-axis labels based on the `show_labels_for_ci` parameter
-  if (show_labels_for_ci) {
-    comparison_labels <- ifelse(
-      first_data$color == "#023E8A",  # Only show labels where CI doesn't cover zero
-      as.character(comparison_order),
-      ""
-    )
-  } else {
-    comparison_labels <- as.character(comparison_order)  # Show all labels, color based on CI
-  }
-  
-  plot <- plot + theme(
-    axis.text.y = element_text(size = 10, color = first_data$color),
-    axis.ticks.y = element_blank()
-  ) +
-    scale_y_discrete(labels = comparison_labels)
-    # Facet by Dataset to create side-by-side plots
+  # Facet by Dataset to create side-by-side plots
   plot <- plot + facet_grid(. ~ Dataset, scales = "free_x", space = "free_x") +
     theme(
       strip.background = element_rect(fill = "white")
     )
   
   # Adjust the plot size based on the number of comparisons
-  scaling_factor <- 0.1
+  scaling_factor <- 0.05
   dynamic_height <- length(unique(combined_data$comparison)) * scaling_factor
   min_height <- 10
   max_height <- 35
@@ -219,6 +216,8 @@ forest_plot <- function(data_list, bg = "white", save = NULL, filename = NULL, d
   
   return(plot)
 }
+
+
 
 
 
