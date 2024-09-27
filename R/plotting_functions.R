@@ -191,7 +191,14 @@ forest_plot <- function(data_list, bg = "white", save = NULL, filename = NULL, d
 	  theme(
 	    strip.background = element_rect(fill = "white")
 	)
-	
+
+	# Adjust the plot size based on the number of comparisons
+	scaling_factor <- 0.1
+	dynamic_height <- length(unique(combined_data$comparison)) * scaling_factor
+	min_height <- 10
+	max_height <- 35
+	final_height <- max(min_height, min(dynamic_height, max_height))
+	  
 	# Save the plot if save is not NULL
 	if (!is.null(save)) {
 	  # Check if directory exists
