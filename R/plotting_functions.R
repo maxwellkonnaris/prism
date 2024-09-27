@@ -169,32 +169,21 @@ prism.forestplot <- function(data_list, bg = "white", save = NULL, filename = NU
   
   # Adjust y-axis breaks
   plot <- plot + scale_y_continuous(breaks = scales::pretty_breaks(n = 5))
-
-
   
   # Facet by Dataset to create side-by-side plots, but y-axis labels only on the left
   if (color_y_axis_by_ci) {
-	  # Create a vector of HTML-formatted y-axis labels with color
-	  y_axis_labels <- ifelse(
-	    (first_data$ninetyfive_ci_lower > 0 & first_data$ninetyfive_ci_upper > 0) | 
-	    (first_data$ninetyfive_ci_lower < 0 & first_data$ninetyfive_ci_upper < 0),
-	    paste0("<span style='color:#023E8A;'>", first_data$comparison, "</span>"),  # Blue if CI does not cover zero
-	    paste0("<span style='color:#BEBEBE;'>", first_data$comparison, "</span>")   # Gray if CI covers zero
-	  )
-	  
-	  plot <- plot + facet_grid(. ~ Dataset, scales = "free_x", space = "free_x") +
-	    theme(
-	      axis.text.y = ggtext::element_markdown(size = 8),  # Enable HTML in axis text
-	      strip.background = element_rect(fill = "white")
-	    ) +
-	    scale_y_discrete(labels = y_axis_labels)  # Apply the custom y-axis labels
+    plot <- plot + facet_grid(. ~ Dataset, scales = "free_x", space = "free_x") +
+      theme(
+        axis.text.y = element_text(size = 8, color = y_axis_colors[comparison_order]),  # Color y-axis based on first dataframe
+        strip.background = element_rect(fill = "white")
+      )
   } else {
-	  plot <- plot + facet_grid(. ~ Dataset, scales = "free_x", space = "free_x") +
-	    theme(
-	      axis.text.y = element_text(size = 8),  # Standard y-axis text
-	      strip.background = element_rect(fill = "white")
-	    )
-	}
+    plot <- plot + facet_grid(. ~ Dataset, scales = "free_x", space = "free_x") +
+      theme(
+        axis.text.y = element_text(size = 8),  # Only for the leftmost plot
+        strip.background = element_rect(fill = "white")
+      )
+  }
   
   # Adjust the plot size based on the number of comparisons
   scaling_factor <- 0.1
@@ -1895,9 +1884,3 @@ prism.network <- function(results, pvalue = FALSE, dir_path="./plots/", file_nam
   # Return the plot object for further customization
   return(plot_object)
 }
-
-
-
-
-
-
