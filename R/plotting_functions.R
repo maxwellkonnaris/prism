@@ -7,7 +7,6 @@
 #' @param save A character string indicating the file format to save the plot. Options are "png", "jpg", "svg", "pdf". Default is NULL, which means the plot is not saved.
 #' @param filename A character string indicating the file name when saving the plot. Default is NULL, which means the plot is saved as forest_plot if save format is indicated.
 #' @param dir_path A character string indicating the directory to store the plot. Default is \code{"./plots/"} which creates the plots directory in the current directory.
-#' @param show_labels_for_ci A logical value indicating whether to show y-axis labels only for confidence intervals that do not cover zero. Default is FALSE.
 #' @return A ggplot object representing the combined forest plot.
 #' @import ggplot2
 #' @import dplyr
@@ -44,14 +43,7 @@ forest_plot <- function(data_list, bg = "white", save = NULL, filename = NULL, d
   comparison_order <- first_data %>%
     arrange(ninetyfive_ci_lower) %>%
     pull(comparison)
-  
-  # Determine y-axis label colors based on the first dataset
-  first_data <- first_data %>%
-    mutate(label_color = ifelse(
-      (ninetyfive_ci_lower > 0 & ninetyfive_ci_upper > 0) | (ninetyfive_ci_lower < 0 & ninetyfive_ci_upper < 0),
-      "#023E8A",  # Blue if the CI does not cover zero
-      "black"     # Default black if it covers zero
-    ))
+
   
   # Loop over each data frame in data_list
   for (dataset_name in names(data_list)) {
@@ -85,18 +77,28 @@ forest_plot <- function(data_list, bg = "white", save = NULL, filename = NULL, d
       (ninetyfive_ci_lower > 0 & ninetyfive_ci_upper > 0) | (ninetyfive_ci_lower < 0 & ninetyfive_ci_upper < 0),
       "95% CI Doesn't Cover Zero", "95% CI Covers Zero"
     ))
-  
-  # Adjust y-axis labels based on the `show_labels_for_ci` parameter
+
+
+  # Determine y-axis label colors based on the first dataset
+  combined_data <- combined_data %>%
+    filter(Dataset == first_dataset_name) %>%
+    mutate(label_color = ifelse(
+      (ninetyfive_ci_lower > 0 & ninetyfive_ci_upper > 0) | (ninetyfive_ci_lower < 0 & ninetyfive_ci_upper < 0),
+      "#023E8A",  # Blue if the CI does not cover zero
+      "black"     # Default black if it covers zero
+    ))
+
+    # Adjust y-axis labels based on the `show_labels_for_ci` parameter
   if (show_labels_for_ci) {
     comparison_labels <- ifelse(
-      first_data$label_color == "#023E8A",  # Only show labels where CI doesn't cover zero
+      combined_data$label_color == "#023E8A",  # Only show labels where CI doesn't cover zero
       as.character(comparison_order),
       ""
     )
   } else {
     comparison_labels <- as.character(comparison_order)  # Show all labels, color based on CI
   }
-
+	
   # Create the forest plot
   plot <- ggplot(combined_data, aes(x = comparison)) +
     coord_flip() +
@@ -108,7 +110,7 @@ forest_plot <- function(data_list, bg = "white", save = NULL, filename = NULL, d
     ) +
     theme(
       axis.text.x = element_text(size = 10),
-      axis.text.y = element_text(size = 10, color = first_data$label_color),
+      axis.text.y = element_text(size = 10, color = rep(y_label_colors, length(data_list))),
       axis.title = element_text(size = 12, face = "bold"),
       strip.text = element_text(size = 12, face = "bold"),
       legend.position = "top",
@@ -176,14 +178,17 @@ forest_plot <- function(data_list, bg = "white", save = NULL, filename = NULL, d
       panel.grid.major.x = element_line(color = "gray80", linetype = "dashed")
     )
   
-  # Facet by Dataset to create side-by-side plots
+  # Adjust y-axis breaks
+  plot <- plot + scale_y_continuous(breaks = scales::pretty_breaks(n = 5))
+  
+  # Facet by Dataset to create side-by-side plots, but y-axis labels only on the left
   plot <- plot + facet_grid(. ~ Dataset, scales = "free_x", space = "free_x") +
     theme(
       strip.background = element_rect(fill = "white")
     )
   
   # Adjust the plot size based on the number of comparisons
-  scaling_factor <- 0.05
+  scaling_factor <- 0.1
   dynamic_height <- length(unique(combined_data$comparison)) * scaling_factor
   min_height <- 10
   max_height <- 35
@@ -195,7 +200,6 @@ forest_plot <- function(data_list, bg = "white", save = NULL, filename = NULL, d
     if (!dir.exists(dir_path)) {
       dir.create(dir_path, recursive = TRUE)
     }
-    
     # Ensure the directory path ends with a slash
     if (!grepl("/$", dir_path)) {
       dir_path <- paste0(dir_path, "/")
