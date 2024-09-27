@@ -1647,24 +1647,21 @@ prism.posteriorsamples <- function(rWparaoriginal, dir_path="./plots/", file_nam
 #'   # Generate correlation plot and covariance heatmap
 #'   plot_true_abundances(rdat, flow_data, dat, file_path = "true_abundances_plot.png")
 #' }
-prism.trueabundanceplot <- function(flow_data, dat, dir_path="./plots/", file_path = "true_abundances.png") {
+prism.trueabundanceplot <- function(dat_scale, dat, dir_path="./plots/", file_path = "true_abundances.png") {
   
   # Transpose rdat to have taxa as rows
   taxa_data <- t(dat[,-1])
   
-  # Remove sample names from flow_data
-  flow_data_numeric <- flow_data[,-1]
-  
   # Calculate true rho correlations between each taxon and flow cytometry data
   truerhocorrelation <- numeric(nrow(taxa_data))
   for (i in 1:nrow(taxa_data)) {
-    truerhocorrelation[i] <- cor(log(taxa_data[i,]), log(flow_data_numeric))
+    truerhocorrelation[i] <- cor(log(taxa_data[i,]), log(dat_scale))
   }
   
   # Calculate standard deviation (scale) for log-transformed flow_data
-  scale_sd_flow_data <- sd(log(flow_data_numeric))
+  scale_sd <- sd(log(dat_scale))
   # Print the calculated scale SD
-  print(paste("Scale standard deviation (SD) of flow data: ", scale_sd_flow_data))
+  print(paste("Scale standard deviation (SD) of flow data: ", scale_sd))
   
   # Extract the taxa columns (excluding the first column which is 'Condition')
   truecorrelations <- cor(t(taxa_data))  # Calculate correlation matrix
