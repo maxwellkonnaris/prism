@@ -7,12 +7,11 @@
 #' @param save A character string indicating the file format to save the plot. Options are "png", "jpg", "svg", "pdf". Default is NULL, which means the plot is not saved.
 #' @param filename A character string indicating the file name when saving the plot. Default is NULL, which means the plot is saved as forest_plot if save format is indicated.
 #' @param dir_path A character string indicating the directory to store the plot. Default is \code{"./plots/"} which creates the plots directory in the current directory.
-#' @param show_labels_for_ci A logical value indicating whether to show y-axis labels only for confidence intervals that do not cover zero. Default is FALSE.
 #' @return A ggplot object representing the combined forest plot.
 #' @import ggplot2
 #' @import dplyr
 #' @export
-forest_plot <- function(data_list, bg = "white", save = NULL, filename = NULL, dir_path = "./plots/", show_labels_for_ci = FALSE) {
+forest_plot <- function(data_list, bg = "white", save = NULL, filename = NULL, dir_path = "./plots/") {
 
   # Check if input is a data frame, convert to a named list if true
   if (is.data.frame(data_list)) {
@@ -44,7 +43,6 @@ forest_plot <- function(data_list, bg = "white", save = NULL, filename = NULL, d
   comparison_order <- first_data %>%
     arrange(ninetyfive_ci_lower) %>%
     pull(comparison)
-
   
   # Loop over each data frame in data_list
   for (dataset_name in names(data_list)) {
@@ -78,156 +76,126 @@ forest_plot <- function(data_list, bg = "white", save = NULL, filename = NULL, d
       (ninetyfive_ci_lower > 0 & ninetyfive_ci_upper > 0) | (ninetyfive_ci_lower < 0 & ninetyfive_ci_upper < 0),
       "95% CI Doesn't Cover Zero", "95% CI Covers Zero"
     ))
-
-
-  # Determine y-axis label colors based on the first dataset
-  label_data <- combined_data %>%
-    filter(Dataset == first_dataset_name) %>%
-    mutate(label_color = ifelse(
-      (ninetyfive_ci_lower > 0 & ninetyfive_ci_upper > 0) | (ninetyfive_ci_lower < 0 & ninetyfive_ci_upper < 0),
-      "#023E8A",  # Blue if the CI does not cover zero
-      "black"     # Default black if it covers zero
-    ))
-
-    # Adjust y-axis labels based on the `show_labels_for_ci` parameter
-  if (show_labels_for_ci) {
-    comparison_labels <- ifelse(
-      label_data$label_color == "#023E8A",  # Only show labels where CI doesn't cover zero
-      as.character(comparison_order),
-      ""
-    )
-  } else {
-    comparison_labels <- as.character(comparison_order)  # Show all labels, color based on CI
-  }
-	
+  
   # Create the forest plot
   plot <- ggplot(combined_data, aes(x = comparison)) +
-	  coord_flip() +
-	  theme_classic(base_size = 12) +
-	  labs(
-	    x = "Taxa Comparison",
-	    y = "Estimated Covariance",
-	    color = NULL
-	  ) +
-	  theme(
-	    axis.text.x = element_text(size = 10),
-	    axis.text.y = element_blank(),  # Remove the default y-axis labels
-	    axis.title = element_text(size = 12, face = "bold"),
-	    strip.text = element_text(size = 12, face = "bold"),
-	    legend.position = "top",
-	    legend.title = element_blank(),
-	    legend.text = element_text(size = 10)
-	  ) +
-	  scale_y_discrete(labels = comparison_labels) +  # Corrected: use discrete scale for y-axis
-	  scale_color_manual(
-	    values = c(
-	      "95% CI Doesn't Cover Zero" = "#023E8A",  # Blue
-	      "95% CI Covers Zero" = "#BEBEBE",
-	      "Covariance Range" = "#676767"
-	    ),
-	    breaks = c("95% CI Doesn't Cover Zero", "Covariance Range") # Exclude "Covers Zero" from legend
-	  )
-	
-	# Add the covariance range error bars
-	plot <- plot + geom_errorbar(
-	  aes(ymin = minsigma_absolute_minimum_covariance, ymax = maxsigma_absolute_maximum_covariance, color = "Covariance Range"),
-	  width = 0.4, size = 0.8
-	)
-	
-	# Add the 95% confidence intervals
-	plot <- plot + geom_errorbar(
-	  aes(ymin = ninetyfive_ci_lower, ymax = ninetyfive_ci_upper, color = highlight),
-	  width = 0.6, size = 1
-	)
-	
-	# Add points for the p-values if provided
-	if (any(combined_data$p_value_provided)) {
-	  plot <- plot + geom_point(
-	    data = combined_data %>% filter(p_value_provided == TRUE),
-	    aes(y = (ninetyfive_ci_lower + ninetyfive_ci_upper) / 2, size = -log10(p_value)),
-	    color = "black", shape = 21, fill = "white", stroke = 1
-	  ) +
-	    labs(size = expression("-log"[10]*"(p-value)")) +
-	    scale_size_continuous(range = c(2, 6))
-	}
-	
-	# Add y-axis labels with correct color using geom_text
-	plot <- plot + geom_text(
-	  data = label_data,
-	  aes(y = comparison, label = comparison, color = label_color),
-	  hjust = 1.1, size = 3.5
-	)
-	
-	# Customize the background based on the bg parameter
-	if (bg == "transparent") {
-	  plot <- plot + 
-	    theme(
-	      plot.background = element_rect(fill = "transparent", color = NA),
-	      panel.background = element_rect(fill = "transparent", color = NA),
-	      panel.grid.major = element_line(color = "gray90"),
-	      panel.grid.minor = element_blank()
-	    )
-	} else if (bg == "white") {
-	  plot <- plot + 
-	    theme(
-	      plot.background = element_rect(fill = "white", color = NA),
-	      panel.background = element_rect(fill = "white", color = NA),
-	      panel.grid.major = element_line(color = "gray90"),
-	      panel.grid.minor = element_blank()
-	    )
-	} else {
-	  stop("bg parameter must be 'transparent' or 'white'")
-	}
-	
-	# Add subtle gridlines
-	plot <- plot + 
-	  theme(
-	    panel.grid.major.y = element_blank(),
-	    panel.grid.major.x = element_line(color = "gray80", linetype = "dashed")
-	)
-	
-	# Facet by Dataset to create side-by-side plots
-	plot <- plot + facet_grid(. ~ Dataset, scales = "free_x", space = "free_x") +
-	  theme(
-	    strip.background = element_rect(fill = "white")
-	)
-
-	# Adjust the plot size based on the number of comparisons
-	scaling_factor <- 0.1
-	dynamic_height <- length(unique(combined_data$comparison)) * scaling_factor
-	min_height <- 10
-	max_height <- 35
-	final_height <- max(min_height, min(dynamic_height, max_height))
-	  
-	# Save the plot if save is not NULL
-	if (!is.null(save)) {
-	  # Check if directory exists
-	  if (!dir.exists(dir_path)) {
-	    dir.create(dir_path, recursive = TRUE)
-	  }
-	  # Ensure the directory path ends with a slash
-	  if (!grepl("/$", dir_path)) {
-	    dir_path <- paste0(dir_path, "/")
-	  }
-	
-	  # Set default filename if not provided
-	  if (is.null(filename)) {
-	    filename <- "forest_plot"
-	  }
-	  
-	  file_name <- paste0(dir_path, filename, ".", save)
-	
-	  # Adjust width based on the number of data frames
-	  plot_width <- 10 * length(data_list)
-	  
-	  ggsave(file_name, plot, width = plot_width, height = final_height, dpi = 300, device = save, bg = bg, limitsize = FALSE)
-	}
-	
-	return(plot)
-}
+    coord_flip() +
+    theme_classic(base_size = 12) +
+    labs(
+      x = "Taxa Comparison",
+      y = "Estimated Covariance",
+      color = NULL
+    ) +
+    theme(
+      axis.text.x = element_text(size = 10),
+      axis.text.y = element_text(size = 10),
+      axis.title = element_text(size = 12, face = "bold"),
+      strip.text = element_text(size = 12, face = "bold"),
+      legend.position = "top",
+      legend.title = element_blank(),
+      legend.text = element_text(size = 10)
+    ) +
+    scale_color_manual(
+      values = c(
+        "95% CI Doesn't Cover Zero" = "#023E8A",  # Blue
+        "95% CI Covers Zero" = "#BEBEBE",
+        "Covariance Range" = "#676767"
+      ),
+      breaks = c("95% CI Doesn't Cover Zero", "Covariance Range") # Exclude "Covers Zero" from legend
+    )
   
-
-
+  # Add the covariance range error bars
+  plot <- plot + geom_errorbar(
+    aes(ymin = minsigma_absolute_minimum_covariance, ymax = maxsigma_absolute_maximum_covariance, color = "Covariance Range"),
+    width = 0.4, size = 0.8
+  )
+  
+  # Add the 95% confidence intervals
+  plot <- plot + geom_errorbar(
+    aes(ymin = ninetyfive_ci_lower, ymax = ninetyfive_ci_upper, color = highlight),
+    width = 0.6, size = 1
+  )
+  
+  # Add points for the p-values if provided
+  if (any(combined_data$p_value_provided)) {
+    plot <- plot + geom_point(
+      data = combined_data %>% filter(p_value_provided == TRUE),
+      aes(y = (ninetyfive_ci_lower + ninetyfive_ci_upper) / 2, size = -log10(p_value)),
+      color = "black", shape = 21, fill = "white", stroke = 1
+    ) +
+      labs(size = expression("-log"[10]*"(p-value)")) +
+      scale_size_continuous(range = c(2, 6))
+  }
+  
+  # Customize the background based on the bg parameter
+  if (bg == "transparent") {
+    plot <- plot + 
+      theme(
+        plot.background = element_rect(fill = "transparent", color = NA),
+        panel.background = element_rect(fill = "transparent", color = NA),
+        panel.grid.major = element_line(color = "gray90"),
+        panel.grid.minor = element_blank()
+      )
+  } else if (bg == "white") {
+    plot <- plot + 
+      theme(
+        plot.background = element_rect(fill = "white", color = NA),
+        panel.background = element_rect(fill = "white", color = NA),
+        panel.grid.major = element_line(color = "gray90"),
+        panel.grid.minor = element_blank()
+      )
+  } else {
+    stop("bg parameter must be 'transparent' or 'white'")
+  }
+  
+  # Add subtle gridlines
+  plot <- plot + 
+    theme(
+      panel.grid.major.y = element_blank(),
+      panel.grid.major.x = element_line(color = "gray80", linetype = "dashed")
+    )
+  
+  # Adjust y-axis breaks
+  plot <- plot + scale_y_continuous(breaks = scales::pretty_breaks(n = 5))
+  
+  # Facet by Dataset to create side-by-side plots, but y-axis labels only on the left
+  plot <- plot + facet_grid(. ~ Dataset, scales = "free_x", space = "free_x") +
+    theme(
+      axis.text.y = element_text(size = 10),  # Only for the leftmost plot
+      strip.background = element_rect(fill = "white")
+    )
+  
+  # Adjust the plot size based on the number of comparisons
+  scaling_factor <- 0.1
+  dynamic_height <- length(unique(combined_data$comparison)) * scaling_factor
+  min_height <- 10
+  max_height <- 35
+  final_height <- max(min_height, min(dynamic_height, max_height))
+  
+  # Save the plot if save is not NULL
+  if (!is.null(save)) {
+    # Check if directory exists
+    if (!dir.exists(dir_path)) {
+      dir.create(dir_path, recursive = TRUE)
+    }
+    # Ensure the directory path ends with a slash
+    if (!grepl("/$", dir_path)) {
+      dir_path <- paste0(dir_path, "/")
+    }
+    # Set default filename if not provided
+    if (is.null(filename)) {
+      filename <- "forest_plot"
+    }
+    file_name <- paste0(dir_path, filename, ".", save)
+    
+    # Adjust width based on the number of data frames
+    plot_width <- 10 * length(data_list)
+    
+    ggsave(file_name, plot, width = plot_width, height = final_height, dpi = 300, device = save, bg = bg, limitsize = FALSE)
+  }
+  
+  return(plot)
+}
 
 
 
