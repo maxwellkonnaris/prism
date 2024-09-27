@@ -116,12 +116,12 @@
 #' alpha_custom <- rep(0.5, 10)
 #' lowerrhobound_custom <- rep(-0.9, 10)
 #' upperrhobound_custom <- rep(0.9, 10)
-#' results_custom <- estimate_covariance(Y, alpha = alpha_custom, 
+#' results_custom <- prism.covariance(Y, alpha = alpha_custom, 
 #'                                       lowerrhobound = lowerrhobound_custom, 
 #'                                       upperrhobound = upperrhobound_custom)
 #' 
 #' # Example 4: Specifying Output Directory for Grid Search
-#' results_grid <- estimate_covariance(Y, algorithm = "GRID_SEARCH", 
+#' results_grid <- prism.covariance(Y, algorithm = "GRID_SEARCH", 
 #'                                     outputdirectory = "grid_search_results/")
 #' }
 #'
@@ -138,7 +138,7 @@
 #' @import ggridges
 #' @import fido
 #' @export
-estimate_covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "Multinomial Dirichlet", externalscalemeasurements = NULL, lowerrhobound = rep(-1.0, nrow(Y)), upperrhobound = rep(1.0, nrow(Y)), S = 1000, lowerscalestdev = 0.450, upperscalestdev = 0.650, algorithm = "GRID_SEARCH", outputdirectory = NULL, seed = NULL) {
+prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "Multinomial Dirichlet", externalscalemeasurements = NULL, lowerrhobound = rep(-1.0, nrow(Y)), upperrhobound = rep(1.0, nrow(Y)), S = 1000, lowerscalestdev = 0.450, upperscalestdev = 0.650, algorithm = "GRID_SEARCH", outputdirectory = NULL, seed = NULL) {
   
   ## COMPUTATIONAL TIME -------------------------------------------------------------------------------------------------------------------------------------
   start_time <- Sys.time()
@@ -282,13 +282,11 @@ estimate_covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "Multi
     posterior <- refit(priors, optim_method="lbfgs")
     rWparaoriginal <- fido::to_proportions(posterior)$Eta
   }
-
-  combine_posterior_plots(rWparaoriginal, file_name = "combined_posterior_plots.png")
     
   # Log transform relative abundances
   rWparaoriginal <- log(rWparaoriginal)
 
-  combine_posterior_plots(rWparaoriginal, file_name = "combined_log_posterior_plots.png")
+  prism.posteriorsamples(rWparaoriginal, file_name = "combined_log_posterior_plots.png")
   
   ## END ACCOUNTING FOR UNCERTAINTY IN OBSERVED RELATIVE ABUNDANCES ---------------------------------------------------------------------------------------
   ## ESTIMATING RHO AND SD --------------------------------------------------------------------------------------------------------------------------------
@@ -344,10 +342,10 @@ estimate_covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "Multi
     rm(rhoandsd_list)
 
     # plot the scale SD
-    plot_scalestdev_histogram(scalestdev, S)
+    prism.scalesdhistogram(scalestdev, S)
                                      
     # plot the rho
-    plot_rho_ridges(rhobounds, D, S)
+    prism.rhoridges(rhobounds, D, S)
 
   } else {
     rhobounds = NULL
@@ -955,9 +953,9 @@ estimate_covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "Multi
 #' # Example usage (You could also use the simulation function provided to generate sample data):
 #' set.seed(123)
 #' Y <- matrix(rnorm(1000), nrow = 10)
-#' results <- estimate_covariance_convergence(Y)
+#' results <- prism.covariance_convergence(Y)
 #' @export
-estimate_covariance_convergence <- function(Y, S=c(100, 500, 1000, 2000, 5000, 10000), alpha = 0.5, lowerrhobound = -1.0, upperrhobound = 0.6, lowerscalestdev = .475, upperscalestdev = .525) {
+prism.covariance_convergence <- function(Y, S=c(100, 500, 1000, 2000, 5000, 10000), alpha = 0.5, lowerrhobound = -1.0, upperrhobound = 0.6, lowerscalestdev = .475, upperscalestdev = .525) {
   # Record the start time for profiling
   start_time <- Sys.time()
 
