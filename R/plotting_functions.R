@@ -1812,8 +1812,10 @@ plot_true_abundances <- function(flow_data, dat, file_path = "true_abundances_pl
 #'
 #' @import igraph
 #' @import qgraph
+#'
 #' @examples
 #' prism.network(results)
+
 prism.network <- function(results, file_name = "network_plot.png", save_plot = TRUE) {
   # Filter rows with non-NA taxa
   filtered_results <- results[!is.na(results$taxa1) & !is.na(results$taxa2), ]
@@ -1826,7 +1828,6 @@ prism.network <- function(results, file_name = "network_plot.png", save_plot = T
   # Set edge color, width, and transparency based on the 95% CI for covariances
   edge_colors <- c()
   edge_widths <- c()
-  edge_alphas <- c()  # To represent uncertainty
   
   for (i in 1:nrow(filtered_results)) {
     taxa1 <- filtered_results$taxa1[i]
@@ -1849,13 +1850,9 @@ prism.network <- function(results, file_name = "network_plot.png", save_plot = T
     ci_range_cov <- ci_upper_cov - ci_lower_cov
     edge_width <- 1 / ci_range_cov  # Inverse of CI range for width
     
-    # Edge transparency (alpha) reflects uncertainty (larger range -> more transparent)
-    edge_alpha <- max(0.1, 1 - ci_range_cov)  # Normalize: higher range -> lower alpha
-    
-    # Set edge colors, widths, and alpha levels
+    # Set edge colors and widths
     edge_colors <- c(edge_colors, edge_color)
     edge_widths <- c(edge_widths, edge_width)
-    edge_alphas <- c(edge_alphas, edge_alpha)
     
     # Update adjacency matrix with the inferred covariance strength
     adj_matrix[taxa1, taxa2] <- edge_width  # Magnitude based on CI width
@@ -1868,12 +1865,13 @@ prism.network <- function(results, file_name = "network_plot.png", save_plot = T
                         labels = TRUE,                # Add taxa labels
                         edge.color = edge_colors,     # Set edge colors based on CI sign
                         edge.width = edge_widths,     # Set edge widths based on CI range
-                        edge.alpha = edge_alphas,     # Set edge transparency based on uncertainty
-                        posCol = "blue",              # Positive covariance color
-                        negCol = "red",               # Negative covariance color
-                        gray = "grey",                # Grey for edges where CI covers zero
+                        posCol = c("#009900", "darkgreen"),  # Positive covariance color
+                        negCol = c("#BF0000", "red"),        # Negative covariance color
+                        unCol = "#808080",                   # Grey for edges where CI covers zero
+                        trans = TRUE,                        # Enable transparency based on edge weight
+                        fade = TRUE,                         # Enable fading based on edge weight
+                        esize = 15 * exp(-length(taxa) / 90) + 1,  # Scalar for edge size
                         vsize = 8,                    # Set larger node size for clarity
-                        esize = 5,                    # Set edge size scaling factor for professional look
                         borders = FALSE,              # Remove node borders for cleaner presentation
                         label.cex = 1.5)              # Increase label font size for clarity
   
@@ -1887,4 +1885,7 @@ prism.network <- function(results, file_name = "network_plot.png", save_plot = T
   # Return the plot object for further customization
   return(plot_object)
 }
+
+# Example usage with the 'results' dataframe
+# prism.network(results)
 
