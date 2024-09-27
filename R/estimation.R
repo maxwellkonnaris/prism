@@ -298,7 +298,7 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
   if (!is.null(externalscalemeasurements) && is.matrix(externalscalemeasurements) && ncol(Y) == nrow(externalscalemeasurements)) {
     rhoandsd_list <- foreach(s = 1:S, .packages = c('stats')) %dopar% {
         n <- length(externalscalemeasurements)
-        sample_indices <- boostrap_samples[, s]
+        sample_indices <- bootstrap_samples[, s]
         S2 <- var(externalscalemeasurements[sample_indices])
         chi2_lower <- qchisq(alpha / 2, df = n - 1)
         chi2_upper <- qchisq(1 - alpha / 2, df = n - 1)
@@ -381,7 +381,7 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
       # Use sequential foreach for the inner loop
       results_inner <- foreach(s = 1:S, .combine = 'rbind', .packages = c('stats', 'MCMCpack', 'nloptr', 'dplyr')) %dopar% {
         
-        rWpara <- rWparaoriginal[c(d1, d2), boostrap_samples[, s], s]
+        rWpara <- rWparaoriginal[c(d1, d2), bootstrap_samples[, s], s]
         taxa1relativesd <- sd(rWpara[1, ])
         taxa2relativesd <- sd(rWpara[2, ])
         relativecorrelation <- cor(rWpara[1, ], rWpara[2, ])
