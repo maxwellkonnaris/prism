@@ -510,9 +510,11 @@ constraint_gradient_function <- function(params, taxa1relativesd, taxa2relatives
 #' @importFrom purrr map
 #' @importFrom stats rpois rmultinom rnorm cov
 #' @export
+# Modify the function to include taxa-total correlations
 prism.simulate_prepost <- function(n = 50, d = 20, seq_depth = 5000, replicate = 1, corr_strengths = NULL, 
                                    scenario = "both", percent_changed = 0.4, change_magnitude = c(0.5, 1.5), 
-                                   custom_stddevs = NULL, coverage = 1, perfect_resolution = FALSE, flow_sd = 300) {
+                                   custom_stddevs = NULL, coverage = 1, perfect_resolution = FALSE, flow_sd = 300,
+                                   total_corr_taxa = NULL, total_corr_signs = NULL) {
   
   # Check if corr_strengths is provided and if its dimensions match the number of taxa (d)
   if (!is.null(corr_strengths)) {
@@ -536,14 +538,46 @@ prism.simulate_prepost <- function(n = 50, d = 20, seq_depth = 5000, replicate =
   # Convert correlation matrix to covariance matrix (if provided)
   if (!is.null(corr_strengths)) {
     cov_matrix <- diag(std_devs) %*% corr_strengths %*% diag(std_devs)
+  } else {
+    cov_matrix <- diag(std_devs^2)
+  }
+
+  # Control correlations between total abundance and certain taxa
+  if (!is.null(total_corr_taxa) && !is.null(total_corr_signs)) {
+    if (length(total_corr_taxa) != length(total_corr_signs)) {
+      stop("The length of `total_corr_taxa` and `total_corr_signs` must be the same.")
+    }
+    
+    # Create a "total abundance" variable (sum of all taxa) and correlate it with selected taxa
+    total_corr_index <- d + 1  # Index for the "total" in an extended covariance matrix
+    
+    # Extend the covariance matrix to include the total abundance
+    extended_cov_matrix <- matrix(0, nrow = d + 1, ncol = d + 1)
+    extended_cov_matrix[1:d, 1:d] <- cov_matrix
+    
+    # Create correlations with the total abundance
+    for (i in seq_along(total_corr_taxa)) {
+      taxon_index <- total_corr_taxa[i]
+      correlation_sign <- total_corr_signs[i]  # Should be +1 for positive, -1 for negative
+      
+      # Add correlations between the total and selected taxa
+      extended_cov_matrix[taxon_index, total_corr_index] <- correlation_sign * 0.5 * std_devs[taxon_index]
+      extended_cov_matrix[total_corr_index, taxon_index] <- correlation_sign * 0.5 * std_devs[taxon_index]
+    }
+    
+    # Assign some variance to the total abundance
+    extended_cov_matrix[total_corr_index, total_corr_index] <- sum(std_devs^2)
+    
+    # Update the covariance matrix to the extended one
+    cov_matrix <- extended_cov_matrix
   }
 
   ## Helper Function to Create Abundances
   create_abundances <- function(d_pre, d_post, n, cov_matrix = NULL, apply_covariance = FALSE) {
     if (apply_covariance && !is.null(cov_matrix)) {
       # Generate correlated log-abundances using a multivariate normal distribution
-      pre_log_abundances <- MASS::mvrnorm(n, mu = log(d_pre), Sigma = cov_matrix)
-      post_log_abundances <- MASS::mvrnorm(n, mu = log(d_post), Sigma = cov_matrix)
+      pre_log_abundances <- MASS::mvrnorm(n, mu = log(d_pre), Sigma = cov_matrix[1:d, 1:d])
+      post_log_abundances <- MASS::mvrnorm(n, mu = log(d_post), Sigma = cov_matrix[1:d, 1:d])
       
       W_pre <- exp(pre_log_abundances)
       W_post <- exp(post_log_abundances)
@@ -552,23 +586,9 @@ prism.simulate_prepost <- function(n = 50, d = 20, seq_depth = 5000, replicate =
       pre_abundances <- matrix(rpois(n * d, lambda = as.vector(W_pre)), nrow = n)
       post_abundances <- matrix(rpois(n * d, lambda = as.vector(W_post)), nrow = n)
     } else {
-      # No covariance case, generate independent log-abundances
-      if (custom_stddevs) {
-        std_devs = std_devs
-      } else {
-      std_devs <- runif(d, min = 0.5, max = 2)  # Or custom standard deviations
-      }
-      identity_cov_matrix <- diag(std_devs^2)   # Diagonal covariance matrix for independent taxa
-      
-      pre_log_abundances <- MASS::mvrnorm(n, mu = log(d_pre), Sigma = identity_cov_matrix)
-      post_log_abundances <- MASS::mvrnorm(n, mu = log(d_post), Sigma = identity_cov_matrix)
-      
-      W_pre <- exp(pre_log_abundances)
-      W_post <- exp(post_log_abundances)
-      
       # If no covariance is applied, use independent Poisson resampling
-      pre_abundances <- matrix(rpois(n * d, lambda = as.vector(W_pre)), nrow = n)
-      post_abundances <- matrix(rpois(n * d, lambda = as.vector(W_post)), nrow = n)
+      pre_abundances <- matrix(rpois(n * d, lambda = d_pre), nrow = n)
+      post_abundances <- matrix(rpois(n * d, lambda = d_post), nrow = n)
     }
     
     # Combine into a data frame with conditions
