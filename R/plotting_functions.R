@@ -1481,6 +1481,131 @@ prism.posteriorboxplot <- function(rWparaoriginal, save = TRUE, file_name = "tax
   return(p)
 }
 
+#' Plot Rho Correlations for Taxa vs Flow Data, Covariance Heatmap, and Print Scale SD
+#'
+#' This function calculates the true rho correlations between taxa and flow data, 
+#' generates a plot of these correlations, a pheatmap of covariances, and prints the standard deviation 
+#' of the log-transformed flow data. The correlation plot and covariance heatmap are displayed side by side.
+#'
+#' @param rdat Data frame. The resampled abundance data from `simulate_prepost` with taxa counts.
+#' @param flow_data Data frame. The flow cytometry measurements from `simulate_prepost` with flow values.
+#' @param dat Data frame. The true abundance data from `simulate_prepost` to calculate covariances.
+#' @param file_path Character. File path to save the grid of plots as a high-quality PNG image. Default is `"rho_and_covariances_plot.png"`.
+#'
+#' @return None. The function produces a correlation plot, a covariance heatmap, and prints the standard deviation.
+#'
+#' @importFrom stats cor sd cov
+#' @importFrom grDevices png dev.off
+#' @importFrom graphics plot axis grid abline text
+#' @import pheatmap
+#' @import gridExtra
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#'   # Generate correlation plot and covariance heatmap
+#'   plot_true_abundances(rdat, flow_data, dat, file_path = "true_abundances_plot.png")
+#' }
+prism.trueabundanceplot <- function(dat_scale, dat, dir_path="./plots/", file_path = "true_abundances.png") {
+  
+  # Transpose rdat to have taxa as rows, sort taxa in ascending order by their names
+  taxa_data <- t(dat[,-1])
+  taxa_data <- taxa_data[order(rownames(taxa_data)), ]
+  
+  # Calculate true rho correlations between each taxon and flow cytometry data
+  truerhocorrelation <- numeric(nrow(taxa_data))
+  for (i in 1:nrow(taxa_data)) {
+    truerhocorrelation[i] <- cor(log(taxa_data[i,]), log(dat_scale))
+  }
+  
+  # Calculate standard deviation (scale) for log-transformed flow_data
+  scale_sd <- sd(log(dat_scale))
+  # Print the calculated scale SD
+  print(paste("Scale standard deviation (SD) of flow data: ", scale_sd))
+  
+  # Extract the taxa columns (excluding the first column which is 'Condition')
+  truecorrelations <- cor(t(taxa_data))  # Calculate correlation matrix
+  truecovariances <- cov(t(taxa_data))  # Calculate covariance matrix
+	
+  # Create forest plot data for covariances
+  forest_plot_data <- data.frame(
+    comparison = character(),
+    ninetyfive_ci_lower = numeric(),
+    ninetyfive_ci_upper = numeric(),
+    minsigma_absolute_minimum_covariance = numeric(),
+    maxsigma_absolute_maximum_covariance = numeric(),
+    p_value = numeric()  # Placeholder
+  )
+
+  # Loop through the upper triangle of the covariance matrix to extract comparisons
+  for (i in 1:(ncol(truecovariances) - 1)) {
+    for (j in (i + 1):ncol(truecovariances)) {
+      # Extract the covariance value
+      cov_value <- truecovariances[i, j]
+      
+      # Create the comparison name (e.g., "Taxa1:Taxa2")
+      comparison_name <- paste0(colnames(truecovariances)[i], ":", colnames(truecovariances)[j])
+      
+      # Append this comparison to the data frame
+      forest_plot_data <- rbind(forest_plot_data, data.frame(
+        comparison = comparison_name,
+        ninetyfive_ci_lower = cov_value,  # True value for lower CI
+        ninetyfive_ci_upper = cov_value,  # True value for upper CI
+        minsigma_absolute_minimum_covariance = cov_value,  # Min sigma is the true value
+        maxsigma_absolute_maximum_covariance = cov_value,  # Max sigma is the true value
+        p_value = NA  # Placeholder, can be removed if not needed
+      ))
+    }
+  }
+
+  # Create forest plot, ensuring taxa are in ascending order
+  taxa_labels <- rownames(taxa_data)
+  forest_plot <- ggplot(data = data.frame(taxa = taxa_labels, rho = truerhocorrelation), aes(x = rho, y = reorder(taxa, taxa))) +
+	  geom_point(color = "steelblue", size = 4) +
+	  geom_segment(aes(x = 0, xend = rho, y = taxa, yend = taxa), color = "steelblue", size = 1.2) +
+	  geom_vline(xintercept = 0, linetype = "dotted", color = "black") +
+	  scale_x_continuous(limits = c(-1, 1), breaks = seq(-1, 1, by = 0.1)) +  # Set x-axis limits and breaks
+	  labs(x = "Correlation") +  # Set x-axis label
+	  theme_minimal() +
+	  theme(
+	    axis.title.y = element_blank(),
+	    axis.text.y = element_text(size = 12),
+	    plot.title = element_text(hjust = 0.5, size = 15)
+	  ) +
+	  ggtitle("True Correlations of Taxa and Scale")
+  
+  # Create the correlation heatmap using pheatmap, ensuring taxa are sorted
+  correlation_heatmap <- pheatmap::pheatmap(
+	  truecorrelations, 
+	  main = "Correlation Matrix of Taxa", 
+	  color = colorRampPalette(c("blue", "white", "red"))(100),
+	  breaks = seq(-1, 1, length.out = 101),  # Ensures the color range goes from -1 to 1
+	  border_color = NA, 
+	  silent = TRUE
+	)
+  
+  # Convert to a grob
+  forest_plot_grob <- ggplotGrob(forest_plot)
+  correlation_grob <- grid::grid.grabExpr(grid::grid.draw(correlation_heatmap$gtable))
+
+  # Check if "plots" directory exists, if not, create it
+  if (!dir.exists(dir_path)) {
+    dir.create(dir_path)
+  }
+  
+  # Save the combined plot as a PNG file
+  png(filename = paste0(dir_path,file_path), width = 15, height = 8, units = "in", res = 300)
+  
+  # Arrange the forest plot and correlation heatmap side by side
+  gridExtra::grid.arrange(forest_plot_grob, correlation_grob, ncol = 2)
+  
+  # Close the device to save the file
+  dev.off()
+
+  return(forest_plot_data)
+}
+
+
 #' Plot Posterior Violin Plot for All Taxa
 #'
 #' This internal function generates a violin plot to visualize the posterior samples 
@@ -1765,7 +1890,7 @@ prism.trueabundanceplot <- function(dat_scale, dat, dir_path="./plots/", file_pa
 #' @examples
 #' prism.network(results, pvalue = TRUE)
 
-prism.network <- function(results, pvalue = FALSE, dir_path="./plots/", file_name = "network_plot.png", save_plot = TRUE) {
+prism.network <- function(results, pvalue = FALSE, dir_path="./plots/", file_name = "network.png", save_plot = TRUE) {
   # Filter rows with non-NA taxa
   filtered_results <- results[!is.na(results$taxa1) & !is.na(results$taxa2), ]
   
