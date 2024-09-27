@@ -628,14 +628,16 @@ prism.simulate_prepost <- function(n = 50, d = 20, seq_depth = 5000, replicate =
     return(list(
       dat = dat,
       rdat = rdat,
-      flow_data = flow_data,
-      flow_data_collapse = flow_data_collapse
+      rdat_flow = flow_data,
+      rdat_flow_collapse = flow_data_collapse, 
+      dat_scale = totals
     ))
   } else {
     return(list(
       dat = dat,
       rdat = rdat,
-      flow_data = flow_data
+      rdat_flow = flow_data,
+      dat_scale = totals
     ))
   }
 }
