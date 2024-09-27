@@ -245,10 +245,10 @@ prism.forestplot <- function(data_list, bg = "white", save = NULL, filename = NU
 #' # results <- estimate_covariance(Y)
 #' # all_inner_results <- results$all_inner_results # OR 
 #' # all_inner_results <- results$all_inner_results_moment
-#' # sigmaplot(all_inner_results)  # Without saving
-#' # sigmaplot(all_inner_results, save = "png", filename = "sampledataset", individual = FALSE, plot_type = "line")  # Save as PNG with best fit lines
+#' # prism.sigmaplot(all_inner_results)  # Without saving
+#' # prism.sigmaplot(all_inner_results, save = "png", filename = "sampledataset", individual = FALSE, plot_type = "line")  # Save as PNG with best fit lines
 #' @export
-sigmaplot <- function(all_inner_results, bg="white", filename = NULL, save = NULL, individual = FALSE, dir_path="./plots/", plot_type = "line") {
+prism.sigmaplot <- function(all_inner_results, bg="white", filename = NULL, save = NULL, individual = FALSE, dir_path="./plots/", plot_type = "line") {
   
   # Convert relevant columns to numeric
   all_inner_results <- all_inner_results %>%
@@ -466,7 +466,7 @@ sigmaplot <- function(all_inner_results, bg="white", filename = NULL, save = NUL
 #' @import dplyr
 #' @import gridExtra
 #' @export
-diagnose_bootstrap_convergence <- function(combined_results, convergence_results) {
+prism.diagnose_mcmcerror<- function(combined_results, convergence_results) {
   
   # Custom cumulative variance function
   cumvar <- function(x) {
@@ -669,7 +669,7 @@ diagnose_bootstrap_convergence <- function(combined_results, convergence_results
 #' @return This function saves the plots and returns no value.
 #' @import plotly htmlwidgets alphashape3d
 #' @export
-plot_comparisons_3d_scatter <- function(data, output_directory = "plots/", 
+prism.3dscatterplot_comparisons <- function(data, output_directory = "plots/", 
                                         correlation_relativetaxa_scale_range = c(-1, 1), 
                                         scale_sd_range = c(0.49, 0.51),
                                         plot_all = TRUE,
@@ -872,7 +872,7 @@ plot_comparisons_3d_scatter <- function(data, output_directory = "plots/",
 #' @return This function saves the plots and returns no value.
 #' @import plotly htmlwidgets alphashape3d
 #' @export
-plot_rpars_3d_scatter <- function(data, output_directory = "plots/", rho_scale_range = c(min(data$rho1, na.rm = TRUE), max(data$rho1, na.rm = TRUE)), scalestdevstep_range = c(min(data$scalestdevstep, na.rm = TRUE), max(data$scalestdevstep, na.rm = TRUE)), plot_all = TRUE, alpha_value = 1) {
+prism.3dscatterplot <- function(data, output_directory = "plots/", rho_scale_range = c(min(data$rho1, na.rm = TRUE), max(data$rho1, na.rm = TRUE)), scalestdevstep_range = c(min(data$scalestdevstep, na.rm = TRUE), max(data$scalestdevstep, na.rm = TRUE)), plot_all = TRUE, alpha_value = 1) {
   
   # Ensure output directory exists
   if (!dir.exists(output_directory)) {
@@ -1022,7 +1022,7 @@ plot_rpars_3d_scatter <- function(data, output_directory = "plots/", rho_scale_r
 #' }
 #' 
 #' @export
-plot_spsdparameter <- function(data, output_directory = "plots/", rho_scale_range = c(min(data$rho1), max(data$rho1)), scalestdevstep_range = c(min(data$scalestdevstep), max(data$scalestdevstep)), alpha_value = 1) {
+prism.spsd <- function(data, output_directory = "plots/", rho_scale_range = c(min(data$rho1), max(data$rho1)), scalestdevstep_range = c(min(data$scalestdevstep), max(data$scalestdevstep)), alpha_value = 1) {
 
   # Ensure output directory exists
   if (!dir.exists(output_directory)) {
@@ -1131,7 +1131,7 @@ plot_spsdparameter <- function(data, output_directory = "plots/", rho_scale_rang
 #' }
 #' 
 #' @export
-plot_bivariate_grid <- function(data, output_directory = "plots/", sample_size = 3000) {
+prism.bivariate <- function(data, output_directory = "plots/", sample_size = 3000) {
 
   # Ensure output directory exists
   if (!dir.exists(output_directory)) {
@@ -1197,8 +1197,8 @@ plot_bivariate_grid <- function(data, output_directory = "plots/", sample_size =
 #'
 #' @examples
 #' # Assuming you have a dataframe called `results_df` with columns for comparison and proportion_intervals_dontcoverzero
-#' # proportiondontcoverzerobars(results_df)
-proportiondontcoverzerobars <- function(data, comparison_col = "comparison", proportion_col = "proportion_intervals_dontcoverzero", 
+#' # prism.proportions(results_df)
+prism.proportions <- function(data, comparison_col = "comparison", proportion_col = "proportion_intervals_dontcoverzero", 
                                        ci_upper = "ninetyfive_ci_upper", ci_lower = "ninetyfive_ci_lower", outputdirectory = "./plots/") {
   
   # Check if the directory exists
@@ -1280,7 +1280,7 @@ proportiondontcoverzerobars <- function(data, comparison_col = "comparison", pro
 #' @importFrom ggridges geom_density_ridges
 #' @importFrom reshape2 melt
 #' @keywords internal
-plot_rho_ridges <- function(rhobounds, D, S) {
+prism.rhoridges <- function(rhobounds, D, S) {
   
   # Reshape the rhobounds array into a long-format data frame
   melted_data <- reshape2::melt(rhobounds)
@@ -1366,12 +1366,6 @@ plot_rho_ridges <- function(rhobounds, D, S) {
   return(plot)
 }
 
-
-
-
-
-
-
 #' Plot Histogram with Density Overlay for Scale Standard Deviation Bounds
 #'
 #' This function creates a professional-looking histogram for the scale standard deviation 
@@ -1392,7 +1386,7 @@ plot_rho_ridges <- function(rhobounds, D, S) {
 #' @importFrom ggplot2 element_text scale_fill_manual scale_color_manual ggsave after_stat geom_vline
 #' @importFrom ggplot2 annotate
 #' @keywords internal
-plot_scalestdev_histogram <- function(scalestdev, S) {
+prism.scalesdhistogram <- function(scalestdev, S) {
   
   # Prepare the data
   plot_data <- data.frame(
@@ -1469,7 +1463,7 @@ plot_scalestdev_histogram <- function(scalestdev, S) {
 #' @param dpi The resolution of the saved plot in dots per inch (dpi). Default is 300.
 #'
 #' @keywords internal
-plot_posterior_density <- function(rWparaoriginal, save = TRUE, file_name = "taxa_posterior_density.png", width = 8, height = 8, dpi = 300) {
+prism.posteriordensity <- function(rWparaoriginal, save = TRUE, file_name = "taxa_posterior_density.png", width = 8, height = 8, dpi = 300) {
   
   # Get the number of taxa (D) and iterations (S)
   D <- dim(rWparaoriginal)[1]
@@ -1523,7 +1517,7 @@ plot_posterior_density <- function(rWparaoriginal, save = TRUE, file_name = "tax
 #' @param dpi The resolution of the saved plot in dots per inch (dpi). Default is 300.
 #'
 #' @keywords internal
-plot_posterior_boxplot <- function(rWparaoriginal, save = TRUE, file_name = "taxa_posterior_boxplot.png", width = 8, height = 6, dpi = 300) {
+prism.posteriorboxplot <- function(rWparaoriginal, save = TRUE, file_name = "taxa_posterior_boxplot.png", width = 8, height = 6, dpi = 300) {
   
   # Get the number of taxa (D) and iterations (S)
   D <- dim(rWparaoriginal)[1]
@@ -1577,7 +1571,7 @@ plot_posterior_boxplot <- function(rWparaoriginal, save = TRUE, file_name = "tax
 #' @param dpi The resolution of the saved plot in dots per inch (dpi). Default is 300.
 #'
 #' @keywords internal
-plot_posterior_violin <- function(rWparaoriginal, save = TRUE, file_name = "taxa_posterior_violin.png", width = 8, height = 8, dpi = 300) {
+prism.posteriorviolin <- function(rWparaoriginal, save = TRUE, file_name = "taxa_posterior_violin.png", width = 8, height = 8, dpi = 300) {
   
   # Get the number of taxa (D) and iterations (S)
   D <- dim(rWparaoriginal)[1]
@@ -1616,7 +1610,7 @@ plot_posterior_violin <- function(rWparaoriginal, save = TRUE, file_name = "taxa
   return(p)
 }
 
-plot_posterior_samples <- function(rWparaoriginal, save = TRUE, file_name = "taxa_posterior_samples.png", width = 8, height = 8, dpi = 300) {
+prism.posteriorlineplot <- function(rWparaoriginal, save = TRUE, file_name = "taxa_posterior_samples.png", width = 8, height = 8, dpi = 300) {
   
   # Get the number of taxa (D)
   D <- dim(rWparaoriginal)[1]
@@ -1675,13 +1669,13 @@ plot_posterior_samples <- function(rWparaoriginal, save = TRUE, file_name = "tax
 #' @keywords internal
 #' @import ggplot2
 #' @import gridExtra
-combine_posterior_plots <- function(rWparaoriginal, file_name = "combined_posterior_plots.png", width = 16, height = 16, dpi = 300) {
+prism.posteriorsamples <- function(rWparaoriginal, file_name = "combined_posterior_plots.png", width = 16, height = 16, dpi = 300) {
   
   # Generate individual plots
-  p1 <- plot_posterior_density(rWparaoriginal, save=FALSE)   # Density plot
-  p2 <- plot_posterior_boxplot(rWparaoriginal, save=FALSE)   # Box plot
-  p3 <- plot_posterior_violin(rWparaoriginal, save=FALSE)    # Violin plot
-  p4 <- plot_posterior_samples(rWparaoriginal, save=FALSE)   # Line plot
+  p1 <- prism.posteriordensity(rWparaoriginal, save=FALSE)   # Density plot
+  p2 <- prism.posteriorboxplot(rWparaoriginal, save=FALSE)   # Box plot
+  p3 <- prism.posteriorviolin(rWparaoriginal, save=FALSE)    # Violin plot
+  p4 <- prism.posteriorlineplot(rWparaoriginal, save=FALSE)   # Line plot
 
     # Convert ggplot objects to grobs
   g1 <- ggplotGrob(p1)
@@ -1723,7 +1717,7 @@ combine_posterior_plots <- function(rWparaoriginal, file_name = "combined_poster
 #'   # Generate correlation plot and covariance heatmap
 #'   plot_true_abundances(rdat, flow_data, dat, file_path = "true_abundances_plot.png")
 #' }
-plot_true_abundances <- function(flow_data, dat, file_path = "true_abundances_plot.png") {
+prism.trueabundanceplot <- function(flow_data, dat, file_path = "true_abundances_plot.png") {
   
   # Transpose rdat to have taxa as rows
   taxa_data <- t(dat[,-1])
@@ -1937,8 +1931,6 @@ prism.network <- function(results, pvalue = FALSE, file_name = "network_plot.png
   return(plot_object)
 }
 
-# Example usage with the 'results' dataframe
-# prism.network(results, pvalue = TRUE)
 
 
 
