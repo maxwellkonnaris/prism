@@ -510,11 +510,9 @@ constraint_gradient_function <- function(params, taxa1relativesd, taxa2relatives
 #' @importFrom purrr map
 #' @importFrom stats rpois rmultinom rnorm cov
 #' @export
-# Modify the function to include taxa-total correlations
 prism.simulate_prepost <- function(n = 50, d = 20, seq_depth = 5000, replicate = 1, corr_strengths = NULL, 
                                    scenario = "both", percent_changed = 0.4, change_magnitude = c(0.5, 1.5), 
-                                   custom_stddevs = NULL, coverage = 1, perfect_resolution = FALSE, flow_sd = 300,
-                                   total_corr_taxa = NULL, total_corr_signs = NULL) {
+                                   custom_stddevs = NULL, coverage = 1, perfect_resolution = FALSE, flow_sd = 300) {
   
   # Check if corr_strengths is provided and if its dimensions match the number of taxa (d)
   if (!is.null(corr_strengths)) {
@@ -538,8 +536,6 @@ prism.simulate_prepost <- function(n = 50, d = 20, seq_depth = 5000, replicate =
   # Convert correlation matrix to covariance matrix (if provided)
   if (!is.null(corr_strengths)) {
     cov_matrix <- diag(std_devs) %*% corr_strengths %*% diag(std_devs)
-  } else {
-    cov_matrix <- diag(std_devs^2)
   }
 
   ## Helper Function to Create Abundances
@@ -556,9 +552,23 @@ prism.simulate_prepost <- function(n = 50, d = 20, seq_depth = 5000, replicate =
       pre_abundances <- matrix(rpois(n * d, lambda = as.vector(W_pre)), nrow = n)
       post_abundances <- matrix(rpois(n * d, lambda = as.vector(W_post)), nrow = n)
     } else {
+      # No covariance case, generate independent log-abundances
+      if (custom_stddevs) {
+        std_devs = std_devs
+      } else {
+      std_devs <- runif(d, min = 0.5, max = 2)  # Or custom standard deviations
+      }
+      identity_cov_matrix <- diag(std_devs^2)   # Diagonal covariance matrix for independent taxa
+      
+      pre_log_abundances <- MASS::mvrnorm(n, mu = log(d_pre), Sigma = identity_cov_matrix)
+      post_log_abundances <- MASS::mvrnorm(n, mu = log(d_post), Sigma = identity_cov_matrix)
+      
+      W_pre <- exp(pre_log_abundances)
+      W_post <- exp(post_log_abundances)
+      
       # If no covariance is applied, use independent Poisson resampling
-      pre_abundances <- matrix(rpois(n * d, lambda = d_pre), nrow = n)
-      post_abundances <- matrix(rpois(n * d, lambda = d_post), nrow = n)
+      pre_abundances <- matrix(rpois(n * d, lambda = as.vector(W_pre)), nrow = n)
+      post_abundances <- matrix(rpois(n * d, lambda = as.vector(W_post)), nrow = n)
     }
     
     # Combine into a data frame with conditions
@@ -569,53 +579,34 @@ prism.simulate_prepost <- function(n = 50, d = 20, seq_depth = 5000, replicate =
     return(dat)
   }
   
-  ## Adjust Mean Values Based on Correlation with Total
-  adjust_means_with_total <- function(d_pre, d_post, total_corr_taxa, total_corr_signs) {
-    mean_total_pre <- sum(d_pre)
-    mean_total_post <- sum(d_post)
-    
-    # Adjust the mean values for specific taxa based on their correlation with the total
-    for (i in seq_along(total_corr_taxa)) {
-      taxon_index <- total_corr_taxa[i]
-      correlation_sign <- total_corr_signs[i]
-      
-      # If positively correlated, increase mean with the total
-      if (correlation_sign == 1) {
-        d_post[taxon_index] <- d_post[taxon_index] * (mean_total_post / mean_total_pre)
-      }
-      # If negatively correlated, decrease mean with the total
-      else if (correlation_sign == -1) {
-        d_post[taxon_index] <- d_post[taxon_index] / (mean_total_post / mean_total_pre)
-      }
+  ## Resample Data with Coverage or Near-Perfect Resolution
+  resample_data <- function(dat, seq_depth, coverage, perfect_resolution) {
+    if (perfect_resolution) {
+      seq_depth <- 1e6  # Set a very large seq_depth for near-perfect multinomial sampling
     }
-    return(list(d_pre = d_pre, d_post = d_post))
+    
+    ddat <- as.matrix(dat[,-1]) / rowSums(as.matrix(dat[,-1]))
+    for (i in 1:nrow(dat)) {
+      adjusted_depth <- seq_depth * coverage
+      dat[i, -1] <- stats::rmultinom(1, size = adjusted_depth, prob = ddat[i, ])
+    }
+    return(dat)
   }
-
+  
+  ## Simulate Flow Cytometry Measurements with Specified SD
+  flow_cytometry <- function(totals, samp_names, replicates, flow_sd) {
+    samp_names <- rep(samp_names, each = replicates)
+    flow_vals <- sapply(totals, FUN = function(total, replicates) {
+      stats::rnorm(replicates, mean = total, sd = flow_sd)
+    }, replicates = replicates, simplify = TRUE)
+    flow_data <- data.frame("sample" = samp_names, "flow" = c(flow_vals))
+    return(flow_data)
+  }
+  
   ### Set the Means for Pre and Post Conditions Based on Scenario
   num_changed_taxa <- round(percent_changed * d)
-
-  # Fourth scenario: Total correlation specified
-  if (scenario == "total_correlation") {
-    # Set the same mean for all taxa initially
-    base_mean <- mean(runif(1, 400, 5000))
-    d_pre <- rep(base_mean, d)
-    d_post <- d_pre
-    
-    # Apply uniform scaling for the taxa that change
-    uniform_factor <- runif(1, change_magnitude[1], change_magnitude[2])
-    d_post[1:num_changed_taxa] <- d_pre[1:num_changed_taxa] * uniform_factor
-
-    # Adjust means with total correlations (if specified)
-    if (!is.null(total_corr_taxa) && !is.null(total_corr_signs)) {
-      mean_adjusted <- adjust_means_with_total(d_pre, d_post, total_corr_taxa, total_corr_signs)
-      d_pre <- mean_adjusted$d_pre
-      d_post <- mean_adjusted$d_post
-    }
-
-    # Generate true abundances with the covariance structure
-    dat <- create_abundances(d_pre, d_post, n, cov_matrix = cov_matrix, apply_covariance = TRUE)
   
-  } else if (scenario == "means_only") {
+  if (scenario == "means_only") {
     d_pre <- runif(d, 400, 5000)
     d_post <- d_pre
     # Change specified percentage of taxa
@@ -640,33 +631,47 @@ prism.simulate_prepost <- function(n = 50, d = 20, seq_depth = 5000, replicate =
     # Generate true abundances with the covariance structure
     dat <- create_abundances(d_pre, d_post, n, cov_matrix = cov_matrix, apply_covariance = TRUE)
   } else {
-    stop("Invalid scenario. Choose from 'means_only', 'covariance_only', 'both', or 'total_correlation'.")
+    stop("Invalid scenario. Choose from 'means_only', 'covariance_only', or 'both'.")
   }
-
+  
+  ## Resample Data with Coverage or Near-Perfect Resolution
+  rdat <- resample_data(dat, seq_depth = seq_depth, coverage = coverage, perfect_resolution = perfect_resolution)
+  
   ## Finding Sample Totals
   totals <- rowSums(dat[,-1])
   
   ## Simulate Flow Cytometry Measurements with User-Specified SD
-  flow_cytometry <- function(totals, samp_names, replicates, flow_sd) {
-    samp_names <- rep(samp_names, each = replicates)
-    flow_vals <- sapply(totals, FUN = function(total, replicates) {
-      stats::rnorm(replicates, mean = total, sd = flow_sd)
-    }, replicates = replicates, simplify = TRUE)
-    flow_data <- data.frame("sample" = samp_names, "flow" = c(flow_vals))
-    return(flow_data)
+  flow_data <- flow_cytometry(totals, samp_names = rownames(dat), replicates = replicate, flow_sd = flow_sd)
+  
+  ## If Replicates > 1, Collapse Flow Data to Compute Mean and SD
+  if (replicate > 1) {
+    flow_data_collapse <- flow_data %>%
+      dplyr::group_by(sample) %>%
+      dplyr::mutate(mean = mean(flow)) %>%
+      dplyr::mutate(stdev = stats::sd(flow)) %>%
+      dplyr::select(-flow) %>%
+      dplyr::ungroup() %>%
+      dplyr::distinct()
   }
-
-  ## Simulate Flow Data
-  flow_data <- flow_cytometry(totals, rownames(dat), replicate, flow_sd)
   
   ## Compile Results
-  return(list(
-    dat = dat,
-    flow_data = flow_data,
-    totals = totals
-  ))
+  if (replicate > 1) {
+    return(list(
+      dat = dat,
+      rdat = rdat,
+      rdat_flow = flow_data,
+      rdat_flow_collapse = flow_data_collapse, 
+      dat_scale = totals
+    ))
+  } else {
+    return(list(
+      dat = dat,
+      rdat = rdat,
+      rdat_flow = flow_data,
+      dat_scale = totals
+    ))
+  }
 }
-
 
 
 #' Custom Cumulative Variance Function
