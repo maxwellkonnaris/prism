@@ -486,6 +486,9 @@ constraint_gradient_function <- function(params, taxa1relativesd, taxa2relatives
 #'     \item{"covariance_only"}{Apply a covariance structure without changing the means.}
 #'     \item{"both"}{Apply both different means and a covariance structure.}
 #'   } Default is `"both"`.
+#' @param percent_changed Numeric. Percentage of taxa to change between pre and post conditions. Default is `0.4` (i.e., 40%).
+#' @param change_magnitude Numeric. Range for how much the mean of each changed taxon should shift. Default is `c(0.5, 1.5)` (i.e., 50% to 150% of original mean).
+#' @param custom_stddevs Numeric vector. Custom standard deviations for taxa. If `NULL`, defaults are randomly generated. Default is `NULL`.
 #' @param coverage Numeric. Percentage of sequencing depth used to resample the true values. Must be between 0 and 1. Default is `1` (i.e., 100% of sequencing depth).
 #' @param perfect_resolution Logical. If `TRUE`, uses near-perfect resolution, allowing multinomial resampling but making `seq_depth` very large. Default is `FALSE`.
 #' @param flow_sd Numeric. Standard deviation for flow cytometry measurement error. Default is `300`.
@@ -507,7 +510,9 @@ constraint_gradient_function <- function(params, taxa1relativesd, taxa2relatives
 #' @importFrom purrr map
 #' @importFrom stats rpois rmultinom rnorm cov
 #' @export
-prism.simulate_prepost <- function(n = 50, d = 20, seq_depth = 5000, replicate = 1, corr_strengths = NULL, scenario = "both", coverage = 1, perfect_resolution = FALSE, flow_sd = 300) {
+prism.simulate_prepost <- function(n = 50, d = 20, seq_depth = 5000, replicate = 1, corr_strengths = NULL, 
+                                   scenario = "both", percent_changed = 0.4, change_magnitude = c(0.5, 1.5), 
+                                   custom_stddevs = NULL, coverage = 1, perfect_resolution = FALSE, flow_sd = 300) {
   
   # Check if corr_strengths is provided and if its dimensions match the number of taxa (d)
   if (!is.null(corr_strengths)) {
@@ -521,23 +526,49 @@ prism.simulate_prepost <- function(n = 50, d = 20, seq_depth = 5000, replicate =
     stop("Coverage must be a numeric value between 0 and 1.")
   }
 
-  ## Helper Function to Create Abundances
-  create_abundances <- function(d_pre, d_post, n, corr_strengths = NULL, apply_covariance = FALSE) {
-    if (apply_covariance && !is.null(corr_strengths)) {
-      # Generate correlated log-abundances using a multivariate normal distribution
-      pre_log_abundances <- rmvnorm(n, mu = log(d_pre), Sigma = corr_strengths)
-      post_log_abundances <- rmvnorm(n, mu = log(d_post), Sigma = corr_strengths)
+  # Generate random standard deviations if not provided
+  if (is.null(custom_stddevs)) {
+    std_devs <- runif(d, min = 0.5, max = 2)  # Default: random standard deviations for each taxon
+  } else {
+    std_devs <- custom_stddevs
+  }
 
+  # Convert correlation matrix to covariance matrix (if provided)
+  if (!is.null(corr_strengths)) {
+    cov_matrix <- diag(std_devs) %*% corr_strengths %*% diag(std_devs)
+  }
+
+  ## Helper Function to Create Abundances
+  create_abundances <- function(d_pre, d_post, n, cov_matrix = NULL, apply_covariance = FALSE) {
+    if (apply_covariance && !is.null(cov_matrix)) {
+      # Generate correlated log-abundances using a multivariate normal distribution
+      pre_log_abundances <- MASS::mvrnorm(n, mu = log(d_pre), Sigma = cov_matrix)
+      post_log_abundances <- MASS::mvrnorm(n, mu = log(d_post), Sigma = cov_matrix)
+      
       W_pre <- exp(pre_log_abundances)
       W_post <- exp(post_log_abundances)
       
-      # Convert log-abundances back to abundance counts using exp() and Poisson resampling
-      pre_abundances <- matrix(rpois(n * d, W_pre), nrow = n)
-      post_abundances <- matrix(rpois(n * d, W_post), nrow = n)
+      # Convert to integer counts using Poisson resampling
+      pre_abundances <- matrix(rpois(n * d, lambda = as.vector(W_pre)), nrow = n)
+      post_abundances <- matrix(rpois(n * d, lambda = as.vector(W_post)), nrow = n)
     } else {
+      # No covariance case, generate independent log-abundances
+      if (custom_stddevs) {
+        std_devs = std_devs
+      } else {
+      std_devs <- runif(d, min = 0.5, max = 2)  # Or custom standard deviations
+      }
+      identity_cov_matrix <- diag(std_devs^2)   # Diagonal covariance matrix for independent taxa
+      
+      pre_log_abundances <- MASS::mvrnorm(n, mu = log(d_pre), Sigma = identity_cov_matrix)
+      post_log_abundances <- MASS::mvrnorm(n, mu = log(d_post), Sigma = identity_cov_matrix)
+      
+      W_pre <- exp(pre_log_abundances)
+      W_post <- exp(post_log_abundances)
+      
       # If no covariance is applied, use independent Poisson resampling
-      pre_abundances <- matrix(rpois(n * d, d_pre), nrow = n)
-      post_abundances <- matrix(rpois(n * d, d_post), nrow = n)
+      pre_abundances <- matrix(rpois(n * d, lambda = as.vector(W_pre)), nrow = n)
+      post_abundances <- matrix(rpois(n * d, lambda = as.vector(W_post)), nrow = n)
     }
     
     # Combine into a data frame with conditions
@@ -551,11 +582,9 @@ prism.simulate_prepost <- function(n = 50, d = 20, seq_depth = 5000, replicate =
   ## Resample Data with Coverage or Near-Perfect Resolution
   resample_data <- function(dat, seq_depth, coverage, perfect_resolution) {
     if (perfect_resolution) {
-      # Set a very large seq_depth for near-perfect multinomial sampling
-      seq_depth <- 1e6
+      seq_depth <- 1e6  # Set a very large seq_depth for near-perfect multinomial sampling
     }
     
-    # Apply sequencing depth and coverage
     ddat <- as.matrix(dat[,-1]) / rowSums(as.matrix(dat[,-1]))
     for (i in 1:nrow(dat)) {
       adjusted_depth <- seq_depth * coverage
@@ -575,11 +604,13 @@ prism.simulate_prepost <- function(n = 50, d = 20, seq_depth = 5000, replicate =
   }
   
   ### Set the Means for Pre and Post Conditions Based on Scenario
+  num_changed_taxa <- round(percent_changed * d)
+  
   if (scenario == "means_only") {
     d_pre <- runif(d, 400, 5000)
     d_post <- d_pre
-    num_changed_taxa <- round(0.4 * d)  # Change ~40% of taxa post-condition
-    d_post[1:num_changed_taxa] <- runif(num_changed_taxa, 50, 3000)
+    # Change specified percentage of taxa
+    d_post[1:num_changed_taxa] <- d_pre[1:num_changed_taxa] * runif(num_changed_taxa, change_magnitude[1], change_magnitude[2])
     
     # Generate true abundances (without covariance structure)
     dat <- create_abundances(d_pre, d_post, n, apply_covariance = FALSE)
@@ -589,16 +620,16 @@ prism.simulate_prepost <- function(n = 50, d = 20, seq_depth = 5000, replicate =
     d_post <- d_pre
     
     # Generate true abundances with the covariance structure
-    dat <- create_abundances(d_pre, d_post, n, corr_strengths = corr_strengths, apply_covariance = TRUE)
+    dat <- create_abundances(d_pre, d_post, n, cov_matrix = cov_matrix, apply_covariance = TRUE)
     
   } else if (scenario == "both") {
     d_pre <- runif(d, 400, 5000)
     d_post <- d_pre
-    num_changed_taxa <- round(0.4 * d)
-    d_post[1:num_changed_taxa] <- runif(num_changed_taxa, 50, 3000)
+    # Change specified percentage of taxa
+    d_post[1:num_changed_taxa] <- d_pre[1:num_changed_taxa] * runif(num_changed_taxa, change_magnitude[1], change_magnitude[2])
 
     # Generate true abundances with the covariance structure
-    dat <- create_abundances(d_pre, d_post, n, corr_strengths = corr_strengths, apply_covariance = TRUE)
+    dat <- create_abundances(d_pre, d_post, n, cov_matrix = cov_matrix, apply_covariance = TRUE)
   } else {
     stop("Invalid scenario. Choose from 'means_only', 'covariance_only', or 'both'.")
   }
@@ -641,6 +672,7 @@ prism.simulate_prepost <- function(n = 50, d = 20, seq_depth = 5000, replicate =
     ))
   }
 }
+
 
 #' Custom Cumulative Variance Function
 #'
