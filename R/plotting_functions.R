@@ -217,10 +217,6 @@ prism.forestplot <- function(data_list, bg = "white", save = NULL, filename = NU
   return(plot)
 }
 
-
-
-
-
 #' Plot Sigma Values Against Parameters
 #'
 #' This function creates plots to visualize the impact of parameters \code{rho1}, \code{rho2}, and \code{x} on sigma values.
@@ -1228,7 +1224,7 @@ prism.rhoridges <- function(rhobounds, D, S, dir_path="./plots/") {
   melted_data$Taxa_position <- melted_data$Taxa_numeric + ifelse(melted_data$Bound == "RhoLower", -0.2, 0.2)
   
   # Colors for bounds
-  bound_colors <- c("RhoLower" = "#0072B2", "RhoUpper" = "#D55E00")
+  bound_colors <- c("RhoLower" = "#0072B2", "RhoUpper" = "#B22222")
   
   # Create the ridge plot with boxplots
   plot <- ggplot2::ggplot(melted_data, ggplot2::aes(x = Rho, y = Taxa, fill = Bound)) +
@@ -1286,7 +1282,7 @@ prism.rhoridges <- function(rhobounds, D, S, dir_path="./plots/") {
   
   # Save the plot to the "plots" directory with white background
   ggplot2::ggsave(
-    filename = paste0(dir_path,"correlation_ridge_plot.png"),
+    filename = paste0(dir_path,"correlation_ridges.png"),
     plot = plot,
     width = 12, height = 8, dpi = 300, bg = "white"
   )
@@ -1338,7 +1334,7 @@ prism.scalesdhistogram <- function(scalestdev, S, dir_path="./plots/") {
                         linetype = "dashed", size = 1) +
     # Annotate mean values
     ggplot2::annotate("text", x = mean_values$ScaleSD, y = Inf, label = paste0("Mean = ", round(mean_values$ScaleSD, 4)),
-                      color = c("#1b9e77", "#d95f02"), angle = 90, vjust = -0.5, hjust = 1.1, size = 5) +
+                      color = c("#0072B2", "#B22222"), angle = 90, vjust = -0.5, hjust = 1.1, size = 5) +
     # Labels and theme
     ggplot2::labs(title = "Histogram of Scale Standard Deviation Bounds",
                   x = "Scale Standard Deviation",
@@ -1346,8 +1342,8 @@ prism.scalesdhistogram <- function(scalestdev, S, dir_path="./plots/") {
                   fill = "Bound",
                   color = "Bound") +
     # Color palette
-    ggplot2::scale_fill_manual(values = c("Lower" = "#0072B2", "Upper" = "#D55E00")) +
-    ggplot2::scale_color_manual(values = c("Lower" = "#0072B2", "Upper" = "#D55E00")) +
+    ggplot2::scale_fill_manual(values = c("Lower" = "#0072B2", "Upper" = "#B22222")) +
+    ggplot2::scale_color_manual(values = c("Lower" = "#0072B2", "Upper" = "#B22222")) +
     # Professional theme
     ggplot2::theme_classic() +
     ggplot2::theme(
@@ -1370,11 +1366,12 @@ prism.scalesdhistogram <- function(scalestdev, S, dir_path="./plots/") {
   }
   
   # Save the plot to the "plots" directory with white background
-  ggplot2::ggsave(filename = paste0(dir_path,"scalestdev_histogram_plot.png"), plot = plot, 
+  ggplot2::ggsave(filename = paste0(dir_path,"scalesd_histogram.png"), plot = plot, 
                   width = 10, height = 8, dpi = 300, bg = "white")
   
   return(plot)
 }
+
 
 #' Plot Posterior Density for All Taxa
 #'
