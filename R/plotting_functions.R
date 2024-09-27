@@ -166,7 +166,7 @@ forest_plot <- function(data_list, bg = "white", save = NULL, filename = NULL, d
     )
   
   # Adjust the plot size based on the number of comparisons
-  scaling_factor <- 0.25
+  scaling_factor <- 0.1
   dynamic_height <- length(unique(combined_data$comparison)) * scaling_factor
   min_height <- 10
   max_height <- 35
@@ -189,7 +189,7 @@ forest_plot <- function(data_list, bg = "white", save = NULL, filename = NULL, d
     file_name <- paste0(dir_path, filename, ".", save)
     
     # Adjust width based on the number of data frames
-    plot_width <- 8 * length(data_list)
+    plot_width <- 10 * length(data_list)
     
     ggsave(file_name, plot, width = plot_width, height = final_height, dpi = 300, device = save, bg = bg, limitsize = FALSE)
   }
