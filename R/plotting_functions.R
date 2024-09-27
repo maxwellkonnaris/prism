@@ -1871,7 +1871,7 @@ prism.network <- function(results, pvalue = FALSE, file_name = "network_plot.png
          edge.color = "white",         # White for unidentifiable comparisons
          edge.width = 1,               # Constant edge width for white edges
          esize = 15 * exp(-length(taxa) / 90) + 1,  # Scalar for edge size
-         vsize = 8,                    # Set larger node size for clarity
+         vsize = 5,                    # Smaller node size for clarity
          borders = TRUE,               # Add borders to nodes
          label.cex = 1.5,              # Increase label font size for clarity
          bg = "white")                 # Set background color to white
@@ -1887,9 +1887,9 @@ prism.network <- function(results, pvalue = FALSE, file_name = "network_plot.png
                         trans = TRUE,                 # Enable transparency based on edge weight
                         fade = TRUE,                  # Enable fading based on edge weight
                         esize = 15 * exp(-length(taxa) / 90) + 1,  # Scalar for edge size
-                        vsize = 8,                    # Set larger node size for clarity
+                        vsize = 5,                    # Smaller node size for clarity
                         borders = TRUE,               # Add borders to nodes
-                        label.cex = 1.5,              # Increase label font size for clarity)
+                        label.cex = 1.5)              # Increase label font size for clarity
   
   # Add scale legend for edge width (representing CI magnitude)
   legend("topleft", legend = c("Thick = High Certainty", "Thin = Low Certainty"),
@@ -1915,6 +1915,7 @@ prism.network <- function(results, pvalue = FALSE, file_name = "network_plot.png
 
 # Example usage with the 'results' dataframe
 # prism.network(results, pvalue = TRUE)
+
 
 
 
