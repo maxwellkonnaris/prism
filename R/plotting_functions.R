@@ -1810,21 +1810,20 @@ plot_true_abundances <- function(flow_data, dat, file_path = "true_abundances_pl
 #' 
 #' @return The network plot object for further customization.
 #'
-#' @import igraph
-#' @import qgraph
-#'
 #' @examples
 #' prism.network(results, pvalue = TRUE)
+
 prism.network <- function(results, pvalue = FALSE, file_name = "network_plot.png", save_plot = TRUE) {
   # Filter rows with non-NA taxa
   filtered_results <- results[!is.na(results$taxa1) & !is.na(results$taxa2), ]
   
   # Initialize an adjacency matrix for the network
   taxa <- unique(c(filtered_results$taxa1, filtered_results$taxa2))
-  adj_matrix <- matrix(0, nrow = length(taxa), ncol = length(taxa), 
-                       dimnames = list(taxa, taxa))
+  adj_matrix_white <- matrix(0, nrow = length(taxa), ncol = length(taxa), 
+                             dimnames = list(taxa, taxa))
+  adj_matrix_color <- matrix(0, nrow = length(taxa), ncol = length(taxa), 
+                             dimnames = list(taxa, taxa))
   
-  # Set edge color, width, and transparency based on the 95% CI for covariances
   edge_colors <- c()
   edge_widths <- c()
   pvalues <- c()  # To store p-values if needed
@@ -1839,50 +1838,64 @@ prism.network <- function(results, pvalue = FALSE, file_name = "network_plot.png
     
     # Determine sign based on CI and whether the interval covers zero
     if (ci_lower_cov <= 0 & ci_upper_cov >= 0) {
-      # Confidence interval covers zero, so edge should be white
-      edge_color <- "white"
+      # Confidence interval covers zero, so edge is white
+      adj_matrix_white[taxa1, taxa2] <- 1
+      adj_matrix_white[taxa2, taxa1] <- 1
     } else {
       # Positive or negative covariance based on the CI bounds
       edge_color <- ifelse(ci_lower_cov > 0, "blue", "red")
+      
+      # Edge width based on CI range (larger range -> thinner line)
+      ci_range_cov <- ci_upper_cov - ci_lower_cov
+      edge_width <- 1 / ci_range_cov  # Inverse of CI range for width
+      
+      # Store p-values if requested
+      if (pvalue) {
+        pvalues <- c(pvalues, filtered_results$pvalue[i])
+      }
+      
+      # Set edge colors and widths
+      edge_colors <- c(edge_colors, edge_color)
+      edge_widths <- c(edge_widths, edge_width)
+      
+      # Update colored adjacency matrix
+      adj_matrix_color[taxa1, taxa2] <- edge_width  # Magnitude based on CI width
+      adj_matrix_color[taxa2, taxa1] <- edge_width  # Symmetric matrix
     }
-    
-    # Edge width based on CI range (larger range -> thinner line)
-    ci_range_cov <- ci_upper_cov - ci_lower_cov
-    edge_width <- 1 / ci_range_cov  # Inverse of CI range for width
-    
-    # Store p-values if requested
-    if (pvalue) {
-      pvalues <- c(pvalues, filtered_results$pvalue[i])
-    }
-    
-    # Set edge colors and widths
-    edge_colors <- c(edge_colors, edge_color)
-    edge_widths <- c(edge_widths, edge_width)
-    
-    # Update adjacency matrix with the inferred covariance strength
-    adj_matrix[taxa1, taxa2] <- edge_width  # Magnitude based on CI width
-    adj_matrix[taxa2, taxa1] <- edge_width  # Symmetric matrix
   }
   
-  # Generate the network plot using qgraph
-  plot_object <- qgraph(adj_matrix, 
+  # First draw the white edges in the background
+  qgraph(adj_matrix_white, 
+         layout = "spring",            # Spring layout for professional appearance
+         labels = TRUE,                # Add taxa labels
+         edge.color = "white",         # White for unidentifiable comparisons
+         edge.width = 1,               # Constant edge width for white edges
+         esize = 15 * exp(-length(taxa) / 90) + 1,  # Scalar for edge size
+         vsize = 8,                    # Set larger node size for clarity
+         borders = TRUE,               # Add borders to nodes
+         label.cex = 1.5,              # Increase label font size for clarity
+         bg = "white")                 # Set background color to white
+  
+  # Now draw the colored edges on top
+  plot_object <- qgraph(adj_matrix_color, 
                         layout = "spring",            # Spring layout for professional appearance
                         labels = TRUE,                # Add taxa labels
                         edge.color = edge_colors,     # Set edge colors based on CI sign
                         edge.width = edge_widths,     # Set edge widths based on CI range
                         posCol = "blue",              # Positive covariance color (blue)
                         negCol = "red",               # Negative covariance color (red)
-                        unCol = "white",              # White for unidentifiable comparisons (CI covers zero)
                         trans = TRUE,                 # Enable transparency based on edge weight
                         fade = TRUE,                  # Enable fading based on edge weight
                         esize = 15 * exp(-length(taxa) / 90) + 1,  # Scalar for edge size
                         vsize = 8,                    # Set larger node size for clarity
                         borders = TRUE,               # Add borders to nodes
-                        label.cex = 1.5)              # Increase label font size for clarity
+                        label.cex = 1.5,              # Increase label font size for clarity)
   
   # Add scale legend for edge width (representing CI magnitude)
   legend("topleft", legend = c("Thick = High Certainty", "Thin = Low Certainty"),
-         lwd = c(5, 1), col = "black", bty = "n", cex = 1.2)
+         lwd = c(5, 1), col = c("blue", "red"), 
+         legend.title = "Edge Color: Blue = Positive, Red = Negative", 
+         bty = "n", cex = 1.2)
   
   # If p-values are provided, add a p-value legend
   if (pvalue) {
@@ -1899,5 +1912,9 @@ prism.network <- function(results, pvalue = FALSE, file_name = "network_plot.png
   # Return the plot object for further customization
   return(plot_object)
 }
+
+# Example usage with the 'results' dataframe
+# prism.network(results, pvalue = TRUE)
+
 
 
