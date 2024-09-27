@@ -607,7 +607,7 @@ prism.simulate_prepost <- function(n = 50, d = 20, seq_depth = 5000, replicate =
   num_changed_taxa <- round(percent_changed * d)
   
   if (scenario == "means_only") {
-    d_pre <- runif(d, 400, 5000)
+    d_pre <- c(5000, runif(d-1, 400, 3000))
     d_post <- d_pre
     # Change specified percentage of taxa
     d_post[1:num_changed_taxa] <- d_pre[1:num_changed_taxa] * runif(num_changed_taxa, change_magnitude[1], change_magnitude[2])
@@ -616,14 +616,14 @@ prism.simulate_prepost <- function(n = 50, d = 20, seq_depth = 5000, replicate =
     dat <- create_abundances(d_pre, d_post, n, apply_covariance = FALSE)
     
   } else if (scenario == "covariance_only") {
-    d_pre <- runif(d, 400, 5000)
+    d_pre <- c(5000, runif(d-1, 400, 3000))
     d_post <- d_pre
     
     # Generate true abundances with the covariance structure
     dat <- create_abundances(d_pre, d_post, n, cov_matrix = cov_matrix, apply_covariance = TRUE)
     
   } else if (scenario == "both") {
-    d_pre <- runif(d, 400, 5000)
+    d_pre <- c(5000, runif(d-1, 400, 3000))
     d_post <- d_pre
     # Change specified percentage of taxa
     d_post[1:num_changed_taxa] <- d_pre[1:num_changed_taxa] * runif(num_changed_taxa, change_magnitude[1], change_magnitude[2])
