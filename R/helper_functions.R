@@ -188,9 +188,9 @@ kurtosis <- function(x, na.rm = FALSE) {
 #' )
 #'
 #' # Calculate summary statistics excluding columns 'd1' and 'd2'
-#' summary_stats <- calculate_summary_stats(results$all_inner_results, group_col = "comparison", exclude_cols = c("d1", "d2"), save_as_csv = TRUE, csv_path = "bootstrap_summary_stats.csv")
+#' summary_stats <- prism.summary_stats(results$all_inner_results, group_col = "comparison", exclude_cols = c("d1", "d2"), save_as_csv = TRUE, csv_path = "bootstrap_summary_stats.csv")
 #' print(summary_stats)
-calculate_bootstrap_summary <- function(data, group_col = "comparison", exclude_cols = c("d1", "d2", "s"), save_as_csv = FALSE, csv_path = "bootstrap_summary.csv") {
+prism.bootstrap_summary <- function(data, group_col = "comparison", exclude_cols = c("d1", "d2", "s"), save_as_csv = FALSE, csv_path = "bootstrap_summary.csv") {
   
   # Ensure the group column and exclude columns are character vectors
   group_col <- as.character(group_col)
@@ -224,32 +224,6 @@ calculate_bootstrap_summary <- function(data, group_col = "comparison", exclude_
   return(summary_stats)
 }
 
-
-#' Simulate Data
-#'
-#' This function simulates data for given dimensions and sample size, with specified sequencing depth.
-#'
-#' @param D An integer specifying the number of dimensions.
-#' @param N An integer specifying the number of samples.
-#' @param seq.depth A numeric value specifying the sequencing depth.
-#' @return A list containing the simulated data matrix \code{Y}, the log-transformed matrix \code{logW}, and the covariance matrix \code{Sigma}.
-#' @examples
-#' # Example usage:
-#' simulated_data <- simulate_data(3, 100, 1000)
-#' @export
-simulate_data <- function(D, N, seq.depth) {
-  Sigma <- diag(D)
-  Sigma[2, 1] <- Sigma[1, 2] <- -0.5
-  Sigma[3, 1] <- Sigma[1, 3] <- +0.5
-
-  logW <- rmvnorm(N, rep(0, D), Sigma)
-  W <- exp(logW)
-  Wpara <- t(miniclo(t(W)))
-  Y <- Wpara * seq.depth
-
-  return(list(Y = Y, logW = logW, Sigma = Sigma))
-}
-
 #' Calculate Proportionality Metrics (Rho) for All Pairs of Taxa
 #'
 #' This function calculates the proportionality metric (\eqn{\rho}) for all pairs of taxa
@@ -267,10 +241,10 @@ simulate_data <- function(D, N, seq.depth) {
 #'   Taxon4 = c(0.1, 0.1, 0.05, 0.05)
 #' )
 #' # Calculate proportionality metrics
-#' rho_values <- calculate_proportionality_metrics(relative_abundances)
+#' rho_values <- prism.proportionality(relative_abundances)
 #' print(rho_values)
 #' @export
-calculate_proportionality <- function(data) {
+prism.proportionality <- function(data) {
   # Check for zeros in the data
   if (any(data == 0)) {
     stop("Data contains zero values. Please remove or replace zeros before calculating proportionality metrics.")
@@ -512,6 +486,9 @@ constraint_gradient_function <- function(params, taxa1relativesd, taxa2relatives
 #'     \item{"covariance_only"}{Apply a covariance structure without changing the means.}
 #'     \item{"both"}{Apply both different means and a covariance structure.}
 #'   } Default is `"both"`.
+#' @param coverage Numeric. Percentage of sequencing depth used to resample the true values. Must be between 0 and 1. Default is `1` (i.e., 100% of sequencing depth).
+#' @param perfect_resolution Logical. If `TRUE`, uses near-perfect resolution, allowing multinomial resampling but making `seq_depth` very large. Default is `FALSE`.
+#' @param flow_sd Numeric. Standard deviation for flow cytometry measurement error. Default is `300`.
 #'
 #' @return A list containing:
 #' \describe{
@@ -530,7 +507,7 @@ constraint_gradient_function <- function(params, taxa1relativesd, taxa2relatives
 #' @importFrom purrr map
 #' @importFrom stats rpois rmultinom rnorm cov
 #' @export
-simulate_prepost <- function(n = 50, d = 20, seq_depth = 5000, replicate = 1, corr_strengths = NULL, scenario = "both") {
+prism.simulate_prepost <- function(n = 50, d = 20, seq_depth = 5000, replicate = 1, corr_strengths = NULL, scenario = "both", coverage = 1, perfect_resolution = FALSE, flow_sd = 300) {
   
   # Check if corr_strengths is provided and if its dimensions match the number of taxa (d)
   if (!is.null(corr_strengths)) {
@@ -538,17 +515,25 @@ simulate_prepost <- function(n = 50, d = 20, seq_depth = 5000, replicate = 1, co
       stop("The dimensions of the covariance matrix `corr_strengths` must match the number of taxa `d`.")
     }
   }
-  
+
+  # Check if coverage is within the valid range
+  if (coverage < 0 || coverage > 1) {
+    stop("Coverage must be a numeric value between 0 and 1.")
+  }
+
   ## Helper Function to Create Abundances
   create_abundances <- function(d_pre, d_post, n, corr_strengths = NULL, apply_covariance = FALSE) {
     if (apply_covariance && !is.null(corr_strengths)) {
       # Generate correlated log-abundances using a multivariate normal distribution
-      pre_log_abundances <- MASS::mvrnorm(n, mu = log(d_pre), Sigma = corr_strengths)
-      post_log_abundances <- MASS::mvrnorm(n, mu = log(d_post), Sigma = corr_strengths)
+      pre_log_abundances <- rmvnorm(n, mu = log(d_pre), Sigma = corr_strengths)
+      post_log_abundances <- rmvnorm(n, mu = log(d_post), Sigma = corr_strengths)
+
+      W_pre <- exp(pre_log_abundances)
+      W_post <- exp(post_log_abundances)
       
       # Convert log-abundances back to abundance counts using exp() and Poisson resampling
-      pre_abundances <- matrix(rpois(n * d, exp(pre_log_abundances)), nrow = n)
-      post_abundances <- matrix(rpois(n * d, exp(post_log_abundances)), nrow = n)
+      pre_abundances <- matrix(rpois(n * d, W_pre), nrow = n)
+      post_abundances <- matrix(rpois(n * d, W_post), nrow = n)
     } else {
       # If no covariance is applied, use independent Poisson resampling
       pre_abundances <- matrix(rpois(n * d, d_pre), nrow = n)
@@ -563,20 +548,27 @@ simulate_prepost <- function(n = 50, d = 20, seq_depth = 5000, replicate = 1, co
     return(dat)
   }
   
-  ## Resample Data (same as before)
-  resample_data <- function(dat, seq_depth) {
+  ## Resample Data with Coverage or Near-Perfect Resolution
+  resample_data <- function(dat, seq_depth, coverage, perfect_resolution) {
+    if (perfect_resolution) {
+      # Set a very large seq_depth for near-perfect multinomial sampling
+      seq_depth <- 1e6
+    }
+    
+    # Apply sequencing depth and coverage
     ddat <- as.matrix(dat[,-1]) / rowSums(as.matrix(dat[,-1]))
     for (i in 1:nrow(dat)) {
-      dat[i, -1] <- stats::rmultinom(1, size = seq_depth, prob = ddat[i, ])
+      adjusted_depth <- seq_depth * coverage
+      dat[i, -1] <- stats::rmultinom(1, size = adjusted_depth, prob = ddat[i, ])
     }
     return(dat)
   }
   
-  ## Simulate Flow Cytometry Measurements (same as before)
-  flow_cytometry <- function(totals, samp_names, replicates) {
+  ## Simulate Flow Cytometry Measurements with Specified SD
+  flow_cytometry <- function(totals, samp_names, replicates, flow_sd) {
     samp_names <- rep(samp_names, each = replicates)
     flow_vals <- sapply(totals, FUN = function(total, replicates) {
-      stats::rnorm(replicates, mean = total, sd = 3e2)
+      stats::rnorm(replicates, mean = total, sd = flow_sd)
     }, replicates = replicates, simplify = TRUE)
     flow_data <- data.frame("sample" = samp_names, "flow" = c(flow_vals))
     return(flow_data)
@@ -584,44 +576,41 @@ simulate_prepost <- function(n = 50, d = 20, seq_depth = 5000, replicate = 1, co
   
   ### Set the Means for Pre and Post Conditions Based on Scenario
   if (scenario == "means_only") {
-    # If simulating means only, the covariance structure is not used
     d_pre <- runif(d, 400, 5000)
     d_post <- d_pre
     num_changed_taxa <- round(0.4 * d)  # Change ~40% of taxa post-condition
-    d_post[1:num_changed_taxa] <- runif(num_changed_taxa, 50, 3000)  # Alter the first 40% of taxa
+    d_post[1:num_changed_taxa] <- runif(num_changed_taxa, 50, 3000)
     
     # Generate true abundances (without covariance structure)
     dat <- create_abundances(d_pre, d_post, n, apply_covariance = FALSE)
     
   } else if (scenario == "covariance_only") {
-    # If simulating covariance only, means do not change between pre and post conditions
     d_pre <- runif(d, 400, 5000)
-    d_post <- d_pre  # No change in post condition
+    d_post <- d_pre
     
     # Generate true abundances with the covariance structure
     dat <- create_abundances(d_pre, d_post, n, corr_strengths = corr_strengths, apply_covariance = TRUE)
     
   } else if (scenario == "both") {
-    # If simulating both, change means between pre and post conditions and apply covariance structure
     d_pre <- runif(d, 400, 5000)
     d_post <- d_pre
-    num_changed_taxa <- round(0.4 * d)  # Change ~40% of taxa post-condition
-    d_post[1:num_changed_taxa] <- runif(num_changed_taxa, 50, 3000)  # Alter the first 40% of taxa
+    num_changed_taxa <- round(0.4 * d)
+    d_post[1:num_changed_taxa] <- runif(num_changed_taxa, 50, 3000)
 
     # Generate true abundances with the covariance structure
     dat <- create_abundances(d_pre, d_post, n, corr_strengths = corr_strengths, apply_covariance = TRUE)
-   } else {
+  } else {
     stop("Invalid scenario. Choose from 'means_only', 'covariance_only', or 'both'.")
   }
   
-  ## Resample Data
-  rdat <- resample_data(dat, seq_depth = seq_depth)
+  ## Resample Data with Coverage or Near-Perfect Resolution
+  rdat <- resample_data(dat, seq_depth = seq_depth, coverage = coverage, perfect_resolution = perfect_resolution)
   
   ## Finding Sample Totals
   totals <- rowSums(dat[,-1])
   
-  ## Simulate Flow Cytometry Measurements
-  flow_data <- flow_cytometry(totals, samp_names = rownames(dat), replicates = replicate)
+  ## Simulate Flow Cytometry Measurements with User-Specified SD
+  flow_data <- flow_cytometry(totals, samp_names = rownames(dat), replicates = replicate, flow_sd = flow_sd)
   
   ## If Replicates > 1, Collapse Flow Data to Compute Mean and SD
   if (replicate > 1) {
@@ -650,3 +639,4 @@ simulate_prepost <- function(n = 50, d = 20, seq_depth = 5000, replicate = 1, co
     ))
   }
 }
+
