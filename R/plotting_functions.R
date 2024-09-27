@@ -468,12 +468,6 @@ prism.sigmaplot <- function(all_inner_results, bg="white", filename = NULL, save
 #' @export
 prism.diagnose_mcmcerror <- function(combined_results, convergence_results) {
   
-  # Custom cumulative variance function
-  cumvar <- function(x) {
-    n <- length(x)
-    cumsum((x - cumsum(x) / seq_along(x))^2) / seq_along(x)
-  }
-  
   # Plot convergence of bootstrap estimates
   plot_convergence <- function(bootstrap_results) {
     ggplot(bootstrap_results, aes(x = S, y = (minsigma_absolute_minimum_covariance + maxsigma_absolute_maximum_covariance) / 2, color = comparison)) +
@@ -491,33 +485,6 @@ prism.diagnose_mcmcerror <- function(combined_results, convergence_results) {
       labs(title = "Bootstrap Estimates with 95% CI",
            x = "Bootstrap Sample Size",
            y = "Estimate")
-  }
-  
-  # Calculate effective sample size
-  calculate_effective_sample_size <- function(bootstrap_estimates) {
-    ess <- function(x) {
-      n <- length(x)
-      acf_x <- acf(x, plot = FALSE)
-      return(n / (1 + 2 * sum(acf_x$acf[-1])))
-    }
-    bootstrap_estimates %>%
-      group_by(S, comparison) %>%
-      summarise(
-        ess_min = ess(minsigma_absolute_minimum_covariance),
-        ess_max = ess(maxsigma_absolute_maximum_covariance)
-      )
-  }
-  
-  # Calculate Rhat (Gelman-Rubin Diagnostic)
-  calculate_rhat <- function(bootstrap_estimates) {
-    chains_min <- split(bootstrap_estimates$minsigma_absolute_minimum_covariance, bootstrap_estimates$S)
-    chains_max <- split(bootstrap_estimates$maxsigma_absolute_maximum_covariance, bootstrap_estimates$S)
-    mcmc_chains_min <- coda::mcmc.list(lapply(chains_min, mcmc))
-    mcmc_chains_max <- coda::mcmc.list(lapply(chains_max, mcmc))
-    list(
-      rhat_min = coda::gelman.diag(mcmc_chains_min)$psrf,
-      rhat_max = coda::gelman.diag(mcmc_chains_max)$psrf
-    )
   }
   
   # Plot cumulative mean and variance
@@ -557,45 +524,6 @@ prism.diagnose_mcmcerror <- function(combined_results, convergence_results) {
            y = "Cumulative Variance")
     
     gridExtra::grid.arrange(mean_plot_min, mean_plot_max, variance_plot_min, variance_plot_max, ncol = 2)
-  }
-  
-  # Resampling diagnostics (Jackknife-after-Bootstrap, Bootstrap-after-Bootstrap)
-  jackknife_after_bootstrap <- function(bootstrap_estimates) {
-    n <- length(bootstrap_estimates$minsigma_absolute_minimum_covariance)
-    list(
-      jackknife_min = sapply(1:n, function(i) {
-        mean(bootstrap_estimates$minsigma_absolute_minimum_covariance[-i])
-      }),
-      jackknife_max = sapply(1:n, function(i) {
-        mean(bootstrap_estimates$maxsigma_absolute_maximum_covariance[-i])
-      })
-    )
-  }
-  
-  bootstrap_after_bootstrap <- function(bootstrap_estimates, num_resamples = 1000) {
-    list(
-      bootstrap_min = replicate(num_resamples, {
-        resample_indices <- sample(seq_along(bootstrap_estimates$minsigma_absolute_minimum_covariance), replace = TRUE)
-        mean(bootstrap_estimates$minsigma_absolute_minimum_covariance[resample_indices])
-      }),
-      bootstrap_max = replicate(num_resamples, {
-        resample_indices <- sample(seq_along(bootstrap_estimates$maxsigma_absolute_maximum_covariance), replace = TRUE)
-        mean(bootstrap_estimates$maxsigma_absolute_maximum_covariance[resample_indices])
-      })
-    )
-  }
-  
-  # Calculate Monte Carlo Standard Error
-  calculate_mcse <- function(bootstrap_estimates) {
-    mcse <- function(x) {
-      sd(x) / sqrt(length(x))
-    }
-    bootstrap_estimates %>%
-      group_by(S, comparison) %>%
-      summarise(
-        mcse_min = mcse(minsigma_absolute_minimum_covariance),
-        mcse_max = mcse(maxsigma_absolute_maximum_covariance)
-      )
   }
   
   # Compare subsamples
