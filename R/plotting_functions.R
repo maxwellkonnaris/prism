@@ -1722,14 +1722,14 @@ prism.trueabundanceplot <- function(dat_scale, dat, dir_path="./plots/", file_pa
 	  ) +
 	  ggtitle("True Correlations of Taxa and Scale")
   
-  # Reorder the correlation matrix to match the order of the forest plot (Taxa1 at the top)
-  truecorrelations <- truecorrelations[taxa_labels, taxa_labels]
+  # Reorder the correlation matrix rows and columns to match the forest plot order (Taxa1 at the top)
+  truecorrelations <- truecorrelations[rev(taxa_labels), rev(taxa_labels)]
   
   # Create the correlation heatmap using pheatmap, ensuring the correct order (1:D)
   correlation_heatmap <- pheatmap::pheatmap(
 	  truecorrelations, 
-	  labels_row = taxa_labels,  # Ensure the correct taxa labels
-	  labels_col = taxa_labels,  # Ensure the correct taxa labels
+	  labels_row = rev(taxa_labels),  # Reverse to match forest plot order (Taxa1 on top)
+	  labels_col = rev(taxa_labels),  # Reverse to match forest plot order (Taxa1 on top)
 	  main = "Correlation Matrix of Taxa", 
 	  color = colorRampPalette(c("blue", "white", "red"))(100),
 	  breaks = seq(-1, 1, length.out = 101),  # Ensures the color range goes from -1 to 1
@@ -1757,6 +1757,7 @@ prism.trueabundanceplot <- function(dat_scale, dat, dir_path="./plots/", file_pa
 
   return(forest_plot_data)
 }
+
 
 
 
