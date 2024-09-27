@@ -1650,9 +1650,15 @@ prism.posteriorsamples <- function(rWparaoriginal, dir_path="./plots/", file_nam
 #' }
 prism.trueabundanceplot <- function(dat_scale, dat, dir_path="./plots/", file_path = "true_abundances.png") {
   
-  # Transpose rdat to have taxa as rows, sort taxa in ascending order by their names
+  # Get the number of taxa (D) from the data
+  D <- ncol(dat) - 1  # Assuming the first column is "Condition"
+  
+  # Define taxa labels as "Taxa1", "Taxa2", ..., "TaxaD"
+  taxa_labels <- paste0("Taxa", 1:D)
+  
+  # Transpose the data to have taxa as rows, ensure taxa are ordered 1:D
   taxa_data <- t(dat[,-1])
-  taxa_data <- taxa_data[order(rownames(taxa_data)), ]
+  rownames(taxa_data) <- taxa_labels  # Apply labels explicitly in the order 1:D
   
   # Calculate true rho correlations between each taxon and flow cytometry data
   truerhocorrelation <- numeric(nrow(taxa_data))
@@ -1668,7 +1674,7 @@ prism.trueabundanceplot <- function(dat_scale, dat, dir_path="./plots/", file_pa
   # Extract the taxa columns (excluding the first column which is 'Condition')
   truecorrelations <- cor(t(taxa_data))  # Calculate correlation matrix
   truecovariances <- cov(t(taxa_data))  # Calculate covariance matrix
-	
+  
   # Create forest plot data for covariances
   forest_plot_data <- data.frame(
     comparison = character(),
@@ -1678,7 +1684,7 @@ prism.trueabundanceplot <- function(dat_scale, dat, dir_path="./plots/", file_pa
     maxsigma_absolute_maximum_covariance = numeric(),
     p_value = numeric()  # Placeholder
   )
-
+  
   # Loop through the upper triangle of the covariance matrix to extract comparisons
   for (i in 1:(ncol(truecovariances) - 1)) {
     for (j in (i + 1):ncol(truecovariances)) {
@@ -1699,10 +1705,10 @@ prism.trueabundanceplot <- function(dat_scale, dat, dir_path="./plots/", file_pa
       ))
     }
   }
-
-  # Create forest plot, ensuring taxa are in ascending order
-  taxa_labels <- rownames(taxa_data)
-  forest_plot <- ggplot(data = data.frame(taxa = taxa_labels, rho = truerhocorrelation), aes(x = rho, y = reorder(taxa, taxa))) +
+  
+  # Create forest plot, ensuring taxa are in the correct order (1:D)
+  forest_plot <- ggplot(data = data.frame(taxa = taxa_labels, rho = truerhocorrelation), 
+                        aes(x = rho, y = reorder(taxa, as.numeric(sub("Taxa", "", taxa))))) +
 	  geom_point(color = "steelblue", size = 4) +
 	  geom_segment(aes(x = 0, xend = rho, y = taxa, yend = taxa), color = "steelblue", size = 1.2) +
 	  geom_vline(xintercept = 0, linetype = "dotted", color = "black") +
@@ -1716,9 +1722,11 @@ prism.trueabundanceplot <- function(dat_scale, dat, dir_path="./plots/", file_pa
 	  ) +
 	  ggtitle("True Correlations of Taxa and Scale")
   
-  # Create the correlation heatmap using pheatmap, ensuring taxa are sorted
+  # Create the correlation heatmap using pheatmap, ensuring the correct order (1:D)
   correlation_heatmap <- pheatmap::pheatmap(
 	  truecorrelations, 
+	  labels_row = taxa_labels,  # Ensure the correct taxa labels
+	  labels_col = taxa_labels,  # Ensure the correct taxa labels
 	  main = "Correlation Matrix of Taxa", 
 	  color = colorRampPalette(c("blue", "white", "red"))(100),
 	  breaks = seq(-1, 1, length.out = 101),  # Ensures the color range goes from -1 to 1
@@ -1746,6 +1754,7 @@ prism.trueabundanceplot <- function(dat_scale, dat, dir_path="./plots/", file_pa
 
   return(forest_plot_data)
 }
+
 
 
 #' Generate a professional network plot from confidence interval data with optional p-values
