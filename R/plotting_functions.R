@@ -1791,3 +1791,100 @@ plot_true_abundances <- function(flow_data, dat, file_path = "true_abundances_pl
 
   return(forest_plot_data)
 }
+
+#' Generate a professional network plot from confidence interval data
+#'
+#' This function generates a professional network plot from taxa labels and confidence interval data. 
+#' It provides an option to save the plot (default in PNG format) and returns the plot object for further 
+#' customization. The network plot adjusts edge color based on the sign of the covariance inferred from the 
+#' confidence intervals, edge width based on the CI range (to reflect magnitude), and transparency reflects 
+#' uncertainty. Edges are grey if the confidence interval covers zero.
+#'
+#' @param results A dataframe containing the confidence interval information. The dataframe should include columns:
+#'   - `taxa1`: The first taxa in the pair.
+#'   - `taxa2`: The second taxa in the pair.
+#'   - `ninetyfive_ci_lower`: Lower bound of the 95% CI for covariance.
+#'   - `ninetyfive_ci_upper`: Upper bound of the 95% CI for covariance.
+#' @param file_name Character; the name of the file to save the plot. Default is 'network_plot.png'.
+#' @param save_plot Logical; if TRUE, saves the plot to file. Default is TRUE.
+#' 
+#' @return The network plot object for further customization.
+#'
+#' @import igraph
+#' @import qgraph
+#' @examples
+#' prism.network(results)
+prism.network <- function(results, file_name = "network_plot.png", save_plot = TRUE) {
+  # Filter rows with non-NA taxa
+  filtered_results <- results[!is.na(results$taxa1) & !is.na(results$taxa2), ]
+  
+  # Initialize an adjacency matrix for the network
+  taxa <- unique(c(filtered_results$taxa1, filtered_results$taxa2))
+  adj_matrix <- matrix(0, nrow = length(taxa), ncol = length(taxa), 
+                       dimnames = list(taxa, taxa))
+  
+  # Set edge color, width, and transparency based on the 95% CI for covariances
+  edge_colors <- c()
+  edge_widths <- c()
+  edge_alphas <- c()  # To represent uncertainty
+  
+  for (i in 1:nrow(filtered_results)) {
+    taxa1 <- filtered_results$taxa1[i]
+    taxa2 <- filtered_results$taxa2[i]
+    
+    # Extract confidence interval
+    ci_lower_cov <- filtered_results$ninetyfive_ci_lower[i]
+    ci_upper_cov <- filtered_results$ninetyfive_ci_upper[i]
+    
+    # Determine sign based on CI
+    if (ci_lower_cov <= 0 & ci_upper_cov >= 0) {
+      # Confidence interval covers zero, so edge should be grey
+      edge_color <- "grey"
+    } else {
+      # Positive or negative covariance based on the CI bounds
+      edge_color <- ifelse(ci_lower_cov > 0, "blue", "red")
+    }
+    
+    # Edge width based on CI range (larger range -> thinner line)
+    ci_range_cov <- ci_upper_cov - ci_lower_cov
+    edge_width <- 1 / ci_range_cov  # Inverse of CI range for width
+    
+    # Edge transparency (alpha) reflects uncertainty (larger range -> more transparent)
+    edge_alpha <- max(0.1, 1 - ci_range_cov)  # Normalize: higher range -> lower alpha
+    
+    # Set edge colors, widths, and alpha levels
+    edge_colors <- c(edge_colors, edge_color)
+    edge_widths <- c(edge_widths, edge_width)
+    edge_alphas <- c(edge_alphas, edge_alpha)
+    
+    # Update adjacency matrix with the inferred covariance strength
+    adj_matrix[taxa1, taxa2] <- edge_width  # Magnitude based on CI width
+    adj_matrix[taxa2, taxa1] <- edge_width  # Symmetric matrix
+  }
+  
+  # Generate the network plot using qgraph
+  plot_object <- qgraph(adj_matrix, 
+                        layout = "spring",            # Spring layout for professional appearance
+                        labels = TRUE,                # Add taxa labels
+                        edge.color = edge_colors,     # Set edge colors based on CI sign
+                        edge.width = edge_widths,     # Set edge widths based on CI range
+                        edge.alpha = edge_alphas,     # Set edge transparency based on uncertainty
+                        posCol = "blue",              # Positive covariance color
+                        negCol = "red",               # Negative covariance color
+                        gray = "grey",                # Grey for edges where CI covers zero
+                        vsize = 8,                    # Set larger node size for clarity
+                        esize = 5,                    # Set edge size scaling factor for professional look
+                        borders = FALSE,              # Remove node borders for cleaner presentation
+                        label.cex = 1.5)              # Increase label font size for clarity
+  
+  # Save the plot if save_plot is TRUE
+  if (save_plot) {
+    png(file_name, width = 1200, height = 1200, res = 300)  # High resolution PNG
+    print(plot_object)  # Save the plot to file
+    dev.off()           # Close the PNG device
+  }
+  
+  # Return the plot object for further customization
+  return(plot_object)
+}
+
