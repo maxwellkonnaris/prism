@@ -1792,19 +1792,19 @@ plot_true_abundances <- function(flow_data, dat, file_path = "true_abundances_pl
   return(forest_plot_data)
 }
 
-#' Generate a professional network plot from confidence interval data
+#' Generate a professional network plot from confidence interval data with optional p-values
 #'
 #' This function generates a professional network plot from taxa labels and confidence interval data. 
 #' It provides an option to save the plot (default in PNG format) and returns the plot object for further 
-#' customization. The network plot adjusts edge color based on the sign of the covariance inferred from the 
-#' confidence intervals, edge width based on the CI range (to reflect magnitude), and transparency reflects 
-#' uncertainty. Edges are grey if the confidence interval covers zero.
+#' customization. A scale bar is included, and p-values can be plotted if specified.
 #'
-#' @param results A dataframe containing the confidence interval information. The dataframe should include columns:
+#' @param results A dataframe containing the confidence interval and p-value information. The dataframe should include columns:
 #'   - `taxa1`: The first taxa in the pair.
 #'   - `taxa2`: The second taxa in the pair.
 #'   - `ninetyfive_ci_lower`: Lower bound of the 95% CI for covariance.
 #'   - `ninetyfive_ci_upper`: Upper bound of the 95% CI for covariance.
+#'   - `pvalue`: (Optional) p-value for the taxa comparison, if `pvalue = TRUE`.
+#' @param pvalue Logical; if TRUE, plots the p-values. Default is FALSE.
 #' @param file_name Character; the name of the file to save the plot. Default is 'network_plot.png'.
 #' @param save_plot Logical; if TRUE, saves the plot to file. Default is TRUE.
 #' 
@@ -1814,9 +1814,8 @@ plot_true_abundances <- function(flow_data, dat, file_path = "true_abundances_pl
 #' @import qgraph
 #'
 #' @examples
-#' prism.network(results)
-
-prism.network <- function(results, file_name = "network_plot.png", save_plot = TRUE) {
+#' prism.network(results, pvalue = TRUE)
+prism.network <- function(results, pvalue = FALSE, file_name = "network_plot.png", save_plot = TRUE) {
   # Filter rows with non-NA taxa
   filtered_results <- results[!is.na(results$taxa1) & !is.na(results$taxa2), ]
   
@@ -1828,6 +1827,7 @@ prism.network <- function(results, file_name = "network_plot.png", save_plot = T
   # Set edge color, width, and transparency based on the 95% CI for covariances
   edge_colors <- c()
   edge_widths <- c()
+  pvalues <- c()  # To store p-values if needed
   
   for (i in 1:nrow(filtered_results)) {
     taxa1 <- filtered_results$taxa1[i]
@@ -1837,10 +1837,10 @@ prism.network <- function(results, file_name = "network_plot.png", save_plot = T
     ci_lower_cov <- filtered_results$ninetyfive_ci_lower[i]
     ci_upper_cov <- filtered_results$ninetyfive_ci_upper[i]
     
-    # Determine sign based on CI
+    # Determine sign based on CI and whether the interval covers zero
     if (ci_lower_cov <= 0 & ci_upper_cov >= 0) {
-      # Confidence interval covers zero, so edge should be grey
-      edge_color <- "grey"
+      # Confidence interval covers zero, so edge should be white
+      edge_color <- "white"
     } else {
       # Positive or negative covariance based on the CI bounds
       edge_color <- ifelse(ci_lower_cov > 0, "blue", "red")
@@ -1849,6 +1849,11 @@ prism.network <- function(results, file_name = "network_plot.png", save_plot = T
     # Edge width based on CI range (larger range -> thinner line)
     ci_range_cov <- ci_upper_cov - ci_lower_cov
     edge_width <- 1 / ci_range_cov  # Inverse of CI range for width
+    
+    # Store p-values if requested
+    if (pvalue) {
+      pvalues <- c(pvalues, filtered_results$pvalue[i])
+    }
     
     # Set edge colors and widths
     edge_colors <- c(edge_colors, edge_color)
@@ -1865,19 +1870,28 @@ prism.network <- function(results, file_name = "network_plot.png", save_plot = T
                         labels = TRUE,                # Add taxa labels
                         edge.color = edge_colors,     # Set edge colors based on CI sign
                         edge.width = edge_widths,     # Set edge widths based on CI range
-                        posCol = c("#009900", "darkgreen"),  # Positive covariance color
-                        negCol = c("#BF0000", "red"),        # Negative covariance color
-                        unCol = "#808080",                   # Grey for edges where CI covers zero
-                        trans = TRUE,                        # Enable transparency based on edge weight
-                        fade = TRUE,                         # Enable fading based on edge weight
+                        posCol = "blue",              # Positive covariance color (blue)
+                        negCol = "red",               # Negative covariance color (red)
+                        unCol = "white",              # White for unidentifiable comparisons (CI covers zero)
+                        trans = TRUE,                 # Enable transparency based on edge weight
+                        fade = TRUE,                  # Enable fading based on edge weight
                         esize = 15 * exp(-length(taxa) / 90) + 1,  # Scalar for edge size
                         vsize = 8,                    # Set larger node size for clarity
-                        borders = FALSE,              # Remove node borders for cleaner presentation
+                        borders = TRUE,               # Add borders to nodes
                         label.cex = 1.5)              # Increase label font size for clarity
+  
+  # Add scale legend for edge width (representing CI magnitude)
+  legend("topleft", legend = c("Thick = High Certainty", "Thin = Low Certainty"),
+         lwd = c(5, 1), col = "black", bty = "n", cex = 1.2)
+  
+  # If p-values are provided, add a p-value legend
+  if (pvalue) {
+    legend("topright", legend = sprintf("p-value: %f", pvalues), bty = "n", cex = 1.2)
+  }
   
   # Save the plot if save_plot is TRUE
   if (save_plot) {
-    png(file_name, width = 1200, height = 1200, res = 300)  # High resolution PNG
+    png(file_name, width = 1200, height = 1200, res = 300, bg = "white")  # High resolution PNG with white background
     print(plot_object)  # Save the plot to file
     dev.off()           # Close the PNG device
   }
@@ -1886,6 +1900,4 @@ prism.network <- function(results, file_name = "network_plot.png", save_plot = T
   return(plot_object)
 }
 
-# Example usage with the 'results' dataframe
-# prism.network(results)
 
