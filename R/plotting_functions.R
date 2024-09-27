@@ -669,7 +669,7 @@ prism.diagnose_mcmcerror <- function(combined_results, convergence_results) {
 #' @return This function saves the plots and returns no value.
 #' @import plotly htmlwidgets alphashape3d
 #' @export
-prism.3dscatterplot_comparisons <- function(data, output_directory = "plots/", 
+prism.3dscatterplot_comparisons <- function(data, output_directory = "./plots/", 
                                         correlation_relativetaxa_scale_range = c(-1, 1), 
                                         scale_sd_range = c(0.49, 0.51),
                                         plot_all = TRUE,
@@ -872,7 +872,7 @@ prism.3dscatterplot_comparisons <- function(data, output_directory = "plots/",
 #' @return This function saves the plots and returns no value.
 #' @import plotly htmlwidgets alphashape3d
 #' @export
-prism.3dscatterplot <- function(data, output_directory = "plots/", rho_scale_range = c(min(data$rho1, na.rm = TRUE), max(data$rho1, na.rm = TRUE)), scalestdevstep_range = c(min(data$scalestdevstep, na.rm = TRUE), max(data$scalestdevstep, na.rm = TRUE)), plot_all = TRUE, alpha_value = 1) {
+prism.3dscatterplot <- function(data, output_directory = "./plots/", rho_scale_range = c(min(data$rho1, na.rm = TRUE), max(data$rho1, na.rm = TRUE)), scalestdevstep_range = c(min(data$scalestdevstep, na.rm = TRUE), max(data$scalestdevstep, na.rm = TRUE)), plot_all = TRUE, alpha_value = 1) {
   
   # Ensure output directory exists
   if (!dir.exists(output_directory)) {
@@ -1022,7 +1022,7 @@ prism.3dscatterplot <- function(data, output_directory = "plots/", rho_scale_ran
 #' }
 #' 
 #' @export
-prism.spsd <- function(data, output_directory = "plots/", rho_scale_range = c(min(data$rho1), max(data$rho1)), scalestdevstep_range = c(min(data$scalestdevstep), max(data$scalestdevstep)), alpha_value = 1) {
+prism.spsd <- function(data, output_directory = "./plots/", rho_scale_range = c(min(data$rho1), max(data$rho1)), scalestdevstep_range = c(min(data$scalestdevstep), max(data$scalestdevstep)), alpha_value = 1) {
 
   # Ensure output directory exists
   if (!dir.exists(output_directory)) {
@@ -1131,7 +1131,7 @@ prism.spsd <- function(data, output_directory = "plots/", rho_scale_range = c(mi
 #' }
 #' 
 #' @export
-prism.bivariate <- function(data, output_directory = "plots/", sample_size = 3000) {
+prism.bivariate <- function(data, output_directory = "./plots/", sample_size = 3000) {
 
   # Ensure output directory exists
   if (!dir.exists(output_directory)) {
@@ -1280,7 +1280,7 @@ prism.proportions <- function(data, comparison_col = "comparison", proportion_co
 #' @importFrom ggridges geom_density_ridges
 #' @importFrom reshape2 melt
 #' @keywords internal
-prism.rhoridges <- function(rhobounds, D, S) {
+prism.rhoridges <- function(rhobounds, D, S, dir_path="./plots/") {
   
   # Reshape the rhobounds array into a long-format data frame
   melted_data <- reshape2::melt(rhobounds)
@@ -1352,13 +1352,13 @@ prism.rhoridges <- function(rhobounds, D, S) {
   print(plot)
   
   # Check if "plots" directory exists, if not, create it
-  if (!dir.exists("plots")) {
-    dir.create("plots")
+  if (!dir.exists(dir_path)) {
+    dir.create(dir_path)
   }
   
   # Save the plot to the "plots" directory with white background
   ggplot2::ggsave(
-    filename = "plots/correlation_ridge_plot.png",
+    filename = paste0(dir_path,"correlation_ridge_plot.png"),
     plot = plot,
     width = 12, height = 8, dpi = 300, bg = "white"
   )
@@ -1386,7 +1386,7 @@ prism.rhoridges <- function(rhobounds, D, S) {
 #' @importFrom ggplot2 element_text scale_fill_manual scale_color_manual ggsave after_stat geom_vline
 #' @importFrom ggplot2 annotate
 #' @keywords internal
-prism.scalesdhistogram <- function(scalestdev, S) {
+prism.scalesdhistogram <- function(scalestdev, S, dir_path="./plots/") {
   
   # Prepare the data
   plot_data <- data.frame(
@@ -1437,12 +1437,12 @@ prism.scalesdhistogram <- function(scalestdev, S) {
   print(plot)
   
   # Check if "plots" directory exists, if not, create it
-  if (!dir.exists("plots")) {
-    dir.create("plots")
+  if (!dir.exists(dir_path)) {
+    dir.create(dir_path)
   }
   
   # Save the plot to the "plots" directory with white background
-  ggplot2::ggsave(filename = "plots/scalestdev_histogram_plot.png", plot = plot, 
+  ggplot2::ggsave(filename = paste0(dir_path,"scalestdev_histogram_plot.png"), plot = plot, 
                   width = 10, height = 8, dpi = 300, bg = "white")
   
   return(plot)
@@ -1669,7 +1669,7 @@ prism.posteriorlineplot <- function(rWparaoriginal, save = TRUE, file_name = "ta
 #' @keywords internal
 #' @import ggplot2
 #' @import gridExtra
-prism.posteriorsamples <- function(rWparaoriginal, file_name = "combined_posterior_plots.png", width = 16, height = 16, dpi = 300) {
+prism.posteriorsamples <- function(rWparaoriginal, dir_path="./plots/", file_name = "posterior_plots.png", width = 16, height = 16, dpi = 300) {
   
   # Generate individual plots
   p1 <- prism.posteriordensity(rWparaoriginal, save=FALSE)   # Density plot
@@ -1685,9 +1685,14 @@ prism.posteriorsamples <- function(rWparaoriginal, file_name = "combined_posteri
 	
   # Arrange all plots into a 2x2 grid layout
   combined_plot <- grid.arrange(g1, g2, g3, g4, ncol = 2)
+
+  # Check if "plots" directory exists, if not, create it
+  if (!dir.exists(dir_path)) {
+    dir.create(dir_path)
+  }
   
   # Save the combined plot as a PNG
-  ggsave(filename = file_name, plot = combined_plot, width = width, height = height, dpi = dpi, bg = "white")
+  ggsave(filename = paste0(dir_path, file_name), plot = combined_plot, width = width, height = height, dpi = dpi, bg = "white")
   
   return(combined_plot)
 }
@@ -1717,7 +1722,7 @@ prism.posteriorsamples <- function(rWparaoriginal, file_name = "combined_posteri
 #'   # Generate correlation plot and covariance heatmap
 #'   plot_true_abundances(rdat, flow_data, dat, file_path = "true_abundances_plot.png")
 #' }
-prism.trueabundanceplot <- function(flow_data, dat, file_path = "true_abundances_plot.png") {
+prism.trueabundanceplot <- function(flow_data, dat, dir_path="./plots/", file_path = "true_abundances.png") {
   
   # Transpose rdat to have taxa as rows
   taxa_data <- t(dat[,-1])
@@ -1800,8 +1805,13 @@ prism.trueabundanceplot <- function(flow_data, dat, file_path = "true_abundances
   forest_plot_grob <- ggplotGrob(forest_plot)
   correlation_grob <- grid::grid.grabExpr(grid::grid.draw(correlation_heatmap$gtable))
 
+  # Check if "plots" directory exists, if not, create it
+  if (!dir.exists(dir_path)) {
+    dir.create(dir_path)
+  }
+  
   # Save the combined plot as a PNG file
-  png(filename = file_path, width = 15, height = 8, units = "in", res = 300)
+  png(filename = paste0(dir_path,file_path), width = 15, height = 8, units = "in", res = 300)
   
   # Arrange the forest plot and correlation heatmap side by side
   gridExtra::grid.arrange(forest_plot_grob, correlation_grob, ncol = 2)
@@ -1833,7 +1843,7 @@ prism.trueabundanceplot <- function(flow_data, dat, file_path = "true_abundances
 #' @examples
 #' prism.network(results, pvalue = TRUE)
 
-prism.network <- function(results, pvalue = FALSE, file_name = "network_plot.png", save_plot = TRUE) {
+prism.network <- function(results, pvalue = FALSE, dir_path="./plots/", file_name = "network_plot.png", save_plot = TRUE) {
   # Filter rows with non-NA taxa
   filtered_results <- results[!is.na(results$taxa1) & !is.na(results$taxa2), ]
   
@@ -1922,7 +1932,11 @@ prism.network <- function(results, pvalue = FALSE, file_name = "network_plot.png
   
   # Save the plot if save_plot is TRUE
   if (save_plot) {
-    png(file_name, width = 1200, height = 1200, res = 300, bg = "white")  # High resolution PNG with white background
+	  # Check if "plots" directory exists, if not, create it
+    if (!dir.exists(dir_path)) {
+      dir.create(dir_path)
+    }
+    png(paste0(dir_path,file_name), width = 1200, height = 1200, res = 300, bg = "white")  # High resolution PNG with white background
     print(plot_object)  # Save the plot to file
     dev.off()           # Close the PNG device
   }
