@@ -7,11 +7,12 @@
 #' @param save A character string indicating the file format to save the plot. Options are "png", "jpg", "svg", "pdf". Default is NULL, which means the plot is not saved.
 #' @param filename A character string indicating the file name when saving the plot. Default is NULL, which means the plot is saved as forest_plot if save format is indicated.
 #' @param dir_path A character string indicating the directory to store the plot. Default is \code{"./plots/"} which creates the plots directory in the current directory.
+#' @param color_y_axis_by_ci Logical, whether to color the y-axis text according to the 95% confidence intervals from the first dataframe. Default is FALSE.
 #' @return A ggplot object representing the combined forest plot.
 #' @import ggplot2
 #' @import dplyr
 #' @export
-forest_plot <- function(data_list, bg = "white", save = NULL, filename = NULL, dir_path = "./plots/") {
+prism.forestplot <- function(data_list, bg = "white", save = NULL, filename = NULL, dir_path = "./plots/", color_y_axis_by_ci = FALSE) {
 
   # Check if input is a data frame, convert to a named list if true
   if (is.data.frame(data_list)) {
@@ -43,6 +44,18 @@ forest_plot <- function(data_list, bg = "white", save = NULL, filename = NULL, d
   comparison_order <- first_data %>%
     arrange(ninetyfive_ci_lower) %>%
     pull(comparison)
+  
+  # Create a mapping of comparison names to colors based on the first dataframe's CI
+  if (color_y_axis_by_ci) {
+    y_axis_colors <- first_data %>%
+      mutate(color = ifelse(
+        (ninetyfive_ci_lower > 0 & ninetyfive_ci_upper > 0) | (ninetyfive_ci_lower < 0 & ninetyfive_ci_upper < 0),
+        "#023E8A",  # Blue if the CI does not cover zero
+        "#BEBEBE"   # Gray if the CI covers zero
+      )) %>%
+      select(comparison, color) %>%
+      deframe()
+  }
   
   # Loop over each data frame in data_list
   for (dataset_name in names(data_list)) {
@@ -88,7 +101,6 @@ forest_plot <- function(data_list, bg = "white", save = NULL, filename = NULL, d
     ) +
     theme(
       axis.text.x = element_text(size = 10),
-      axis.text.y = element_text(size = 10),
       axis.title = element_text(size = 12, face = "bold"),
       strip.text = element_text(size = 12, face = "bold"),
       legend.position = "top",
@@ -159,11 +171,19 @@ forest_plot <- function(data_list, bg = "white", save = NULL, filename = NULL, d
   plot <- plot + scale_y_continuous(breaks = scales::pretty_breaks(n = 5))
   
   # Facet by Dataset to create side-by-side plots, but y-axis labels only on the left
-  plot <- plot + facet_grid(. ~ Dataset, scales = "free_x", space = "free_x") +
-    theme(
-      axis.text.y = element_text(size = 10),  # Only for the leftmost plot
-      strip.background = element_rect(fill = "white")
-    )
+  if (color_y_axis_by_ci) {
+    plot <- plot + facet_grid(. ~ Dataset, scales = "free_x", space = "free_x") +
+      theme(
+        axis.text.y = element_text(size = 8, color = y_axis_colors[comparison_order]),  # Color y-axis based on first dataframe
+        strip.background = element_rect(fill = "white")
+      )
+  } else {
+    plot <- plot + facet_grid(. ~ Dataset, scales = "free_x", space = "free_x") +
+      theme(
+        axis.text.y = element_text(size = 8),  # Only for the leftmost plot
+        strip.background = element_rect(fill = "white")
+      )
+  }
   
   # Adjust the plot size based on the number of comparisons
   scaling_factor <- 0.1
