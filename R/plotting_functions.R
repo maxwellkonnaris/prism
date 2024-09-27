@@ -44,6 +44,15 @@ forest_plot <- function(data_list, bg = "white", save = NULL, filename = NULL, d
     arrange(ninetyfive_ci_lower) %>%
     pull(comparison)
   
+  # Determine y-axis label colors based on the first dataset
+  y_label_colors <- first_data %>%
+    mutate(color = ifelse(
+      (ninetyfive_ci_lower > 0 & ninetyfive_ci_upper > 0) | (ninetyfive_ci_lower < 0 & ninetyfive_ci_upper < 0),
+      "#023E8A",  # Blue if the CI does not cover zero
+      "black"     # Default black if it covers zero
+    )) %>%
+    pull(color)
+  
   # Loop over each data frame in data_list
   for (dataset_name in names(data_list)) {
     data <- data_list[[dataset_name]]
@@ -88,7 +97,7 @@ forest_plot <- function(data_list, bg = "white", save = NULL, filename = NULL, d
     ) +
     theme(
       axis.text.x = element_text(size = 10),
-      axis.text.y = element_text(size = 10),
+      axis.text.y = element_text(size = 10, color = rep(y_label_colors, length(data_list))),
       axis.title = element_text(size = 12, face = "bold"),
       strip.text = element_text(size = 12, face = "bold"),
       legend.position = "top",
@@ -161,12 +170,11 @@ forest_plot <- function(data_list, bg = "white", save = NULL, filename = NULL, d
   # Facet by Dataset to create side-by-side plots, but y-axis labels only on the left
   plot <- plot + facet_grid(. ~ Dataset, scales = "free_x", space = "free_x") +
     theme(
-      axis.text.y = element_text(size = 10),  # Only for the leftmost plot
       strip.background = element_rect(fill = "white")
     )
   
   # Adjust the plot size based on the number of comparisons
-  scaling_factor <- 0.1
+  scaling_factor <- 0.05
   dynamic_height <- length(unique(combined_data$comparison)) * scaling_factor
   min_height <- 10
   max_height <- 35
@@ -182,10 +190,12 @@ forest_plot <- function(data_list, bg = "white", save = NULL, filename = NULL, d
     if (!grepl("/$", dir_path)) {
       dir_path <- paste0(dir_path, "/")
     }
+    
     # Set default filename if not provided
     if (is.null(filename)) {
       filename <- "forest_plot"
     }
+    
     file_name <- paste0(dir_path, filename, ".", save)
     
     # Adjust width based on the number of data frames
@@ -196,6 +206,7 @@ forest_plot <- function(data_list, bg = "white", save = NULL, filename = NULL, d
   
   return(plot)
 }
+
 
 
 
