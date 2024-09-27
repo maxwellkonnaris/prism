@@ -158,11 +158,15 @@ forest_plot <- function(data_list, bg = "white", save = NULL, filename = NULL, d
   # Adjust y-axis breaks
   plot <- plot + scale_y_continuous(breaks = scales::pretty_breaks(n = 5))
   
-  # Facet by Dataset to create side-by-side plots
-  plot <- plot + facet_grid(. ~ Dataset, scales = "free_x", space = "free_x")
+  # Facet by Dataset to create side-by-side plots, but y-axis labels only on the left
+  plot <- plot + facet_grid(. ~ Dataset, scales = "free_x", space = "free_x") +
+    theme(
+      axis.text.y = element_text(size = 10),  # Only for the leftmost plot
+      strip.background = element_rect(fill = "white")
+    )
   
   # Adjust the plot size based on the number of comparisons
-  scaling_factor <- 0.5
+  scaling_factor <- 0.25
   dynamic_height <- length(unique(combined_data$comparison)) * scaling_factor
   min_height <- 10
   max_height <- 35
@@ -192,6 +196,7 @@ forest_plot <- function(data_list, bg = "white", save = NULL, filename = NULL, d
   
   return(plot)
 }
+
 
 
 
