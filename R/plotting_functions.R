@@ -1238,7 +1238,7 @@ proportiondontcoverzerobars <- function(data, comparison_col = "comparison", pro
   # Create the bar plot
   p <- ggplot(data, aes_string(x = comparison_col, y = proportion_col, fill = "does_not_cover_zero")) +
     geom_bar(stat = "identity", colour = "black", size = 0.5) +
-    scale_fill_manual(values = c("Does Not Cover Zero" = "green", "Covers Zero" = "magenta")) +
+    scale_fill_manual(values = c("Does Not Cover Zero" = "#023E8A", "Covers Zero" = "grey")) +
     labs(
       title = "Proportion of Range Intervals That Do Not Cover Zero",
       x = "Comparison",
