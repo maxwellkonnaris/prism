@@ -640,3 +640,118 @@ prism.simulate_prepost <- function(n = 50, d = 20, seq_depth = 5000, replicate =
   }
 }
 
+#' Custom Cumulative Variance Function
+#'
+#' This function calculates the cumulative variance for a vector of data.
+#'
+#' @param x A numeric vector for which to calculate cumulative variance.
+#'
+#' @return A numeric vector containing the cumulative variance of `x`.
+#' @keywords internal
+cumvar <- function(x) {
+  n <- length(x)
+  cumsum((x - cumsum(x) / seq_along(x))^2) / seq_along(x)
+}
+
+#' Calculate Effective Sample Size (ESS)
+#'
+#' This function computes the effective sample size for each bootstrap estimate.
+#'
+#' @param bootstrap_estimates A data frame of bootstrap estimates containing columns `minsigma_absolute_minimum_covariance` and `maxsigma_absolute_maximum_covariance`.
+#'
+#' @return A data frame with the effective sample size for both the minimum and maximum covariance estimates.
+#' @keywords internal
+calculate_effective_sample_size <- function(bootstrap_estimates) {
+  ess <- function(x) {
+    n <- length(x)
+    acf_x <- acf(x, plot = FALSE)
+    return(n / (1 + 2 * sum(acf_x$acf[-1])))
+  }
+  bootstrap_estimates %>%
+    group_by(S, comparison) %>%
+    summarise(
+      ess_min = ess(minsigma_absolute_minimum_covariance),
+      ess_max = ess(maxsigma_absolute_maximum_covariance)
+    )
+}
+
+#' Calculate Rhat (Gelman-Rubin Diagnostic)
+#'
+#' This function calculates the Rhat diagnostic to assess convergence using the Gelman-Rubin diagnostic.
+#'
+#' @param bootstrap_estimates A data frame of bootstrap estimates containing columns `minsigma_absolute_minimum_covariance` and `maxsigma_absolute_maximum_covariance`.
+#'
+#' @return A list containing the Rhat values for both minimum and maximum covariance estimates.
+#' @keywords internal
+calculate_rhat <- function(bootstrap_estimates) {
+  chains_min <- split(bootstrap_estimates$minsigma_absolute_minimum_covariance, bootstrap_estimates$S)
+  chains_max <- split(bootstrap_estimates$maxsigma_absolute_maximum_covariance, bootstrap_estimates$S)
+  mcmc_chains_min <- coda::mcmc.list(lapply(chains_min, mcmc))
+  mcmc_chains_max <- coda::mcmc.list(lapply(chains_max, mcmc))
+  list(
+    rhat_min = coda::gelman.diag(mcmc_chains_min)$psrf,
+    rhat_max = coda::gelman.diag(mcmc_chains_max)$psrf
+  )
+}
+
+#' Jackknife-after-Bootstrap
+#'
+#' This function calculates the jackknife-after-bootstrap diagnostic to estimate bias and variability.
+#'
+#' @param bootstrap_estimates A data frame of bootstrap estimates containing columns `minsigma_absolute_minimum_covariance` and `maxsigma_absolute_maximum_covariance`.
+#'
+#' @return A list containing jackknife estimates for both minimum and maximum covariance estimates.
+#' @keywords internal
+jackknife_after_bootstrap <- function(bootstrap_estimates) {
+  n <- length(bootstrap_estimates$minsigma_absolute_minimum_covariance)
+  list(
+    jackknife_min = sapply(1:n, function(i) {
+      mean(bootstrap_estimates$minsigma_absolute_minimum_covariance[-i])
+    }),
+    jackknife_max = sapply(1:n, function(i) {
+      mean(bootstrap_estimates$maxsigma_absolute_maximum_covariance[-i])
+    })
+  )
+}
+
+#' Bootstrap-after-Bootstrap
+#'
+#' This function performs bootstrap resampling on the bootstrap estimates to calculate variability.
+#'
+#' @param bootstrap_estimates A data frame of bootstrap estimates containing columns `minsigma_absolute_minimum_covariance` and `maxsigma_absolute_maximum_covariance`.
+#' @param num_resamples The number of bootstrap resamples to perform (default is 1000).
+#'
+#' @return A list containing bootstrap resampling results for both minimum and maximum covariance estimates.
+#' @keywords internal
+bootstrap_after_bootstrap <- function(bootstrap_estimates, num_resamples = 1000) {
+  list(
+    bootstrap_min = replicate(num_resamples, {
+      resample_indices <- sample(seq_along(bootstrap_estimates$minsigma_absolute_minimum_covariance), replace = TRUE)
+      mean(bootstrap_estimates$minsigma_absolute_minimum_covariance[resample_indices])
+    }),
+    bootstrap_max = replicate(num_resamples, {
+      resample_indices <- sample(seq_along(bootstrap_estimates$maxsigma_absolute_maximum_covariance), replace = TRUE)
+      mean(bootstrap_estimates$maxsigma_absolute_maximum_covariance[resample_indices])
+    })
+  )
+}
+
+#' Calculate Monte Carlo Standard Error (MCSE)
+#'
+#' This function calculates the Monte Carlo standard error for each bootstrap estimate.
+#'
+#' @param bootstrap_estimates A data frame of bootstrap estimates containing columns `minsigma_absolute_minimum_covariance` and `maxsigma_absolute_maximum_covariance`.
+#'
+#' @return A data frame with the Monte Carlo standard error for both minimum and maximum covariance estimates.
+#' @keywords internal
+calculate_mcse <- function(bootstrap_estimates) {
+  mcse <- function(x) {
+    sd(x) / sqrt(length(x))
+  }
+  bootstrap_estimates %>%
+    group_by(S, comparison) %>%
+    summarise(
+      mcse_min = mcse(minsigma_absolute_minimum_covariance),
+      mcse_max = mcse(maxsigma_absolute_maximum_covariance)
+    )
+}
