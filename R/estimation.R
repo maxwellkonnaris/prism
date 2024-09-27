@@ -138,7 +138,7 @@
 #' @import ggridges
 #' @import fido
 #' @export
-prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "Multinomial Dirichlet", externalscalemeasurements = NULL, lowerrhobound = rep(-1.0, nrow(Y)), upperrhobound = rep(1.0, nrow(Y)), S = 1000, lowerscalestdev = 0.450, upperscalestdev = 0.650, algorithm = "GRID_SEARCH", outputdirectory = NULL, seed = NULL) {
+prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinomialdirichlet", nobootstrap = FALSE, externalscalemeasurements = NULL, lowerrhobound = rep(-1.0, nrow(Y)), upperrhobound = rep(1.0, nrow(Y)), S = 1000, lowerscalestdev = 0.450, upperscalestdev = 0.650, algorithm = "GRID_SEARCH", outputdirectory = NULL, seed = NULL) {
   
   ## COMPUTATIONAL TIME -------------------------------------------------------------------------------------------------------------------------------------
   start_time <- Sys.time()
@@ -236,24 +236,26 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "Multinom
   opts_rhosd <- list(progress = progress_rhosd)
   ## END PROGRESS BARS -------------------------------------------------------------------------------------------------------------------------------------
   ## ACCOUNTING FOR UNCERTAINTY IN FINITE SAMPLING ---------------------------------------------------------------------------------------------------------
-  ## calculate bootstrap resampling -- accounting for finite sampling
   boostrap_samples <- matrix(NA, N, S)
-  for (s in 1:S) {
-    boostrap_samples[,s] <- sample(1:N, replace=TRUE)
-  }
-
   # ---- If you want to remove bootstrap and carry on then ---
-  # boostrap_samples <- matrix(NA, N, S)
-  #   for (s in 1:S) {
-  #     boostrap_samples[,s] <- 1:N
-  #   }
+  if (nobootstrap) {
+    # Use the original indices (no bootstrap resampling)
+    for (s in 1:S) {
+      bootstrap_samples[, s] <- 1:N
+    }
+  } else {
+    ## calculate bootstrap resampling -- accounting for finite sampling
+    for (s in 1:S) {
+      bootstrap_samples[, s] <- sample(1:N, replace = TRUE)
+    }
+  }
   ## END ACCOUNTING FOR UNCERTAINTY IN FINITE SAMPLING -----------------------------------------------------------------------------------------------------
   ## ACCOUNTING FOR UNCERTAINTY IN OBSERVED RELATIVE ABUNDANCES --------------------------------------------------------------------------------------------
   # Dimensions: (n_taxa, n_samples, n_iter) -- populate matrix of NAs
   rWparaoriginal <- array(NA, dim = c(D, N, S))
   
   # calculate posterior samples -- accounting for uncertainty in the observed relative abundances
-  if (uncertaintydistribution == "Multinomial Dirichlet") {
+  if (uncertaintydistribution == "multinomialdirichlet") {
     # generate S Dirichlet samples for each sample (column)
     for (n in 1:N) {
         # Generate S Dirichlet samples for sample n
@@ -263,7 +265,7 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "Multinom
         # Assign to the nth slice of the array
         rWparaoriginal[,n,] <- transposed_samples          # Assign D x S
     } 
-  } else if (uncertaintydistribution == "Multinomial Log Normal") {
+  } else if (uncertaintydistribution == "multinomiallognormal") {
     # generate S Multinomial logistic Normal posterior samples for each sample (column) using fido
     otu_table = phyloseq::otu_table(Y, taxa_are_rows = TRUE)
     otu_table = otu_table + alpha
@@ -304,13 +306,15 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "Multinom
         var_upper <- (n - 1) * S2 / chi2_lower
         scalestdev_s <- c(sqrt(var_lower), sqrt(var_upper))
 
+        # remove this when measurement error model is fixed
         sampled_externalscalemeasurements = externalscalemeasurements
       
         # Initialize matrix for rhobounds for each taxa
         rhobounds_s <- matrix(NA, nrow = D, ncol = 2)  # [D x 2]
         z_critical <- qnorm(1 - alpha / 2)
         for (taxa in 1:D) {
-            
+
+            # Account for measurement error
             #sampled_sd <- runif(1, min = scalestdev_s[1], max = scalestdev_s[2])
             #sampled_externalscalemeasurements <- rnorm(length(externalscalemeasurements), mean = externalscalemeasurements, sd = sampled_sd)
   
