@@ -1,17 +1,3 @@
-#' Forest Plot of Confidence Intervals for Multiple Data Frames
-#'
-#' This function creates a professional-looking forest plot of confidence intervals for multiple data frames. Each data frame is plotted side by side with shared y-axis labels, and each plot is labeled with the name of the data frame.
-#'
-#' @param data_list A named list of data frames. Each data frame should contain the necessary columns as specified below.
-#' @param bg A character string indicating the background color of the plot. Options are "white" (default) or "transparent".
-#' @param save A character string indicating the file format to save the plot. Options are "png", "jpg", "svg", "pdf". Default is NULL, which means the plot is not saved.
-#' @param filename A character string indicating the file name when saving the plot. Default is NULL, which means the plot is saved as forest_plot if save format is indicated.
-#' @param dir_path A character string indicating the directory to store the plot. Default is \code{"./plots/"} which creates the plots directory in the current directory.
-#' @param color_y_axis_by_ci Logical, whether to color the y-axis text according to the 95% confidence intervals from the first dataframe. Default is FALSE.
-#' @return A ggplot object representing the combined forest plot.
-#' @import ggplot2
-#' @import dplyr
-#' @export
 prism.forestplot <- function(data_list, bg = "white", save = NULL, filename = NULL, dir_path = "./plots/", color_y_axis_by_ci = FALSE) {
 
   # Check if input is a data frame, convert to a named list if true
@@ -83,11 +69,13 @@ prism.forestplot <- function(data_list, bg = "white", save = NULL, filename = NU
   # Combine all data frames into one
   combined_data <- bind_rows(data_frames)
   
-  # Highlight intervals that do not cover 0
+  # Highlight intervals that do not cover 0 or have equal upper and lower bounds
   combined_data <- combined_data %>%
     mutate(highlight = ifelse(
-      (ninetyfive_ci_lower > 0 & ninetyfive_ci_upper > 0) | (ninetyfive_ci_lower < 0 & ninetyfive_ci_upper < 0),
-      "95% CI Doesn't Cover Zero", "95% CI Covers Zero"
+      (ninetyfive_ci_lower == ninetyfive_ci_upper) |  # Make grey when lower and upper bounds are equal
+      (ninetyfive_ci_lower <= 0 & ninetyfive_ci_upper >= 0),
+      "95% CI Covers Zero",  # Grey
+      "95% CI Doesn't Cover Zero"  # Blue or Red
     ))
   
   # Create the forest plot
@@ -110,7 +98,7 @@ prism.forestplot <- function(data_list, bg = "white", save = NULL, filename = NU
     scale_color_manual(
       values = c(
         "95% CI Doesn't Cover Zero" = "#023E8A",  # Blue
-        "95% CI Covers Zero" = "#BEBEBE",
+        "95% CI Covers Zero" = "#BEBEBE",         # Grey
         "Covariance Range" = "#676767"
       ),
       breaks = c("95% CI Doesn't Cover Zero", "Covariance Range") # Exclude "Covers Zero" from legend
@@ -216,6 +204,7 @@ prism.forestplot <- function(data_list, bg = "white", save = NULL, filename = NU
   
   return(plot)
 }
+
 
 #' Plot Sigma Values Against Parameters
 #'
