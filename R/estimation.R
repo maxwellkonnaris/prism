@@ -277,10 +277,8 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
     Theta <- matrix(0, D-1, nrow(X))
     Gamma <- diag(nrow(X))
     
-    priors <- fido::pibble(NULL, X, upsilon, Theta, Gamma, Xi)  
-    priors <- fido::to_clr(priors)  
+    priors <- fido::pibble(otu_table, X, upsilon, Theta, Gamma, Xi, n_samples = S)  
     names_covariates(priors) <- rownames(X)
-    priors$Y <- otu_table 
     posterior <- refit(priors, optim_method="lbfgs")
     rWparaoriginal <- fido::to_proportions(posterior)$Eta
   } else {
