@@ -1908,17 +1908,14 @@ prism.network <- function(results, pvalue = FALSE, dir_path="./plots/", file_nam
 #' @param combine_plots Logical; if TRUE, combines all the plots in a single multi-panel figure. Default is FALSE.
 #'
 #' @return A list of ggplot objects representing the network plots.
+#' @import igraph, ggraph, ggplot2, patchwork
 #'
 #' @examples
 #' prism.circlenetwork(list(df1 = df1, df2 = df2), pvalue = TRUE)
 prism.circlenetwork <- function(data_list, metric = "covariance", pvalue = FALSE, dir_path = "./plots/", 
                                 file_name = "circlenetwork", save_plot = TRUE, combine_plots = FALSE) {
   
-  # Load required libraries
-  library(igraph)
-  library(ggraph)
-  library(ggplot2)
-  library(patchwork)
+
   
   # Validate input
   if (!is.list(data_list) || is.null(names(data_list))) {
