@@ -100,12 +100,12 @@ prism.forestplot <- function(data_list, bg = "white", save = NULL, filename = NU
       color = NULL
     ) +
     theme(
-      axis.text.x = element_text(size = 10),
-      axis.title = element_text(size = 12, face = "bold"),
-      strip.text = element_text(size = 12, face = "bold"),
+      axis.text.x = element_text(size = 12),
+      axis.title = element_text(size = 15, face = "bold"),
+      strip.text = element_text(size = 15, face = "bold"),
       legend.position = "top",
       legend.title = element_blank(),
-      legend.text = element_text(size = 10)
+      legend.text = element_text(size = 15)
     ) +
     scale_color_manual(
       values = c(
@@ -174,13 +174,13 @@ prism.forestplot <- function(data_list, bg = "white", save = NULL, filename = NU
   if (color_y_axis_by_ci) {
     plot <- plot + facet_grid(. ~ Dataset, scales = "free_x", space = "free_x") +
       theme(
-        axis.text.y = element_text(size = 8, color = y_axis_colors[comparison_order]),  # Color y-axis based on first dataframe
+        axis.text.y = element_text(size = 10, color = y_axis_colors[comparison_order]),  # Color y-axis based on first dataframe
         strip.background = element_rect(fill = "white")
       )
   } else {
     plot <- plot + facet_grid(. ~ Dataset, scales = "free_x", space = "free_x") +
       theme(
-        axis.text.y = element_text(size = 8),  # Only for the leftmost plot
+        axis.text.y = element_text(size = 10),  # Only for the leftmost plot
         strip.background = element_rect(fill = "white")
       )
   }
@@ -209,7 +209,7 @@ prism.forestplot <- function(data_list, bg = "white", save = NULL, filename = NU
     file_name <- paste0(dir_path, filename, ".", save)
     
     # Adjust width based on the number of data frames
-    plot_width <- 10 * length(data_list)
+    plot_width <- 5 * length(data_list)
     
     ggsave(file_name, plot, width = plot_width, height = final_height, dpi = 300, device = save, bg = bg, limitsize = FALSE)
   }
