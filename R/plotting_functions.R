@@ -1884,3 +1884,88 @@ prism.network <- function(results, pvalue = FALSE, dir_path="./plots/", file_nam
   # Return the plot object for further customization
   return(plot_object)
 }
+
+
+#' Generate a professional network plot from confidence interval data with optional p-values in a circular layout
+#'
+#' This function generates a professional circular network plot from taxa labels and confidence interval data. 
+#' It provides an option to save the plot (default in PNG format) and returns the plot object for further 
+#' customization. A scale bar is included, and p-values can be plotted if specified.
+#'
+#' @param results A dataframe containing the confidence interval and p-value information. The dataframe should include columns:
+#'   - `taxa1`: The first taxa in the pair.
+#'   - `taxa2`: The second taxa in the pair.
+#'   - `ninetyfive_ci_lower`: Lower bound of the 95% CI for covariance or correlation.
+#'   - `ninetyfive_ci_upper`: Upper bound of the 95% CI for covariance or correlation.
+#'   - `pvalue`: (Optional) p-value for the taxa comparison, if `pvalue = TRUE`.
+#' @param metric Character; specify whether to plot "covariance" or "correlation". Default is "covariance".
+#' @param pvalue Logical; if TRUE, plots the p-values. Default is FALSE.
+#' @param file_name Character; the name of the file to save the plot. Default is 'network_plot.png'.
+#' @param save_plot Logical; if TRUE, saves the plot to file. Default is TRUE.
+#' 
+#' @return The network plot object for further customization.
+#'
+#' @examples
+#' prism.circlenetwork(results$final_results, pvalue = TRUE)
+
+prism.circlenetwork <- function(results, metric = "covariance", pvalue = FALSE, dir_path = "./plots/", file_name = "circlenetwork.png", save_plot = TRUE) {
+  
+  # Validate the 'metric' argument
+  if (!metric %in% c("covariance", "correlation")) {
+    stop("Invalid metric. Please specify either 'covariance' or 'correlation'.")
+  }
+  
+  # Filter rows with non-NA taxa
+  filtered_results <- results[!is.na(results$taxa1) & !is.na(results$taxa2), ]
+  
+  # Create edge list from the results dataframe
+  edges <- data.frame(from = filtered_results$taxa1, 
+                      to = filtered_results$taxa2, 
+                      ci_lower = filtered_results$ninetyfive_ci_lower, 
+                      ci_upper = filtered_results$ninetyfive_ci_upper)
+  
+  # Add color and width for the edges based on the CI
+  edges$color <- ifelse(edges$ci_lower > 0, "blue", ifelse(edges$ci_upper < 0, "red", "grey"))
+  
+  # Edge width inversely proportional to CI range: smaller range = thicker line, larger range = thinner line
+  edges$width <- 1 / (edges$ci_upper - edges$ci_lower)
+  
+  # Create an igraph object
+  graph <- graph_from_data_frame(edges, directed = FALSE)
+  
+  # Set edge properties based on the calculated values
+  E(graph)$color <- edges$color
+  E(graph)$width <- edges$width
+  
+  # Plot using ggraph with circular layout
+  plot_object <- ggraph(graph, layout = 'circle') +
+    geom_edge_link(aes(edge_width = width, color = color), show.legend = FALSE) +
+    geom_node_point(size = 5) +
+    geom_node_text(aes(label = name), repel = TRUE, size = 4) +
+    scale_edge_color_manual(values = c("blue", "red", "grey")) +  # Blue for positive, Red for negative
+    theme_void() +
+    theme(legend.position = "none") +
+    ggtitle(ifelse(metric == "covariance", "Covariance Network", "Correlation Network"))
+  
+  # Add a legend for edge thickness representing confidence intervals
+  plot_object <- plot_object + 
+    annotate("text", x = Inf, y = Inf, label = "Thick = High Certainty\nThin = Low Certainty", 
+             hjust = 1.5, vjust = 1.5, size = 5, color = "black")
+  
+  # If p-values are provided, add them as part of the plot title or legend
+  if (pvalue) {
+    plot_object <- plot_object + ggtitle(paste0(ifelse(metric == "covariance", "Covariance Network", "Correlation Network"), "\nP-values included"))
+  }
+  
+  # Save the plot if save_plot is TRUE
+  if (save_plot) {
+    # Check if "plots" directory exists, if not, create it
+    if (!dir.exists(dir_path)) {
+      dir.create(dir_path)
+    }
+    ggsave(paste0(dir_path, file_name), plot_object, width = 10, height = 10, dpi = 300)  # High resolution PNG
+  }
+  
+  # Return the plot object for further customization
+  return(plot_object)
+}
