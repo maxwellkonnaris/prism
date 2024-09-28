@@ -1,3 +1,17 @@
+#' Forest Plot of Confidence Intervals for Multiple Data Frames
+#'
+#' This function creates a professional-looking forest plot of confidence intervals for multiple data frames. Each data frame is plotted side by side with shared y-axis labels, and each plot is labeled with the name of the data frame.
+#'
+#' @param data_list A named list of data frames. Each data frame should contain the necessary columns as specified below.
+#' @param bg A character string indicating the background color of the plot. Options are "white" (default) or "transparent".
+#' @param save A character string indicating the file format to save the plot. Options are "png", "jpg", "svg", "pdf". Default is NULL, which means the plot is not saved.
+#' @param filename A character string indicating the file name when saving the plot. Default is NULL, which means the plot is saved as forest_plot if save format is indicated.
+#' @param dir_path A character string indicating the directory to store the plot. Default is \code{"./plots/"} which creates the plots directory in the current directory.
+#' @param color_y_axis_by_ci Logical, whether to color the y-axis text according to the 95% confidence intervals from the first dataframe. Default is FALSE.
+#' @return A ggplot object representing the combined forest plot.
+#' @import ggplot2
+#' @import dplyr
+#' @export
 prism.forestplot <- function(data_list, bg = "white", save = NULL, filename = NULL, dir_path = "./plots/", color_y_axis_by_ci = FALSE) {
 
   # Check if input is a data frame, convert to a named list if true
@@ -6,8 +20,8 @@ prism.forestplot <- function(data_list, bg = "white", save = NULL, filename = NU
   }
   
   # Check that data_list is a named list of data frames
-  if (!is.list(data_list) || is.null(names(data_list))) {
-    stop("data_list must be a named list of data frames.")
+  if (!is.list(data_list)) {
+    stop("data_list must be a list of data frames.")
   }
   
   # Required columns
@@ -18,12 +32,11 @@ prism.forestplot <- function(data_list, bg = "white", save = NULL, filename = NU
   data_frames <- list()
   
   # First dataset (for reordering comparison levels)
-  first_dataset_name <- names(data_list)[1]
-  first_data <- data_list[[first_dataset_name]]
+  first_data <- data_list[[1]]  # Always use the first dataframe for comparison reordering
   
   # Ensure the first data has the necessary columns
   if (!all(required_columns %in% colnames(first_data))) {
-    stop(paste("Data frame '", first_dataset_name, "' must contain columns:", paste(required_columns, collapse = ", ")))
+    stop(paste("First data frame must contain columns:", paste(required_columns, collapse = ", ")))
   }
   
   # Reorder the comparison names in the first dataset by the lower bound of the 95% confidence interval
@@ -43,10 +56,11 @@ prism.forestplot <- function(data_list, bg = "white", save = NULL, filename = NU
       deframe()
   }
   
-  # Loop over each data frame in data_list
-  for (dataset_name in names(data_list)) {
-    data <- data_list[[dataset_name]]
-    
+  # Loop over each dataframe in data_list by index (to preserve the order of the list)
+  for (i in seq_along(data_list)) {
+    data <- data_list[[i]]
+    dataset_name <- paste0("Dataset ", i)  # Create generic dataset names based on the index
+
     # Ensure the data has the necessary columns
     if (!all(required_columns %in% colnames(data))) {
       stop(paste("Data frame '", dataset_name, "' must contain columns:", paste(required_columns, collapse = ", ")))
@@ -56,14 +70,14 @@ prism.forestplot <- function(data_list, bg = "white", save = NULL, filename = NU
     p_value_provided <- "p_value" %in% colnames(data)
     data$p_value_provided <- p_value_provided  # Add a flag column
     
-    # Add a column for the dataset name
+    # Add a column for the dataset name (use index-based names to preserve order)
     data$Dataset <- dataset_name
     
     # Reorder the comparison factor based on the first dataset
     data$comparison <- factor(data$comparison, levels = comparison_order)
     
     # Append to the list
-    data_frames[[dataset_name]] <- data
+    data_frames[[i]] <- data
   }
   
   # Combine all data frames into one
@@ -81,19 +95,19 @@ prism.forestplot <- function(data_list, bg = "white", save = NULL, filename = NU
   # Create the forest plot
   plot <- ggplot(combined_data, aes(x = comparison)) +
     coord_flip() +
-    theme_classic(base_size = 12) +
+    theme_classic(base_size = 16) +
     labs(
       x = "Taxa Comparison",
       y = "Estimated Covariance",
       color = NULL
     ) +
     theme(
-      axis.text.x = element_text(size = 12),
-      axis.title = element_text(size = 15, face = "bold"),
-      strip.text = element_text(size = 15, face = "bold"),
+      axis.text.x = element_text(size = 14),
+      axis.title = element_text(size = 18, face = "bold"),
+      strip.text = element_text(size = 18, face = "bold"),
       legend.position = "top",
       legend.title = element_blank(),
-      legend.text = element_text(size = 15)
+      legend.text = element_text(size = 24)
     ) +
     scale_color_manual(
       values = c(
@@ -197,7 +211,7 @@ prism.forestplot <- function(data_list, bg = "white", save = NULL, filename = NU
     file_name <- paste0(dir_path, filename, ".", save)
     
     # Adjust width based on the number of data frames
-    plot_width <- 5 * length(data_list)
+    plot_width <- 4 * length(data_list)
     
     ggsave(file_name, plot, width = plot_width, height = final_height, dpi = 300, device = save, bg = bg, limitsize = FALSE)
   }
