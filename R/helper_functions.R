@@ -879,6 +879,27 @@ prism.simulate_data_sparsecorr <- function(n_taxa=20, n_samples=50, rare_pct=0.2
     return(latent_vars)
   }
   
+  # Function to compute sparsity (fraction of correlations close to 0)
+  compute_sparsity <- function(corr_matrix, lower_bound = -0.05, upper_bound = 0.05) {
+    # Get the off-diagonal elements (i.e., ignore self-correlations)
+    corr_values <- corr_matrix[upper.tri(corr_matrix, diag = FALSE)]
+    
+    # Calculate the proportion of correlations within the specified range
+    sparsity <- mean(corr_values >= lower_bound & corr_values <= upper_bound)
+    return(sparsity)
+  }
+  
+  # Optimization function to minimize the difference in sparsity
+  calculate_sparsity_diff <- function(proposed_corr_matrix, W_corr_matrix, target_sparsity) {
+    W_sparsity <- compute_sparsity(W_corr_matrix)  # Compute sparsity for simulated data
+    proposed_sparsity <- compute_sparsity(proposed_corr_matrix)  # Compute sparsity for correlation matrix
+    diff <- abs(W_sparsity - target_sparsity)
+    return(diff)
+  }
+  
+  # Calculate target sparsity based on the provided "sparsity" variable (percentage)
+  target_sparsity <- sparsity / 100
+  
   # Helper function to resample data using multinomial distribution
   resample_data <- function(W.para, seq_depth) {
     # Resample abundances using multinomial distribution for each sample
@@ -905,7 +926,7 @@ prism.simulate_data_sparsecorr <- function(n_taxa=20, n_samples=50, rare_pct=0.2
   latent_vars_pre <- generate_latent_variables(n_samples, corr_matrix)
   latent_vars_post <- generate_latent_variables(n_samples, corr_matrix)
   
-# Step 3: Exponentiate the latent variables (log-normal transformation)
+  # Step 3: Exponentiate the latent variables (log-normal transformation)
   W_pre <- exp(latent_vars_pre)  # Pre-treatment log-normal transformation
   W_post <- exp(latent_vars_post)  # Post-treatment log-normal transformation
   
@@ -931,20 +952,43 @@ prism.simulate_data_sparsecorr <- function(n_taxa=20, n_samples=50, rare_pct=0.2
   # Step 7: Calculate total abundances (W.perp)
   W.perp <- rowSums(W)
   
-  # Step 8: Resample the data into sequencing counts using multinomial distribution
+  # Step 8: Now resample the data into sequencing counts using multinomial distribution
   Y <- resample_data(W.para, seq_depth)
   
-  # Step 9: Create a condition vector (Pre = 1, Post = 2)
+  # Step 9: Now perform the optimization loop based on the generated W correlation matrix
+  best_corr_matrix <- corr_matrix  # Use the initial correlation matrix as a starting point
+  best_diff <- Inf  # Initialize a large value for the difference
+  
+  for (iteration in 1:100) {  # Adjust number of iterations as needed
+    # Generate latent variables and W matrix for the current correlation matrix
+    latent_vars_pre <- generate_latent_variables(n_samples, best_corr_matrix)
+    latent_vars_post <- generate_latent_variables(n_samples, best_corr_matrix)
+    
+    # Combine and calculate correlation matrix for the new W
+    W <- rbind(exp(latent_vars_pre), exp(latent_vars_post))
+    W_corr_matrix <- cor(W)
+    
+    # Calculate the difference in sparsity between the generated W and the desired sparsity
+    sparsity_diff <- calculate_sparsity_diff(best_corr_matrix, W_corr_matrix, target_sparsity)
+    
+    # If a better (lower) sparsity difference is found, update the best matrix
+    if (sparsity_diff < best_diff) {
+      best_corr_matrix <- create_correlation_matrix(n_taxa, sparsity)  # Adjust the correlation matrix
+      best_diff <- sparsity_diff
+    }
+  }
+  
+  # Step 10: Create a condition vector (Pre = 1, Post = 2)
   Condition <- factor(rep(c("Pre", "Post"), each = n_samples), levels = c("Pre", "Post"))
   
-  # Step 10: Combine true counts and conditions into a dataframe
+  # Step 11: Combine true counts and conditions into a dataframe
   true_abundances <- data.frame(Condition, W)
   
-  # Step 11: Simulate flow cytometry data using W.perp and sample names from the true abundances
+  # Step 12: Simulate flow cytometry data using W.perp and sample names from the true abundances
   samp_names <- rownames(true_abundances)
   flow_data <- flow_cytometry(W.perp, samp_names = seq_len(length(W.perp)), replicates = replicates, flow_sd = flow_sd)
   
-  # Step 12: If replicates > 1, collapse flow data to compute mean and standard deviation
+  # Step 13: If replicates > 1, collapse flow data to compute mean and standard deviation
   if (replicates > 1) {
     flow_data_collapse <- flow_data %>%
       dplyr::group_by(sample) %>%
@@ -954,7 +998,7 @@ prism.simulate_data_sparsecorr <- function(n_taxa=20, n_samples=50, rare_pct=0.2
       dplyr::ungroup()
   }
   
-  # Step 13: Compile results
+  # Step 14: Compile results
   if (replicates > 1) {
     return(list(
       W = W,
@@ -964,7 +1008,7 @@ prism.simulate_data_sparsecorr <- function(n_taxa=20, n_samples=50, rare_pct=0.2
       flow = flow_data,
       flow.collapse = flow_data_collapse,
       W.condition = true_abundances,
-      corr_matrix = corr_matrix
+      best_corr_matrix = best_corr_matrix
     ))
   } else {
     return(list(
@@ -974,7 +1018,7 @@ prism.simulate_data_sparsecorr <- function(n_taxa=20, n_samples=50, rare_pct=0.2
       Y = Y,
       flow = flow_data,
       W.condition = true_abundances,
-      corr_matrix = corr_matrix
+      best_corr_matrix = best_corr_matrix
     ))
   }
 }
