@@ -1655,7 +1655,7 @@ prism.posteriorsamples <- function(rWparaoriginal, dir_path="./plots/", file_nam
 #'   # Generate correlation plot and covariance heatmap
 #'   plot_true_abundances(rdat, flow_data, dat, file_path = "true_abundances_plot.png")
 #' }
-prism.trueabundanceplot <- function(W.perp, W, corr_matrix, dir_path = "./plots/", file_path = "true_abundances.png") {
+prism.trueabundanceplot <- function(W.perp, W, corr_matrix, W.condition, dir_path = "./plots/", file_path = "true_abundances.png") {
   
   # Get the number of taxa (D) from the data
   D <- ncol(W)
@@ -1733,22 +1733,22 @@ prism.trueabundanceplot <- function(W.perp, W, corr_matrix, dir_path = "./plots/
     ) +
     ggtitle("True Correlations of Taxa and Scale")
   
-  # Ridge plot for distributions of relative abundances of W for each taxon
-  taxa_abundances <- reshape2::melt(as.data.frame(t(composition)))
-
-    # Check the structure of the melted data to ensure correct column naming
-  if (ncol(taxa_abundances) == 2) {
-    colnames(taxa_abundances) <- c("Taxa", "Abundance")
-  } else {
-    colnames(taxa_abundances) <- c("Taxa", "Sample", "Abundance")
-  }
+  # Add the "Condition" column (Pre/Post) to the relative abundances data
+  W.para_long <- reshape2::melt(W.para)
+  colnames(W.para_long) <- c("Sample", "Taxa", "Value")
+  W.para_long$Condition <- W.condition$Condition
   
-  ridge_plot <- ggplot(taxa_abundances, aes(x = Abundance, y = Taxa, fill = Taxa)) +
-    geom_density_ridges(scale = 0.9, alpha = 0.7) +
+  # Convert Taxa to factor
+  W.para_long$Taxa <- as.factor(W.para_long$Taxa)
+
+  # Ridge plot showing Pre and Post conditions for each taxon
+  ridge_plot <- ggplot(W.para_long, aes(x = Value, y = Taxa, fill = Condition)) +
+    geom_density_ridges(scale = 1, alpha = 0.7) +
+    labs(title = "Ridge Plot of Taxa with Pre and Post Conditions",
+         x = "Relative Abundance",
+         y = "Taxa") +
     theme_ridges() +
-    labs(x = "Relative Abundance", y = "Taxa") +
-    theme(legend.position = "none") +
-    ggtitle("Distributions of Relative Abundances of W")
+    theme(legend.position = "right")
   
   # Convert plots to grobs
   forest_plot_grob <- ggplotGrob(forest_plot)
@@ -1773,7 +1773,7 @@ prism.trueabundanceplot <- function(W.perp, W, corr_matrix, dir_path = "./plots/
   png(filename = paste0(dir_path, file_path), width = 15, height = 15, units = "in", res = 300)
   
   # Arrange the plots: heatmaps on the top row, forest plot and ridge plot on the bottom row
-  gridExtra::grid.arrange(correlation_grob, underlying_correlation_grob, forest_plot_grob, ridge_plot_grob, ncol = 2, nrow = 2,bottom = sd_text_grob)
+  gridExtra::grid.arrange(correlation_grob, underlying_correlation_grob, forest_plot_grob, ridge_plot_grob, ncol = 2, nrow = 2, bottom = sd_text_grob)
   
   # Close the device to save the file
   dev.off()
