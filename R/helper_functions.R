@@ -789,3 +789,176 @@ calculate_mcse <- function(bootstrap_estimates) {
       mcse_max = mcse(maxsigma_absolute_maximum_covariance)
     )
 }
+
+                              #' Simulate sparse correlated microbiome data with Poisson-distributed true abundances and flow cytometry data
+#'
+#' This function generates simulated microbiome count data with user-defined 
+#' sparsity in positive and negative correlations between taxa. The true abundances 
+#' are modeled using latent variables from a multivariate normal distribution, 
+#' and the correlations between taxa can be controlled by the `sparsity_level`.
+#'
+#' The simulated true abundances can be resampled into sequencing counts using a multinomial distribution.
+#' Additionally, flow cytometry measurements for total cell counts can be simulated with user-specified standard deviations.
+#'
+#' @param n_taxa Integer. The number of taxa (features) to simulate.
+#' @param n_samples Integer. The number of samples per condition (Pre and Post) to simulate.
+#' @param rare_pct Numeric. The proportion of rare taxa (between 0 and 1).
+#' @param medium_pct Numeric. The proportion of medium-abundance taxa (between 0 and 1).
+#' @param seq_depth Integer. The total sequencing depth for resampling the simulated data.
+#' @param sparsity_level Numeric. The proportion of taxa pairs to introduce positive or negative correlations (0 for no correlation, 1 for full correlation).
+#' @param flow_sd Numeric. The standard deviation for flow cytometry measurements (default = 300).
+#' @param replicates Integer. Number of replicates for each flow cytometry sample (default = 1).
+#'
+#' @return A list containing the following elements:
+#' \describe{
+#'   \item{W}{Matrix of true abundances for both Pre and Post conditions.}
+#'   \item{W.para}{Matrix of proportions of taxa in each sample.}
+#'   \item{W.perp}{Vector of total abundances (per sample) for all samples.}
+#'   \item{Y}{Matrix of resampled sequencing counts using a multinomial distribution.}
+#'   \item{rdat_flow}{Flow cytometry measurements with replicates.}
+#'   \item{rdat_flow_collapse}{Flow cytometry data collapsed to mean and standard deviation (only if replicates > 1).}
+#'   \item{true_abundances}{Dataframe of true abundances with Pre/Post condition labels.}
+#'   \item{corr_matrix}{The correlation matrix used for simulating latent variables.}
+#' }
+#'
+#' @examples
+#' \dontrun{
+#' set.seed(123)
+#' simulated_data <- prism.simulate_data_sparsecorr(
+#'   n_taxa = 20, n_samples = 50, rare_pct = 0.2, medium_pct = 0.3, seq_depth = 1000, sparsity_level = 0.5
+#' )
+#' }
+#'
+#' @export
+prism.simulate_data_sparsecorr <- function(n_taxa, n_samples, rare_pct, medium_pct, seq_depth, sparsity_level, flow_sd = 300, replicates = 1) {
+  
+  # Helper function to create a correlation matrix with positive and negative correlations
+  create_correlation_matrix <- function(n_taxa, sparsity_level) {
+    corr_matrix <- diag(1, n_taxa, n_taxa)
+    n_pairs <- n_taxa * (n_taxa - 1) / 2
+    n_correlations <- round(sparsity_level * n_pairs)
+    all_pairs <- combn(1:n_taxa, 2, simplify = TRUE)
+    selected_pairs <- all_pairs[, sample(ncol(all_pairs), n_correlations)]
+    
+    for (i in 1:ncol(selected_pairs)) {
+      idx1 <- selected_pairs[1, i]
+      idx2 <- selected_pairs[2, i]
+      corr_value <- sample(c(-0.9, -0.8, -0.7, 0.7, 0.8, 0.9), 1)
+      corr_matrix[idx1, idx2] <- corr_value
+      corr_matrix[idx2, idx1] <- corr_value
+    }
+    
+    diag(corr_matrix) <- 1
+    return(corr_matrix)
+  }
+  
+  # Helper function to generate latent variables with a given correlation structure
+  generate_latent_variables <- function(n_samples, corr_matrix) {
+    cov_matrix <- nearPD(corr_matrix)$mat
+    latent_vars <- MASS::mvrnorm(n_samples, mu = rep(0, ncol(corr_matrix)), Sigma = cov_matrix)
+    return(latent_vars)
+  }
+  
+  # Helper function to resample data using multinomial distribution
+  resample_data <- function(W.para, seq_depth) {
+    # Resample abundances using multinomial distribution for each sample
+    Y <- t(apply(W.para, 1, function(p) {
+      rmultinom(1, size = seq_depth, prob = p)
+    }))
+    
+    return(Y)
+  }
+  
+  # Helper function to simulate flow cytometry measurements
+  flow_cytometry <- function(totals, samp_names, replicates, flow_sd) {
+    samp_names <- rep(samp_names, each = replicates)
+    flow_vals <- sapply(totals, FUN = function(total, replicates) {
+      stats::rnorm(replicates, mean = total, sd = flow_sd)
+    }, replicates = replicates, simplify = TRUE)
+    flow_data <- data.frame("sample" = samp_names, "flow" = c(flow_vals))
+    return(flow_data)
+  }
+  
+  # Generate a correlation matrix with the specified sparsity level
+  corr_matrix <- create_correlation_matrix(n_taxa, sparsity_level)
+  
+  # Generate latent variables for Pre and Post conditions
+  latent_vars_pre <- generate_latent_variables(n_samples, corr_matrix)
+  latent_vars_post <- generate_latent_variables(n_samples, corr_matrix)
+  
+  # Map latent variables to Poisson means
+  latent_vars_pre <- exp(latent_vars_pre + 3)
+  latent_vars_post <- exp(latent_vars_post + 3)
+  
+  # Split taxa into rare, medium, and frequent groups
+  n_rare <- round(n_taxa * rare_pct)
+  n_medium <- round(n_taxa * medium_pct)
+  n_frequent <- n_taxa - n_rare - n_medium
+  
+  # Scale rare, medium, and frequent taxa differently
+  W_pre <- latent_vars_pre
+  W_pre[, 1:n_rare] <- latent_vars_pre[, 1:n_rare] * runif(n_rare, 0.01, 0.05)
+  W_pre[, (n_rare + 1):(n_rare + n_medium)] <- latent_vars_pre[, (n_rare + 1):(n_rare + n_medium)] * runif(n_medium, 0.1, 0.3)
+  W_pre[, (n_rare + n_medium + 1):n_taxa] <- latent_vars_pre[, (n_rare + n_medium + 1):n_taxa] * runif(n_frequent, 0.4, 0.6)
+  
+  W_post <- latent_vars_post
+  W_post[, 1:n_rare] <- latent_vars_post[, 1:n_rare] * runif(n_rare, 0.01, 0.05)
+  W_post[, (n_rare + 1):(n_rare + n_medium)] <- latent_vars_post[, (n_rare + 1):(n_rare + n_medium)] * runif(n_medium, 0.1, 0.3)
+  W_post[, (n_rare + n_medium + 1):n_taxa] <- latent_vars_post[, (n_rare + n_medium + 1):n_taxa] * runif(n_frequent, 0.4, 0.6)
+  
+  # Combine Pre and Post into one dataset
+  W <- rbind(W_pre, W_post)
+  
+  # Normalize to get proportions (W.para)
+  W.para <- W / rowSums(W)
+  
+  # Calculate total abundances (W.perp)
+  W.perp <- rowSums(W)
+  
+  # Resample the data into sequencing counts using multinomial distribution
+  Y <- resample_data(W.para, seq_depth)
+  
+  # Create a condition vector (Pre = 1, Post = 2)
+  Condition <- factor(rep(c("Pre", "Post"), each = n_samples), levels = c("Pre", "Post"))
+  
+  # Combine true counts and conditions into a dataframe
+  true_abundances <- data.frame(Condition, W)
+  
+  # Simulate flow cytometry data using W.perp and sample names from the true abundances
+  samp_names <- rownames(true_abundances)
+  flow_data <- flow_cytometry(W.perp, samp_names = seq_len(length(W.perp)), replicates = replicates, flow_sd = flow_sd)
+  
+  # If replicates > 1, collapse flow data to compute mean and standard deviation
+  if (replicates > 1) {
+    flow_data_collapse <- flow_data %>%
+      dplyr::group_by(sample) %>%
+      dplyr::mutate(mean = mean(flow), stdev = stats::sd(flow)) %>%
+      dplyr::select(-flow) %>%
+      dplyr::distinct() %>%
+      dplyr::ungroup()
+  }
+  
+  # Compile results
+  if (replicates > 1) {
+    return(list(
+      W = W,
+      W.para = W.para,
+      W.perp = W.perp,
+      Y = Y,
+      flow = flow_data,
+      flow_collapse = flow_data_collapse,
+      true_abundances = true_abundances,
+      corr_matrix = corr_matrix
+    ))
+  } else {
+    return(list(
+      W = W,
+      W.para = W.para,
+      W.perp = W.perp,
+      Y = Y,
+      flow = flow_data,
+      true_abundances = true_abundances,
+      corr_matrix = corr_matrix
+    ))
+  }
+}
