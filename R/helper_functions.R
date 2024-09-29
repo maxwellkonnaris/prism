@@ -905,24 +905,19 @@ prism.simulate_data_sparsecorr <- function(n_taxa=20, n_samples=50, rare_pct=0.2
   latent_vars_pre <- generate_latent_variables(n_samples, corr_matrix)
   latent_vars_post <- generate_latent_variables(n_samples, corr_matrix)
   
-  # Step 3: Map latent variables to Poisson means and scale for pre- and post-treatment
-  latent_vars_pre <- exp(latent_vars_pre + 3)  # Pre-treatment scaling
-  latent_vars_post <- exp(latent_vars_post + 3)  # Post-treatment scaling
-
-  # Step 4: Sample counts from the Poisson distribution using the latent variables
-  W_pre <- matrix(rpois(n_samples * n_taxa, lambda = c(latent_vars_pre)), ncol = n_taxa)
-  W_post <- matrix(rpois(n_samples * n_taxa, lambda = c(latent_vars_post)), ncol = n_taxa)
-
-  # Step 5: Split taxa into rare, medium, and frequent groups for further scaling
+# Step 3: Exponentiate the latent variables (log-normal transformation)
+  W_pre <- exp(latent_vars_pre)  # Pre-treatment log-normal transformation
+  W_post <- exp(latent_vars_post)  # Post-treatment log-normal transformation
+  
+  # Step 4: Split taxa into rare, medium, and frequent groups and scale the abundances
   n_rare <- round(n_taxa * rare_pct)
   n_medium <- round(n_taxa * medium_pct)
   n_frequent <- n_taxa - n_rare - n_medium
-
-  # Apply scaling factors to different taxa groups
+  
   W_pre[, 1:n_rare] <- W_pre[, 1:n_rare] * runif(n_rare, 0.01, 0.05)  # Rare taxa
   W_pre[, (n_rare + 1):(n_rare + n_medium)] <- W_pre[, (n_rare + 1):(n_rare + n_medium)] * runif(n_medium, 0.1, 0.3)  # Medium taxa
   W_pre[, (n_rare + n_medium + 1):n_taxa] <- W_pre[, (n_rare + n_medium + 1):n_taxa] * runif(n_frequent, 0.4, 0.6)  # Frequent taxa
-
+  
   W_post[, 1:n_rare] <- W_post[, 1:n_rare] * runif(n_rare, 0.01, 0.05)  # Rare taxa
   W_post[, (n_rare + 1):(n_rare + n_medium)] <- W_post[, (n_rare + 1):(n_rare + n_medium)] * runif(n_medium, 0.1, 0.3)  # Medium taxa
   W_post[, (n_rare + n_medium + 1):n_taxa] <- W_post[, (n_rare + n_medium + 1):n_taxa] * runif(n_frequent, 0.4, 0.6)  # Frequent taxa
