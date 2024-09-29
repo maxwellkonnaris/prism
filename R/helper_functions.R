@@ -943,21 +943,22 @@ prism.simulate_data_sparsecorr <- function(n_taxa=20, n_samples=50, rare_pct=0.2
   W_pre <- exp(latent_vars_pre)  # Pre-treatment log-normal transformation
   W_post <- exp(latent_vars_post)  # Post-treatment log-normal transformation
   
-  # Step 6: Split taxa into rare, medium, and frequent groups and scale the abundances
+  # Step 6: Predefine indices for rare, medium, and frequent taxa (same for pre and post)
   n_rare <- round(n_taxa * rare_pct)
   n_medium <- round(n_taxa * medium_pct)
   n_frequent <- n_taxa - n_rare - n_medium
   
-  W_pre[, 1:n_rare] <- W_pre[, 1:n_rare] * runif(n_rare, 0.01, 0.05)  # Rare taxa
-  W_pre[, (n_rare + 1):(n_rare + n_medium)] <- W_pre[, (n_rare + 1):(n_rare + n_medium)] * runif(n_medium, 0.1, 0.3)  # Medium taxa
-  W_pre[, (n_rare + n_medium + 1):n_taxa] <- W_pre[, (n_rare + n_medium + 1):n_taxa] * runif(n_frequent, 0.4, 0.6)  # Frequent taxa
-  
-  W_post[, 1:n_rare] <- W_post[, 1:n_rare] * runif(n_rare, 0.01, 0.05)  # Rare taxa
-  W_post[, (n_rare + 1):(n_rare + n_medium)] <- W_post[, (n_rare + 1):(n_rare + n_medium)] * runif(n_medium, 0.1, 0.3)  # Medium taxa
-  W_post[, (n_rare + n_medium + 1):n_taxa] <- W_post[, (n_rare + n_medium + 1):n_taxa] * runif(n_frequent, 0.4, 0.6)  # Frequent taxa
+  rare_taxa_indices <- 1:n_rare
+  medium_taxa_indices <- (n_rare + 1):(n_rare + n_medium)
+  frequent_taxa_indices <- (n_rare + n_medium + 1):n_taxa
   
   # Step 7: Combine Pre and Post into one dataset
   W <- rbind(W_pre, W_post)
+
+    # Apply the same groupings for both W_pre and W_post
+  W[, rare_taxa_indices] <- W[, rare_taxa_indices] * runif(n_rare, 0.01, 0.05)  # Rare taxa
+  W[, medium_taxa_indices] <- W[, medium_taxa_indices] * runif(n_medium, 0.1, 0.4)  # Medium taxa
+  W[, frequent_taxa_indices] <- W[, frequent_taxa_indices] * runif(n_frequent, 0.5, 0.7)  # Frequent taxa
 
   # Step 8: Optimization loop based on the generated W correlation matrix
   best_corr_matrix <- corr_matrix  # Use the initial correlation matrix as a starting point
