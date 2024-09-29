@@ -790,7 +790,7 @@ calculate_mcse <- function(bootstrap_estimates) {
     )
 }
 
-                              #' Simulate sparse correlated microbiome data with Poisson-distributed true abundances and flow cytometry data
+#' Simulate sparse correlated microbiome data with Poisson-distributed true abundances and flow cytometry data
 #'
 #' This function generates simulated microbiome count data with user-defined 
 #' sparsity in positive and negative correlations between taxa. The true abundances 
@@ -805,7 +805,7 @@ calculate_mcse <- function(bootstrap_estimates) {
 #' @param rare_pct Numeric. The proportion of rare taxa (between 0 and 1).
 #' @param medium_pct Numeric. The proportion of medium-abundance taxa (between 0 and 1).
 #' @param seq_depth Integer. The total sequencing depth for resampling the simulated data.
-#' @param sparsity_level Numeric. The proportion of taxa pairs to introduce positive or negative correlations (0 for no correlation, 1 for full correlation).
+#' @param sparsity_level Numeric. The proportion of taxa pairs to introduce positive or negative correlations (from 0 to 100, where 0 means no correlations and 100 means fully correlated).
 #' @param flow_sd Numeric. The standard deviation for flow cytometry measurements (default = 300).
 #' @param replicates Integer. Number of replicates for each flow cytometry sample (default = 1).
 #'
@@ -825,7 +825,7 @@ calculate_mcse <- function(bootstrap_estimates) {
 #' \dontrun{
 #' set.seed(123)
 #' simulated_data <- prism.simulate_data_sparsecorr(
-#'   n_taxa = 20, n_samples = 50, rare_pct = 0.2, medium_pct = 0.3, seq_depth = 1000, sparsity_level = 0.5
+#'   n_taxa = 20, n_samples = 50, rare_pct = 0.2, medium_pct = 0.3, seq_depth = 1000, sparsity_level = 50
 #' )
 #' }
 #'
@@ -835,20 +835,33 @@ prism.simulate_data_sparsecorr <- function(n_taxa, n_samples, rare_pct, medium_p
   # Helper function to create a correlation matrix with positive and negative correlations
   create_correlation_matrix <- function(n_taxa, sparsity_level) {
     corr_matrix <- diag(1, n_taxa, n_taxa)
+    
+    # Calculate the total number of unique pairs (n_taxa choose 2)
     n_pairs <- n_taxa * (n_taxa - 1) / 2
-    n_correlations <- round(sparsity_level * n_pairs)
+    
+    # Determine how many correlations to add based on sparsity level (from 0 to 100)
+    n_correlations <- round((sparsity_level / 100) * n_pairs)
+    
+    # Create a list of all possible unique pairs (ignoring diagonal)
     all_pairs <- combn(1:n_taxa, 2, simplify = TRUE)
+    
+    # Select random pairs to introduce correlations (based on sparsity level)
     selected_pairs <- all_pairs[, sample(ncol(all_pairs), n_correlations)]
     
+    # Add positive and negative correlations to the selected pairs
     for (i in 1:ncol(selected_pairs)) {
       idx1 <- selected_pairs[1, i]
       idx2 <- selected_pairs[2, i]
-      corr_value <- sample(c(-0.9, -0.8, -0.7, 0.7, 0.8, 0.9), 1)
+      
+      # Assign a continuous random correlation value between -1 and 1
+      corr_value <- runif(1, -1, 1)
+      
+      # Assign the correlation to the matrix
       corr_matrix[idx1, idx2] <- corr_value
       corr_matrix[idx2, idx1] <- corr_value
     }
     
-    diag(corr_matrix) <- 1
+    diag(corr_matrix) <- 1  # Ensure the diagonal is 1 (self-correlation)
     return(corr_matrix)
   }
   
@@ -861,11 +874,9 @@ prism.simulate_data_sparsecorr <- function(n_taxa, n_samples, rare_pct, medium_p
   
   # Helper function to resample data using multinomial distribution
   resample_data <- function(W.para, seq_depth) {
-    # Resample abundances using multinomial distribution for each sample
     Y <- t(apply(W.para, 1, function(p) {
       rmultinom(1, size = seq_depth, prob = p)
     }))
-    
     return(Y)
   }
   
@@ -947,7 +958,7 @@ prism.simulate_data_sparsecorr <- function(n_taxa, n_samples, rare_pct, medium_p
       Y = Y,
       flow = flow_data,
       flow_collapse = flow_data_collapse,
-      true_abundances = true_abundances,
+      W.full = true_abundances,
       corr_matrix = corr_matrix
     ))
   } else {
@@ -957,8 +968,9 @@ prism.simulate_data_sparsecorr <- function(n_taxa, n_samples, rare_pct, medium_p
       W.perp = W.perp,
       Y = Y,
       flow = flow_data,
-      true_abundances = true_abundances,
+      W.full = true_abundances,
       corr_matrix = corr_matrix
     ))
   }
 }
+
