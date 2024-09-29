@@ -1928,16 +1928,7 @@ prism.circlenetwork <- function(data_list, metric = "covariance", pvalue = FALSE
     stop("Invalid metric. Please specify either 'covariance' or 'correlation'.")
   }
   
-  # Initialize list to store ggplot objects
-  plot_list <- list()
-  
-  # Get all unique taxa across all dataframes for consistent node plotting
-  all_taxa <- unique(unlist(lapply(data_list, function(df) unique(c(df$taxa1, df$taxa2)))))
-  
-  # Sort the taxa alphabetically or however you want the order to be fixed
-  all_taxa <- sort(all_taxa)
-  
-  # Loop through each dataframe in data_list
+  # Preprocess each dataframe in data_list to ensure 'taxa1', 'taxa2', 'ninetyfive_ci_lower', 'ninetyfive_ci_upper'
   for (dataset_name in names(data_list)) {
     results <- data_list[[dataset_name]]
     
@@ -1949,10 +1940,27 @@ prism.circlenetwork <- function(data_list, metric = "covariance", pvalue = FALSE
         split_comparison <- strsplit(results$comparison, ":")
         results$taxa1 <- sapply(split_comparison, `[`, 1)
         results$taxa2 <- sapply(split_comparison, `[`, 2)
+        
+        # Update the original dataframe with the new taxa1 and taxa2 columns
+        data_list[[dataset_name]] <- results
       } else {
         stop(paste("Data frame '", dataset_name, "' must contain columns 'taxa1', 'taxa2', 'ninetyfive_ci_lower', 'ninetyfive_ci_upper' or a 'comparison' column."))
       }
     }
+  }
+  
+  # Now that all data frames have taxa1 and taxa2, define all unique taxa across all dataframes
+  all_taxa <- unique(unlist(lapply(data_list, function(df) unique(c(df$taxa1, df$taxa2)))))
+  
+  # Sort the taxa alphabetically or however you want the order to be fixed
+  all_taxa <- sort(all_taxa)
+  
+  # Initialize list to store ggplot objects
+  plot_list <- list()
+
+  # Continue with the rest of the function (looping through the data frames and creating the plots)
+  for (dataset_name in names(data_list)) {
+    results <- data_list[[dataset_name]]
     
     # Filter rows with non-NA taxa and handle sparse data (i.e., NA values in the relevant columns)
     filtered_results <- results[!is.na(results$taxa1) & !is.na(results$taxa2) & !is.na(results$ninetyfive_ci_lower) & !is.na(results$ninetyfive_ci_upper), ]
@@ -2038,6 +2046,7 @@ prism.circlenetwork <- function(data_list, metric = "covariance", pvalue = FALSE
     return(plot_list)  # Return the list of individual plots
   }
 }
+
 
 
 
