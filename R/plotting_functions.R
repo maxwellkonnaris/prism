@@ -1930,6 +1930,9 @@ prism.circlenetwork <- function(data_list, metric = "covariance", pvalue = FALSE
   # Get all unique taxa across all dataframes for consistent node plotting
   all_taxa <- unique(unlist(lapply(data_list, function(df) unique(c(df$taxa1, df$taxa2)))))
   
+  # Sort the taxa alphabetically or however you want the order to be fixed
+  all_taxa <- sort(all_taxa)
+  
   # Loop through each dataframe in data_list
   for (dataset_name in names(data_list)) {
     results <- data_list[[dataset_name]]
@@ -1967,15 +1970,18 @@ prism.circlenetwork <- function(data_list, metric = "covariance", pvalue = FALSE
     # Remove edges where the 95% CI covers zero
     edges <- edges[!((edges$ci_lower <= 0 & edges$ci_upper >= 0)), ]
     
-    # Create an igraph object
+    # Create an igraph object and specify all_taxa as the vertices
     graph <- graph_from_data_frame(edges, directed = FALSE, vertices = all_taxa)
     
     # Set edge properties based on the calculated values
     E(graph)$color <- edges$color
     E(graph)$width <- edges$width
     
-    # Plot using ggraph with circular layout, ensure a circular aspect ratio
-    plot_object <- ggraph(graph, layout = 'circle') +
+    # Fix node positions to maintain the same layout order for each plot
+    layout_fixed <- create_layout(graph, layout = "circle")  # Get the circular layout
+    
+    # Plot using ggraph with circular layout, ensure a circular aspect ratio and consistent node positions
+    plot_object <- ggraph(layout_fixed) +
       geom_edge_link(aes(edge_width = width, color = color), show.legend = FALSE) +
       geom_node_point(size = 5) +
       geom_node_text(aes(label = name), repel = TRUE, size = 6) +  # Larger font size for node labels
@@ -2025,6 +2031,7 @@ prism.circlenetwork <- function(data_list, metric = "covariance", pvalue = FALSE
     return(plot_list)  # Return the list of individual plots
   }
 }
+
 
 
 
