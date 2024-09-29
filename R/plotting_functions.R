@@ -1667,7 +1667,7 @@ prism.trueabundanceplot <- function(W.perp, W, corr_matrix, dir_path = "./plots/
   taxa_data <- t(W)
   rownames(taxa_data) <- taxa_labels
 
-  # Step 8: Normalize to get proportions (W.para)
+  # Normalize to get proportions (W.para)
   W.para <- W / W.perp
 
   composition <- t(W.para)
@@ -1735,7 +1735,9 @@ prism.trueabundanceplot <- function(W.perp, W, corr_matrix, dir_path = "./plots/
   
   # Ridge plot for distributions of relative abundances of W for each taxon
   taxa_abundances <- reshape2::melt(as.data.frame(t(composition)))
-  ridge_plot <- ggplot(taxa_abundances, aes(x = value, y = Var1, fill = Var1)) +
+  colnames(taxa_abundances) <- c("Taxa", "Sample", "Abundance")  # Correct the column names after melting
+  
+  ridge_plot <- ggplot(taxa_abundances, aes(x = Abundance, y = Taxa, fill = Taxa)) +
     geom_density_ridges(scale = 0.9, alpha = 0.7) +
     theme_ridges() +
     labs(x = "Relative Abundance", y = "Taxa") +
@@ -1762,18 +1764,8 @@ prism.trueabundanceplot <- function(W.perp, W, corr_matrix, dir_path = "./plots/
   # Close the device to save the file
   dev.off()
   
-  return(list(
-    forest_plot_data = forest_plot_data  # Keep the forest plot data intact
-  ))
+  return(forest_plot_data)  # Keep the forest plot data intact
 }
-
-
-
-
-
-
-
-
 
 #' Generate a professional network plot from confidence interval data with optional p-values
 #'
