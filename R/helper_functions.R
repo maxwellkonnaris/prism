@@ -995,8 +995,8 @@ prism.simulate_data_sparsecorr <- function(n_taxa=20, n_samples=50, rare_pct=0.2
   # Step 9: Use the best W matrix for subsequent steps
   W <- best_W
   
-  # Step 10: Normalize to get proportions (W.para)
-  W.para <- W / rowSums(W)
+  # Step 10: Normalize to get proportions (W.para) so that each row sums to 1
+  W.para <- sweep(W, 1, rowSums(W), "/")
   
   # Step 11: Calculate total abundances (W.perp)
   W.perp <- rowSums(W)
