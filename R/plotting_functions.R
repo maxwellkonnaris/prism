@@ -1927,6 +1927,9 @@ prism.circlenetwork <- function(data_list, metric = "covariance", pvalue = FALSE
   # Initialize list to store ggplot objects
   plot_list <- list()
   
+  # Get all unique taxa across all dataframes for consistent node plotting
+  all_taxa <- unique(unlist(lapply(data_list, function(df) unique(c(df$taxa1, df$taxa2)))))
+  
   # Loop through each dataframe in data_list
   for (dataset_name in names(data_list)) {
     results <- data_list[[dataset_name]]
@@ -1965,44 +1968,25 @@ prism.circlenetwork <- function(data_list, metric = "covariance", pvalue = FALSE
     edges <- edges[!((edges$ci_lower <= 0 & edges$ci_upper >= 0)), ]
     
     # Create an igraph object
-    graph <- graph_from_data_frame(edges, directed = FALSE)
+    graph <- graph_from_data_frame(edges, directed = FALSE, vertices = all_taxa)
     
     # Set edge properties based on the calculated values
     E(graph)$color <- edges$color
     E(graph)$width <- edges$width
     
-    # Plot using ggraph with circular layout
+    # Plot using ggraph with circular layout, ensure a circular aspect ratio
     plot_object <- ggraph(graph, layout = 'circle') +
       geom_edge_link(aes(edge_width = width, color = color), show.legend = FALSE) +
       geom_node_point(size = 5) +
       geom_node_text(aes(label = name), repel = TRUE, size = 6) +  # Larger font size for node labels
       scale_edge_color_manual(values = c("blue", "red", "grey")) +  # Blue for positive, Red for negative
+      coord_fixed() +  # Ensures circular plot (aspect ratio = 1)
       theme_void() +
       theme(
         legend.position = "none",
         plot.title = element_text(hjust = 0.5, size = 20, face = "bold")  # Large centered title
       ) +
       ggtitle(dataset_name)  # Title with dataset name
-    
-    # Add a legend for edge thickness representing confidence intervals
-    plot_object <- plot_object + 
-      annotate("text", x = Inf, y = Inf, label = "Thick = High Certainty\nThin = Low Certainty", 
-               hjust = 1.5, vjust = 1.5, size = 5, color = "black")
-    
-    # Add p-values to the plot title if requested
-    if (pvalue) {
-      plot_object <- plot_object + ggtitle(paste0(dataset_name, "\nP-values included"))
-    }
-    
-    # Save the plot if save_plot is TRUE
-    if (save_plot) {
-      # Check if "plots" directory exists, if not, create it
-      if (!dir.exists(dir_path)) {
-        dir.create(dir_path)
-      }
-      # Save each plot with the dataset name as the suffix
-      ggsave(paste0(dir_path, file_name, "_", dataset_name, ".png"), plot_object, width = 10, height = 10, dpi = 300)
-    }
     
     # Add the plot to the list
     plot_list[[dataset_name]] <- plot_object
@@ -2011,13 +1995,36 @@ prism.circlenetwork <- function(data_list, metric = "covariance", pvalue = FALSE
   # Combine the plots into a multi-panel plot if combine_plots is TRUE
   if (combine_plots) {
     combined_plot <- wrap_plots(plot_list)  # Use patchwork to combine
+    
+    # Add a single legend for "Thick = High Certainty, Thin = Low Certainty" at the bottom of the combined plot
+    combined_plot <- combined_plot + 
+      plot_annotation(
+        caption = "Thick = High Certainty, Thin = Low Certainty",
+        theme = theme(
+          plot.caption = element_text(hjust = 0.5, size = 16, face = "italic")
+        )
+      )
+    
     if (save_plot) {
       ggsave(paste0(dir_path, file_name, "_combined.png"), combined_plot, width = 15, height = 10, dpi = 300)
     }
     return(combined_plot)  # Return the combined plot
   } else {
+    # Save individual plots if save_plot is TRUE
+    if (save_plot) {
+      for (dataset_name in names(plot_list)) {
+        plot <- plot_list[[dataset_name]]
+        # Check if "plots" directory exists, if not, create it
+        if (!dir.exists(dir_path)) {
+          dir.create(dir_path)
+        }
+        # Save each plot with the dataset name as the suffix
+        ggsave(paste0(dir_path, file_name, "_", dataset_name, ".png"), plot, width = 10, height = 10, dpi = 300)
+      }
+    }
     return(plot_list)  # Return the list of individual plots
   }
 }
+
 
 
