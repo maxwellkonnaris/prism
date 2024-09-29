@@ -57,9 +57,9 @@ prism.forestplot <- function(data_list, bg = "white", save = NULL, filename = NU
   }
   
   # Loop over each dataframe in data_list by index (to preserve the order of the list)
-    for (i in seq_along(data_list)) {
-      data <- data_list[[i]]
-      dataset_name <- names(data_list)[i]
+  for (i in seq_along(data_list)) {
+    data <- data_list[[i]]
+    dataset_name <- names(data_list)[i]
 
     # Ensure the data has the necessary columns
     if (!all(required_columns %in% colnames(data))) {
@@ -82,6 +82,9 @@ prism.forestplot <- function(data_list, bg = "white", save = NULL, filename = NU
   
   # Combine all data frames into one
   combined_data <- bind_rows(data_frames)
+  
+  # Set the Dataset factor levels in the order of the input list
+  combined_data$Dataset <- factor(combined_data$Dataset, levels = names(data_list))
   
   # Highlight intervals that do not cover 0 or have equal upper and lower bounds
   combined_data <- combined_data %>%
@@ -218,6 +221,7 @@ prism.forestplot <- function(data_list, bg = "white", save = NULL, filename = NU
   
   return(plot)
 }
+
 
 
 #' Plot Sigma Values Against Parameters
@@ -1970,12 +1974,15 @@ prism.circlenetwork <- function(data_list, metric = "covariance", pvalue = FALSE
     # Remove edges where the 95% CI covers zero
     edges <- edges[!((edges$ci_lower <= 0 & edges$ci_upper >= 0)), ]
     
-    # Create an igraph object and specify all_taxa as the vertices
-    graph <- graph_from_data_frame(edges, directed = FALSE, vertices = all_taxa)
+    # Ensure all taxa in the edges exist in the all_taxa list, and filter any edges referring to non-existent taxa
+    valid_edges <- edges[edges$from %in% all_taxa & edges$to %in% all_taxa, ]
+    
+    # Create an igraph object with vertices being all unique taxa
+    graph <- graph_from_data_frame(valid_edges, directed = FALSE, vertices = all_taxa)
     
     # Set edge properties based on the calculated values
-    E(graph)$color <- edges$color
-    E(graph)$width <- edges$width
+    E(graph)$color <- valid_edges$color
+    E(graph)$width <- valid_edges$width
     
     # Fix node positions to maintain the same layout order for each plot
     layout_fixed <- create_layout(graph, layout = "circle")  # Get the circular layout
@@ -2031,6 +2038,7 @@ prism.circlenetwork <- function(data_list, metric = "covariance", pvalue = FALSE
     return(plot_list)  # Return the list of individual plots
   }
 }
+
 
 
 
