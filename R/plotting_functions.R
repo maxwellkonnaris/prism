@@ -57,9 +57,9 @@ prism.forestplot <- function(data_list, bg = "white", save = NULL, filename = NU
   }
   
   # Loop over each dataframe in data_list by index (to preserve the order of the list)
-  for (i in seq_along(data_list)) {
-    data <- data_list[[i]]
-    dataset_name <- paste0("Dataset ", i)  # Create generic dataset names based on the index
+    for (i in seq_along(data_list)) {
+      data <- data_list[[i]]
+      dataset_name <- names(data_list)[i]
 
     # Ensure the data has the necessary columns
     if (!all(required_columns %in% colnames(data))) {
