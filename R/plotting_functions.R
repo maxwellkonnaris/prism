@@ -1777,6 +1777,38 @@ prism.trueabundanceplot <- function(W.perp, W, corr_matrix, dir_path = "./plots/
   
   # Close the device to save the file
   dev.off()
+
+    # Create forest plot data for covariances
+  forest_plot_data <- data.frame(
+    comparison = character(),
+    ninetyfive_ci_lower = numeric(),
+    ninetyfive_ci_upper = numeric(),
+    minsigma_absolute_minimum_covariance = numeric(),
+    maxsigma_absolute_maximum_covariance = numeric(),
+    p_value = numeric()  # Placeholder
+  )
+  
+  # Loop through the upper triangle of the covariance matrix to extract comparisons
+  truecovariances <- cov(t(taxa_data))  # Calculate covariance matrix
+  for (i in 1:(ncol(truecovariances) - 1)) {
+    for (j in (i + 1):ncol(truecovariances)) {
+      # Extract the covariance value
+      cov_value <- truecovariances[i, j]
+      
+      # Create the comparison name (e.g., "Taxa1:Taxa2")
+      comparison_name <- paste0(colnames(truecovariances)[i], ":", colnames(truecovariances)[j])
+      
+      # Append this comparison to the data frame
+      forest_plot_data <- rbind(forest_plot_data, data.frame(
+        comparison = comparison_name,
+        ninetyfive_ci_lower = cov_value,  # True value for lower CI
+        ninetyfive_ci_upper = cov_value,  # True value for upper CI
+        minsigma_absolute_minimum_covariance = cov_value,  # Min sigma is the true value
+        maxsigma_absolute_maximum_covariance = cov_value,  # Max sigma is the true value
+        p_value = NA  # Placeholder, can be removed if not needed
+      ))
+    }
+  }
   
   return(forest_plot_data)  # Keep the forest plot data intact
 }
