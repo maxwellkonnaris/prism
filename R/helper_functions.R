@@ -830,120 +830,23 @@ calculate_mcse <- function(bootstrap_estimates) {
 #' }
 #'
 #' @export
-prism.simulate_data_sparsecorr <- function(n_taxa=20, n_samples=50, rare_pct=0.2, medium_pct=0.3, seq_depth=1000, sparsity=20, flow_sd = 300, replicates = 1, post_scale_factor = 0.6, taxa_index = 1) {
+# Load necessary libraries
+prism.simulate_data_sparsecorr <- function(
+  n_taxa = 20,
+  n_samples = 50,
+  rare_pct = 0.2,
+  medium_pct = 0.4,
+  seq_depth = 1000,
+  sparsity = 20,
+  flow_sd = 300,
+  replicates = 1,
+  post_scale_factor = 0.68,
+  taxa_index = 1
+) {
   
-  # Helper function to create a correlation matrix with positive and negative correlations
-  create_correlation_matrix <- function(n_taxa, sparsity) {
-    # Initialize as identity matrix (no correlation, diagonal of 1s)
-    corr_matrix <- diag(1, n_taxa, n_taxa)
-    
-    # Calculate the total number of unique pairs (n_taxa choose 2)
-    n_pairs <- n_taxa * (n_taxa - 1) / 2
-    
-    # Determine how many correlations to add based on sparsity level (0 to 100)
-    n_correlations <- round((sparsity / 100) * n_pairs)
-    
-    # Create a list of all possible unique pairs (ignoring diagonal)
-    all_pairs <- combn(1:n_taxa, 2, simplify = TRUE)
-    
-    # Select random pairs to introduce correlations (for sparsity)
-    selected_pairs <- all_pairs[, sample(ncol(all_pairs), n_correlations)]
-    
-    # Add positive and negative correlations to the selected pairs
-    for (i in 1:ncol(selected_pairs)) {
-      idx1 <- selected_pairs[1, i]
-      idx2 <- selected_pairs[2, i]
-      
-      # Randomly assign either strong positive or negative correlation
-      corr_value <- sample(c(-0.9, -0.8, -0.7, 0.7, 0.8, 0.9), 1)
-      
-      # Assign the correlation to the matrix
-      corr_matrix[idx1, idx2] <- corr_value
-      corr_matrix[idx2, idx1] <- corr_value
-    }
-    
-    # Ensure the diagonal is 1 (self-correlation)
-    diag(corr_matrix) <- 1
-    
-    return(corr_matrix)
-  }
+  set.seed(123)  # For reproducibility
   
-  # Helper function to generate latent variables with a given correlation structure
-  generate_latent_variables <- function(n_samples, corr_matrix) {
-    # Ensure covariance matrix is positive semi-definite
-    cov_matrix <- tryCatch({
-      nearPD(corr_matrix)$mat
-    }, error = function(e) {
-      return(diag(1, ncol(corr_matrix), ncol(corr_matrix)))
-    })
-    
-    # Generate latent variables using multivariate normal distribution
-    latent_vars <- MASS::mvrnorm(n_samples, mu = rep(0, ncol(corr_matrix)), Sigma = cov_matrix)
-    
-    return(latent_vars)
-  }
-  
-  # Function to compute sparsity (fraction of correlations close to 0)
-  compute_sparsity <- function(corr_matrix, lower_bound = -0.05, upper_bound = 0.05) {
-    # Get the off-diagonal elements (i.e., ignore self-correlations)
-    corr_values <- corr_matrix[upper.tri(corr_matrix, diag = FALSE)]
-    
-    # Calculate the proportion of correlations within the specified range
-    sparsity <- mean(corr_values >= lower_bound & corr_values <= upper_bound)
-    return(sparsity)
-  }
-  
-  # Optimization function to minimize the difference in sparsity
-  calculate_sparsity_diff <- function(proposed_corr_matrix, W_corr_matrix, target_sparsity) {
-    W_sparsity <- compute_sparsity(W_corr_matrix)  # Compute sparsity for simulated data
-    proposed_sparsity <- compute_sparsity(proposed_corr_matrix)  # Compute sparsity for correlation matrix
-    diff <- abs(W_sparsity - target_sparsity)
-    return(diff)
-  }
-  
-  # Calculate target sparsity based on the provided "sparsity" variable (percentage)
-  target_sparsity <- sparsity / 100
-  
-  # Helper function to resample data using multinomial distribution
-  resample_data <- function(W.para, seq_depth) {
-    # Resample abundances using multinomial distribution for each sample
-    Y <- t(apply(W.para, 1, function(p) {
-      rmultinom(1, size = seq_depth, prob = p)
-    }))
-    return(Y)
-  }
-  
-  # Helper function to simulate flow cytometry measurements
-  flow_cytometry <- function(totals, samp_names, replicates, flow_sd) {
-    samp_names <- rep(samp_names, each = replicates)
-    flow_vals <- sapply(totals, FUN = function(total, replicates) {
-      stats::rnorm(replicates, mean = total, sd = flow_sd)
-    }, replicates = replicates, simplify = TRUE)
-    flow_data <- data.frame("sample" = samp_names, "flow" = c(flow_vals))
-    return(flow_data)
-  }
-  
-  # Step 1: Generate a correlation matrix with the specified sparsity level
-  corr_matrix <- create_correlation_matrix(n_taxa, sparsity)
-  
-  # Step 2: Generate latent variables with the given correlation structure for Pre and Post conditions
-  latent_vars_pre <- generate_latent_variables(n_samples, corr_matrix)
-  latent_vars_post <- generate_latent_variables(n_samples, corr_matrix)
-  
-  # Step 3: Obtain the correlation structure
-  cov_matrix <- nearPD(corr_matrix)$mat  # Covariance matrix (or correlation matrix)
-  
-  # Step 4: Apply the scaling factor to the targeted taxa and other taxa proportionally
-  scaling_factors <- cov_matrix[, taxa_index] * post_scale_factor
-  
-  # Apply the scaling factor to each taxa's latent variable
-  latent_vars_post <- latent_vars_post * scaling_factors
-  
-  # Step 5: Exponentiate the latent variables (log-normal transformation)
-  W_pre <- exp(latent_vars_pre)  # Pre-treatment log-normal transformation
-  W_post <- exp(latent_vars_post)  # Post-treatment log-normal transformation
-  
-  # Step 6: Predefine indices for rare, medium, and frequent taxa (same for pre and post)
+  ## 1. Assign Taxa Categories
   n_rare <- round(n_taxa * rare_pct)
   n_medium <- round(n_taxa * medium_pct)
   n_frequent <- n_taxa - n_rare - n_medium
@@ -952,101 +855,137 @@ prism.simulate_data_sparsecorr <- function(n_taxa=20, n_samples=50, rare_pct=0.2
   medium_taxa_indices <- (n_rare + 1):(n_rare + n_medium)
   frequent_taxa_indices <- (n_rare + n_medium + 1):n_taxa
   
-  # Step 7: Combine Pre and Post into one dataset
-  W <- rbind(W_pre, W_post)
-
-    # Apply the same groupings for both W_pre and W_post
-  W[, rare_taxa_indices] <- W[, rare_taxa_indices] * runif(n_rare, 0.01, 0.05)  # Rare taxa
-  W[, medium_taxa_indices] <- W[, medium_taxa_indices] * runif(n_medium, 0.1, 0.4)  # Medium taxa
-  W[, frequent_taxa_indices] <- W[, frequent_taxa_indices] * runif(n_frequent, 0.5, 0.7)  # Frequent taxa
-
-  # Step 8: Optimization loop based on the generated W correlation matrix
-  best_corr_matrix <- corr_matrix  # Use the initial correlation matrix as a starting point
-  best_diff <- Inf  # Initialize a large value for the difference
-  best_W <- NULL  # To store the best W matrix
-  sparsity_diffs <- numeric(100)  # To store the sparsity difference at each iteration
+  ## 2. Assign Means Based on Categories
+  means_rare <- runif(n_rare, 0.01, 0.05)
+  means_medium <- runif(n_medium, 0.1, 0.4)
+  means_frequent <- runif(n_frequent, 0.5, 0.7)
   
-  for (iteration in 1:100) {  # Adjust number of iterations as needed
-    # Generate latent variables and W matrix for the current correlation matrix
-    latent_vars_pre <- generate_latent_variables(n_samples, best_corr_matrix)
-    latent_vars_post <- generate_latent_variables(n_samples, best_corr_matrix)
+  taxa_means_pre <- c(means_rare, means_medium, means_frequent)
+  names(taxa_means_pre) <- paste0("Taxa_", 1:n_taxa)
+  
+  ## 3. Create Correlation Matrix with Specified Sparsity
+  create_correlation_matrix <- function(n_taxa, sparsity) {
+    corr_matrix <- diag(1, n_taxa, n_taxa)
+    n_pairs <- n_taxa * (n_taxa - 1) / 2
+    n_correlations <- round((sparsity / 100) * n_pairs)
     
-    # Combine and calculate correlation matrix for the new W
-    W_candidate <- rbind(exp(latent_vars_pre), exp(latent_vars_post))
-    W_corr_matrix <- cor(W_candidate)
+    all_pairs <- combn(n_taxa, 2, simplify = TRUE)
+    selected_pairs <- all_pairs[, sample(ncol(all_pairs), n_correlations)]
     
-    # Calculate the difference in sparsity between the generated W and the desired sparsity
-    sparsity_diff <- calculate_sparsity_diff(best_corr_matrix, W_corr_matrix, target_sparsity)
-    sparsity_diffs[iteration] <- sparsity_diff  # Store the sparsity difference
-    
-    # If a better (lower) sparsity difference is found, update the best matrix and W
-    if (sparsity_diff < best_diff) {
-      best_corr_matrix <- create_correlation_matrix(n_taxa, sparsity)  # Adjust the correlation matrix
-      best_diff <- sparsity_diff
-      best_W <- W_candidate  # Save the best W matrix
+    for (i in 1:ncol(selected_pairs)) {
+      idx1 <- selected_pairs[1, i]
+      idx2 <- selected_pairs[2, i]
+      corr_value <- sample(c(-0.9, -0.8, -0.7, 0.7, 0.8, 0.9), 1)
+      corr_matrix[idx1, idx2] <- corr_value
+      corr_matrix[idx2, idx1] <- corr_value
     }
+    
+    return(corr_matrix)
   }
   
-  # Plot the convergence of sparsity differences
-  plot(1:100, sparsity_diffs, type = "l", col = "blue", lwd = 2,
-       xlab = "Iteration", ylab = "Sparsity Difference",
-       main = "Convergence of Sparsity Difference Over Iterations")
+  corr_matrix <- create_correlation_matrix(n_taxa, sparsity)
   
-  # Step 9: Use the best W matrix for subsequent steps
-  W <- best_W
+  ## Ensure Positive Definiteness
+  cov_matrix <- tryCatch({
+    as.matrix(nearPD(corr_matrix)$mat)
+  }, error = function(e) {
+    diag(1, n_taxa, n_taxa)
+  })
   
-  # Step 10: Normalize to get proportions (W.para) so that each row sums to 1
-  W.para <- sweep(W, 1, rowSums(W), "/")
+  ## 4. Simulate Latent Variables
+  generate_latent_variables <- function(n_samples, cov_matrix) {
+    mvrnorm(n_samples, mu = rep(0, n_taxa), Sigma = cov_matrix)
+  }
   
-  # Step 11: Calculate total abundances (W.perp)
-  W.perp <- rowSums(W)
+  latent_vars_pre <- generate_latent_variables(n_samples, cov_matrix)
+  latent_vars_post <- generate_latent_variables(n_samples, cov_matrix)
   
-  # Step 12: Resample the data into sequencing counts using multinomial distribution
-  Y <- resample_data(W.para, seq_depth)
+  ## 5. Exponentiate Latent Variables to Obtain Positive Values
+  W_pre <- exp(latent_vars_pre)
+  W_post <- exp(latent_vars_post)
   
-  # Step 13: Create a condition vector (Pre = 1, Post = 2)
+  ## 6. No Scaling of Pre-Treatment Data
+  # Leave W_pre unchanged to represent the baseline abundances
+
+  ## 7. Introduce Antibiotic Effect on Post-Treatment Data
+  # Assign Post-Treatment Means: same as Pre except for the specified taxa
+  # The specified taxa's mean is reduced by post_scale_factor
+  # Other taxa are adjusted based on the correlation matrix
+  
+  # Apply antibiotic effect only to post-treatment
+  W_post_scaled <- W_post
+  W_post_scaled[, taxa_index] <- W_post_scaled[, taxa_index] * post_scale_factor
+  
+  # Adjust other taxa based on correlation
+  correlations <- cov_matrix[taxa_index, ]
+  correlations[taxa_index] <- 0  # Exclude self-correlation
+  
+  adjustment_proportion <- 1 - (1 - post_scale_factor) * correlations
+  adjustment_proportion[adjustment_proportion < 0] <- 0
+  
+  W_post_scaled <- sweep(W_post_scaled, 2, adjustment_proportion, FUN = "*")
+  
+  # Record Post-treatment Means
+  taxa_means_post <- colMeans(W_post_scaled)
+  
+  ## 8. Combine Pre and Post Data
+  W_combined <- rbind(W_pre, W_post_scaled)
   Condition <- factor(rep(c("Pre", "Post"), each = n_samples), levels = c("Pre", "Post"))
   
-  # Step 14: Combine true counts and conditions into a dataframe
-  true_abundances <- data.frame(Condition, W)
+  ## 9. Normalize to Get Relative Abundances
+  W_para <- sweep(W_combined, 1, rowSums(W_combined), "/")
   
-  # Step 15: Simulate flow cytometry data using W.perp and sample names from the true abundances
-  samp_names <- rownames(true_abundances)
-  flow_data <- flow_cytometry(W.perp, samp_names = seq_len(length(W.perp)), replicates = replicates, flow_sd = flow_sd)
+  ## 10. Simulate Sequencing Counts Using Multinomial Distribution
+  resample_data <- function(W_para, seq_depth) {
+    t(apply(W_para, 1, function(p) rmultinom(1, size = seq_depth, prob = p)))
+  }
   
-  # Step 16: If replicates > 1, collapse flow data to compute mean and standard deviation
+  Y <- resample_data(W_para, seq_depth)
+  
+  ## 11. Simulate Flow Cytometry Data
+  flow_cytometry <- function(totals, replicates, flow_sd) {
+    flow_vals <- sapply(totals, function(total) {
+      rnorm(replicates, mean = total, sd = flow_sd)
+    })
+    flow_data <- data.frame(
+      sample = rep(1:length(totals), each = replicates),
+      flow = as.vector(flow_vals)
+    )
+    return(flow_data)
+  }
+  
+  W_perp <- rowSums(W_combined)
+  flow_data <- flow_cytometry(W_perp, replicates, flow_sd)
+  
+  ## 12. Collapse Flow Data if Replicates > 1
   if (replicates > 1) {
     flow_data_collapse <- flow_data %>%
-      dplyr::group_by(sample) %>%
-      dplyr::mutate(mean = mean(flow), stdev = stats::sd(flow)) %>%
-      dplyr::select(-flow) %>%
-      dplyr::distinct() %>%
-      dplyr::ungroup()
+      group_by(sample) %>%
+      summarise(mean_flow = mean(flow), stdev_flow = sd(flow)) %>%
+      ungroup()
   }
   
-  # Step 17: Compile results
+  ## 13. Compile Results
+  results <- list(
+    W_pre = W_pre,
+    W_post = W_post_scaled,
+    W = W_combined,
+    W_para = W_para,
+    W_perp = W_perp,
+    Y = Y,
+    Condition = Condition,
+    taxa_means_pre = taxa_means_pre,
+    taxa_means_post = taxa_means_post,
+    flow = flow_data,
+    corr_matrix = corr_matrix
+  )
+  
   if (replicates > 1) {
-    return(list(
-      W = W,
-      W.para = W.para,
-      W.perp = W.perp,
-      Y = Y,
-      flow = flow_data,
-      flow.collapse = flow_data_collapse,
-      W.condition = true_abundances,
-      corr_matrix = corr_matrix
-    ))
-  } else {
-    return(list(
-      W = W,
-      W.para = W.para,
-      W.perp = W.perp,
-      Y = Y,
-      flow = flow_data,
-      W.condition = true_abundances,
-      corr_matrix = corr_matrix
-    ))
+    results$flow_collapse <- flow_data_collapse
   }
+  
+  return(results)
 }
+
 
 
