@@ -1700,6 +1700,9 @@ prism.trueabundanceplot <- function(W.perp, W, corr_matrix, dir_path = "./plots/
   W_corr_sparsity <- sum(abs(truecorrelations) <= 0.05) / (D * D)
   print(paste("W correlation sparsity (correlations between -0.05 and 0.05): ", W_corr_sparsity))
   
+  # Ensure corr_matrix has proper dimnames before reordering
+  dimnames(corr_matrix) <- list(taxa_labels, taxa_labels)
+  
   # Reorder the proposed correlation matrix (corr_matrix) to match the sorted order of taxa_labels (1:D)
   corr_matrix <- corr_matrix[taxa_labels, taxa_labels]
   
@@ -1771,16 +1774,16 @@ prism.trueabundanceplot <- function(W.perp, W, corr_matrix, dir_path = "./plots/
   forest_plot_grob <- ggplotGrob(forest_plot)
   correlation_grob <- grid::grid.grabExpr(grid::grid.draw(correlation_heatmap$gtable))
   underlying_correlation_grob <- grid::grid.grabExpr(grid::grid.draw(correlation_heatmap_underlying$gtable))
-
+  
   # Create text grob with sparsity information
   sparsity_text_grob <- grid::textGrob(
-  label = paste(
-    "W Correlation Sparsity: ", round(W_corr_sparsity, 3), "\n",
-    "Proposed Correlation Sparsity: ", round(proposed_corr_sparsity, 3)
-  ),
-  gp = grid::gpar(fontsize = 15),
-  x = 0.5,  # Centering x position
-  y = 0.5   # Centering y position
+    label = paste(
+      "W Correlation Sparsity: ", round(W_corr_sparsity, 3), "\n",
+      "Proposed Correlation Sparsity: ", round(proposed_corr_sparsity, 3)
+    ),
+    gp = grid::gpar(fontsize = 15),
+    x = 0.5,  # Centering x position
+    y = 0.5   # Centering y position
   )
   
   # Check if "plots" directory exists, if not, create it
@@ -1789,11 +1792,11 @@ prism.trueabundanceplot <- function(W.perp, W, corr_matrix, dir_path = "./plots/
   }
   
   # Save the combined plot as a PNG file
-  png(filename = paste0(dir_path, file_path), width = 15, height = 15, units = "in", res = 300)
+  png(filename = paste0(dir_path, file_path), width = 15, height = 8, units = "in", res = 300)
   
-  # Arrange the plots with the text grob in the bottom-right
+  # Arrange the forest plot and correlation heatmap side by side, and add sparsity text to the lower-right
   gridExtra::grid.arrange(correlation_grob, underlying_correlation_grob, forest_plot_grob, sparsity_text_grob, ncol = 2)
-	
+  
   # Close the device to save the file
   dev.off()
   
@@ -1803,6 +1806,7 @@ prism.trueabundanceplot <- function(W.perp, W, corr_matrix, dir_path = "./plots/
     forest_plot_data = forest_plot_data  # Keep the forest plot data intact
   ))
 }
+
 
 
 
