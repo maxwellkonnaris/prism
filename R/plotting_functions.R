@@ -1743,7 +1743,7 @@ prism.trueabundanceplot <- function(W.perp, W, corr_matrix, W.condition, dir_pat
 
   # Ridge plot showing Pre and Post conditions for each taxon
   ridge_plot <- ggplot(W.para_long, aes(x = Value, y = Taxa, fill = Condition)) +
-    geom_density_ridges(scale = 1, alpha = 0.7) +
+    geom_density_ridges(scale = 1, alpha = 0.4) +
     labs(title = "Ridge Plot of Taxa with Pre and Post Conditions",
          x = "Relative Abundance",
          y = "Taxa") +
