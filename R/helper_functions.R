@@ -931,7 +931,6 @@ prism.simulate_data_sparsecorr <- function(
   ## 8. Combine Pre and Post Data
   W_combined <- rbind(W_pre, W_post_scaled)
   Condition <- factor(rep(c("Pre", "Post"), each = n_samples), levels = c("Pre", "Post"))
-  Condition <- W_combined$Condition <- Condition
   
   ## 9. Normalize to Get Relative Abundances
   W_para <- sweep(W_combined, 1, rowSums(W_combined), "/")
@@ -965,6 +964,11 @@ prism.simulate_data_sparsecorr <- function(
       summarise(mean_flow = mean(flow), stdev_flow = sd(flow)) %>%
       ungroup()
   }
+
+  # Convert W_combined to a data frame and assign column names
+  dummy <- as.data.frame(W_combined)
+  colnames(dummy) <- paste0("Taxa", 1:ncol(W_combined)) 
+  dummy$Condition <- Condition
   
   ## 13. Compile Results
   results <- list(
@@ -974,7 +978,7 @@ prism.simulate_data_sparsecorr <- function(
     W.para = W_para,
     W.perp = W_perp,
     Y = Y,
-    W.condition = Condition,
+    W.condition = dummy,
     taxa_means_pre = taxa_means_pre,
     taxa_means_post = taxa_means_post,
     flow = flow_data,
