@@ -1915,9 +1915,7 @@ prism.network <- function(results, pvalue = FALSE, dir_path="./plots/", file_nam
 prism.circlenetwork <- function(data_list, metric = "covariance", pvalue = FALSE, dir_path = "./plots/", 
                                 file_name = "circlenetwork", save_plot = TRUE, combine_plots = FALSE) {
   
-
-  
-  # Validate input
+  # Validate input: data_list must be a named list of dataframes
   if (!is.list(data_list) || is.null(names(data_list))) {
     stop("data_list must be a named list of dataframes.")
   }
@@ -1933,8 +1931,21 @@ prism.circlenetwork <- function(data_list, metric = "covariance", pvalue = FALSE
   for (dataset_name in names(data_list)) {
     results <- data_list[[dataset_name]]
     
-    # Filter rows with non-NA taxa
-    filtered_results <- results[!is.na(results$taxa1) & !is.na(results$taxa2), ]
+    # Validate necessary columns: taxa1, taxa2, ninetyfive_ci_lower, ninetyfive_ci_upper
+    if (!all(c("taxa1", "taxa2", "ninetyfive_ci_lower", "ninetyfive_ci_upper") %in% colnames(results))) {
+      
+      # If comparison column is available, split it into taxa1 and taxa2
+      if ("comparison" %in% colnames(results)) {
+        split_comparison <- strsplit(results$comparison, ":")
+        results$taxa1 <- sapply(split_comparison, `[`, 1)
+        results$taxa2 <- sapply(split_comparison, `[`, 2)
+      } else {
+        stop(paste("Data frame '", dataset_name, "' must contain columns 'taxa1', 'taxa2', 'ninetyfive_ci_lower', 'ninetyfive_ci_upper' or a 'comparison' column."))
+      }
+    }
+    
+    # Filter rows with non-NA taxa and handle sparse data (i.e., NA values in the relevant columns)
+    filtered_results <- results[!is.na(results$taxa1) & !is.na(results$taxa2) & !is.na(results$ninetyfive_ci_lower) & !is.na(results$ninetyfive_ci_upper), ]
     
     # Create edge list from the results dataframe
     edges <- data.frame(from = filtered_results$taxa1, 
@@ -1945,8 +1956,13 @@ prism.circlenetwork <- function(data_list, metric = "covariance", pvalue = FALSE
     # Add color and width for the edges based on the CI
     edges$color <- ifelse(edges$ci_lower > 0, "blue", ifelse(edges$ci_upper < 0, "red", "grey"))
     
-    # Edge width inversely proportional to CI range: smaller range = thicker line, larger range = thinner line
-    edges$width <- 1 / (edges$ci_upper - edges$ci_lower)
+    # Edge width inversely proportional to certainty
+    edges$width <- ifelse(edges$ci_lower > 0, 
+                          1 / (edges$ci_lower),  # Positive edges: thickness based on lower bound distance from zero
+                          ifelse(edges$ci_upper < 0, 1 / abs(edges$ci_upper), NA))  # Negative edges: thickness based on upper bound distance from zero
+    
+    # Remove edges where the 95% CI covers zero
+    edges <- edges[!((edges$ci_lower <= 0 & edges$ci_upper >= 0)), ]
     
     # Create an igraph object
     graph <- graph_from_data_frame(edges, directed = FALSE)
@@ -1959,12 +1975,14 @@ prism.circlenetwork <- function(data_list, metric = "covariance", pvalue = FALSE
     plot_object <- ggraph(graph, layout = 'circle') +
       geom_edge_link(aes(edge_width = width, color = color), show.legend = FALSE) +
       geom_node_point(size = 5) +
-      geom_node_text(aes(label = name), repel = TRUE, size = 4) +
+      geom_node_text(aes(label = name), repel = TRUE, size = 6) +  # Larger font size for node labels
       scale_edge_color_manual(values = c("blue", "red", "grey")) +  # Blue for positive, Red for negative
       theme_void() +
-      theme(legend.position = "none") +
-      ggtitle(paste0(ifelse(metric == "covariance", "Covariance Network", "Correlation Network"), 
-                     " - ", dataset_name))  # Title with dataset name
+      theme(
+        legend.position = "none",
+        plot.title = element_text(hjust = 0.5, size = 20, face = "bold")  # Large centered title
+      ) +
+      ggtitle(dataset_name)  # Title with dataset name
     
     # Add a legend for edge thickness representing confidence intervals
     plot_object <- plot_object + 
@@ -1973,8 +1991,7 @@ prism.circlenetwork <- function(data_list, metric = "covariance", pvalue = FALSE
     
     # Add p-values to the plot title if requested
     if (pvalue) {
-      plot_object <- plot_object + ggtitle(paste0(ifelse(metric == "covariance", "Covariance Network", "Correlation Network"),
-                                                  " - ", dataset_name, "\nP-values included"))
+      plot_object <- plot_object + ggtitle(paste0(dataset_name, "\nP-values included"))
     }
     
     # Save the plot if save_plot is TRUE
@@ -2002,4 +2019,5 @@ prism.circlenetwork <- function(data_list, metric = "covariance", pvalue = FALSE
     return(plot_list)  # Return the list of individual plots
   }
 }
+
 
