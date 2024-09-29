@@ -1734,7 +1734,7 @@ prism.trueabundanceplot <- function(W.perp, W, corr_matrix, dir_path = "./plots/
     ggtitle("True Correlations of Taxa and Scale")
   
   # Ridge plot for distributions of relative abundances of W for each taxon
-  taxa_abundances <- reshape2::melt(as.data.frame(composition))
+  taxa_abundances <- reshape2::melt(as.data.frame(t(composition)))
   ridge_plot <- ggplot(taxa_abundances, aes(x = value, y = Var1, fill = Var1)) +
     geom_density_ridges(scale = 0.9, alpha = 0.7) +
     theme_ridges() +
