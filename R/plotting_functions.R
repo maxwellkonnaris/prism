@@ -1735,7 +1735,13 @@ prism.trueabundanceplot <- function(W.perp, W, corr_matrix, dir_path = "./plots/
   
   # Ridge plot for distributions of relative abundances of W for each taxon
   taxa_abundances <- reshape2::melt(as.data.frame(t(composition)))
-  colnames(taxa_abundances) <- c("Taxa", "Sample", "Abundance")  # Correct the column names after melting
+
+    # Check the structure of the melted data to ensure correct column naming
+  if (ncol(taxa_abundances) == 2) {
+    colnames(taxa_abundances) <- c("Taxa", "Abundance")
+  } else {
+    colnames(taxa_abundances) <- c("Taxa", "Sample", "Abundance")
+  }
   
   ridge_plot <- ggplot(taxa_abundances, aes(x = Abundance, y = Taxa, fill = Taxa)) +
     geom_density_ridges(scale = 0.9, alpha = 0.7) +
@@ -1749,6 +1755,14 @@ prism.trueabundanceplot <- function(W.perp, W, corr_matrix, dir_path = "./plots/
   correlation_grob <- grid::grid.grabExpr(grid::grid.draw(correlation_heatmap$gtable))
   underlying_correlation_grob <- grid::grid.grabExpr(grid::grid.draw(correlation_heatmap_underlying$gtable))
   ridge_plot_grob <- ggplotGrob(ridge_plot)
+
+  # Text grob to display the scale standard deviation at the bottom of the plot
+  sd_text_grob <- grid::textGrob(
+    label = paste("Scale standard deviation (SD) of flow data:", round(scale_sd, 3)),
+    gp = grid::gpar(fontsize = 14, fontface = "italic"),
+    x = 0.5,  # Centered horizontally
+    y = unit(1, "npc") - unit(1.5, "lines")  # Placed just above the bottom of the plot
+  )
   
   # Check if "plots" directory exists, if not, create it
   if (!dir.exists(dir_path)) {
@@ -1759,7 +1773,7 @@ prism.trueabundanceplot <- function(W.perp, W, corr_matrix, dir_path = "./plots/
   png(filename = paste0(dir_path, file_path), width = 15, height = 15, units = "in", res = 300)
   
   # Arrange the plots: heatmaps on the top row, forest plot and ridge plot on the bottom row
-  gridExtra::grid.arrange(correlation_grob, underlying_correlation_grob, forest_plot_grob, ridge_plot_grob, ncol = 2, nrow = 2)
+  gridExtra::grid.arrange(correlation_grob, underlying_correlation_grob, forest_plot_grob, ridge_plot_grob, ncol = 2, nrow = 2,bottom = sd_text_grob)
   
   # Close the device to save the file
   dev.off()
