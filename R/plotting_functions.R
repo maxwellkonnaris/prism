@@ -1665,96 +1665,59 @@ prism.trueabundanceplot <- function(W.perp, W, corr_matrix, dir_path = "./plots/
   
   # Transpose the data to have taxa as rows, ensure taxa are ordered 1:D
   taxa_data <- t(W)
-  rownames(taxa_data) <- taxa_labels  # Apply labels explicitly in the order 1:D
+  rownames(taxa_data) <- taxa_labels
+
+  # Step 8: Normalize to get proportions (W.para)
+  W.para <- W / W.perp
+
+  composition <- t(W.para)
+  rownames(composition) <- taxa_labels
   
   # Calculate true rho correlations between each taxon and flow cytometry data
-  truerhocorrelation <- numeric(nrow(taxa_data))
-  for (i in 1:nrow(taxa_data)) {
-    truerhocorrelation[i] <- cor(log(taxa_data[i, ]), log(W.perp))
+  truerhocorrelation <- numeric(nrow(composition))
+  for (i in 1:nrow(composition)) {
+    truerhocorrelation[i] <- cor(log(composition[i, ]), log(W.perp))
   }
   
   # Calculate standard deviation (scale) for log-transformed flow_data
   scale_sd <- sd(log(W.perp))
-  # Print the calculated scale SD
   print(paste("Scale standard deviation (SD) of flow data: ", scale_sd))
   
   # Calculate correlation matrix for W (true abundances)
-  truecorrelations <- cor(t(taxa_data))  # Calculate correlation matrix
-  
-  # Reorder the true correlation matrix to match the sorted order of taxa_labels (1:D)
+  truecorrelations <- cor(t(taxa_data))
   truecorrelations <- truecorrelations[taxa_labels, taxa_labels]
   
-  # Create a heatmap for the correlation matrix
+  # Create heatmap for correlation matrix
   correlation_heatmap <- pheatmap::pheatmap(
     truecorrelations, 
     labels_row = taxa_labels,
     labels_col = taxa_labels,
-    main = "Correlation Matrix of W", 
+    main = paste("Correlation Matrix of W (Sparsity: ", round(sum(abs(truecorrelations) <= 0.05) / (D * D), 3), ")"),
     color = colorRampPalette(c("blue", "white", "red"))(100),
     breaks = seq(-1, 1, length.out = 101), 
     border_color = NA, 
     silent = TRUE
   )
-  
-  # Calculate the sparsity of W (true correlations): count correlations between -0.05 and 0.05
-  W_corr_sparsity <- sum(abs(truecorrelations) <= 0.05) / (D * D)
-  print(paste("W correlation sparsity (correlations between -0.05 and 0.05): ", W_corr_sparsity))
   
   # Ensure corr_matrix has proper dimnames before reordering
   dimnames(corr_matrix) <- list(taxa_labels, taxa_labels)
   
-  # Reorder the proposed correlation matrix (corr_matrix) to match the sorted order of taxa_labels (1:D)
+  # Reorder the proposed correlation matrix to match the sorted order of taxa_labels (1:D)
   corr_matrix <- corr_matrix[taxa_labels, taxa_labels]
   
-  # Create the correlation heatmap for the proposed (underlying) correlation matrix
+  # Create the heatmap for the proposed correlation matrix
   correlation_heatmap_underlying <- pheatmap::pheatmap(
     corr_matrix, 
     labels_row = taxa_labels,
     labels_col = taxa_labels,
-    main = "Proposed Correlation Matrix", 
+    main = paste("Proposed Correlation Matrix (Sparsity: ", round(sum(abs(corr_matrix) <= 0.05) / (D * D), 3), ")"),
     color = colorRampPalette(c("blue", "white", "red"))(100),
     breaks = seq(-1, 1, length.out = 101), 
     border_color = NA, 
     silent = TRUE
   )
   
-  # Calculate the sparsity of the proposed correlation matrix: count correlations between -0.05 and 0.05
-  proposed_corr_sparsity <- sum(abs(corr_matrix) <= 0.05) / (D * D)
-  print(paste("Proposed correlation sparsity (correlations between -0.05 and 0.05): ", proposed_corr_sparsity))
-  
-  # Create forest plot data for covariances
-  forest_plot_data <- data.frame(
-    comparison = character(),
-    ninetyfive_ci_lower = numeric(),
-    ninetyfive_ci_upper = numeric(),
-    minsigma_absolute_minimum_covariance = numeric(),
-    maxsigma_absolute_maximum_covariance = numeric(),
-    p_value = numeric()  # Placeholder
-  )
-  
-  # Loop through the upper triangle of the covariance matrix to extract comparisons
-  truecovariances <- cov(t(taxa_data))  # Calculate covariance matrix
-  for (i in 1:(ncol(truecovariances) - 1)) {
-    for (j in (i + 1):ncol(truecovariances)) {
-      # Extract the covariance value
-      cov_value <- truecovariances[i, j]
-      
-      # Create the comparison name (e.g., "Taxa1:Taxa2")
-      comparison_name <- paste0(colnames(truecovariances)[i], ":", colnames(truecovariances)[j])
-      
-      # Append this comparison to the data frame
-      forest_plot_data <- rbind(forest_plot_data, data.frame(
-        comparison = comparison_name,
-        ninetyfive_ci_lower = cov_value,  # True value for lower CI
-        ninetyfive_ci_upper = cov_value,  # True value for upper CI
-        minsigma_absolute_minimum_covariance = cov_value,  # Min sigma is the true value
-        maxsigma_absolute_maximum_covariance = cov_value,  # Max sigma is the true value
-        p_value = NA  # Placeholder, can be removed if not needed
-      ))
-    }
-  }
-  
-  # Generate the forest plot for the true correlations with W.perp
+  # Create forest plot for true correlations with W.perp
   forest_plot <- ggplot(data = data.frame(taxa = taxa_labels, rho = truerhocorrelation), 
                         aes(x = rho, y = reorder(taxa, -as.numeric(sub("Taxa", "", taxa))))) +
     geom_point(color = "steelblue", size = 4) +
@@ -1770,21 +1733,20 @@ prism.trueabundanceplot <- function(W.perp, W, corr_matrix, dir_path = "./plots/
     ) +
     ggtitle("True Correlations of Taxa and Scale")
   
+  # Ridge plot for distributions of relative abundances of W for each taxon
+  taxa_abundances <- reshape2::melt(as.data.frame(composition))
+  ridge_plot <- ggplot(taxa_abundances, aes(x = value, y = Var1, fill = Var1)) +
+    geom_density_ridges(scale = 0.9, alpha = 0.7) +
+    theme_ridges() +
+    labs(x = "Relative Abundance", y = "Taxa") +
+    theme(legend.position = "none") +
+    ggtitle("Distributions of Relative Abundances of W")
+  
   # Convert plots to grobs
   forest_plot_grob <- ggplotGrob(forest_plot)
   correlation_grob <- grid::grid.grabExpr(grid::grid.draw(correlation_heatmap$gtable))
   underlying_correlation_grob <- grid::grid.grabExpr(grid::grid.draw(correlation_heatmap_underlying$gtable))
-  
-  # Create text grob with sparsity information
-  sparsity_text_grob <- grid::textGrob(
-    label = paste(
-      "W Correlation Sparsity: ", round(W_corr_sparsity, 3), "\n",
-      "Proposed Correlation Sparsity: ", round(proposed_corr_sparsity, 3)
-    ),
-    gp = grid::gpar(fontsize = 15),
-    x = 0.5,  # Centering x position
-    y = 0.5   # Centering y position
-  )
+  ridge_plot_grob <- ggplotGrob(ridge_plot)
   
   # Check if "plots" directory exists, if not, create it
   if (!dir.exists(dir_path)) {
@@ -1792,20 +1754,19 @@ prism.trueabundanceplot <- function(W.perp, W, corr_matrix, dir_path = "./plots/
   }
   
   # Save the combined plot as a PNG file
-  png(filename = paste0(dir_path, file_path), width = 15, height = 8, units = "in", res = 300)
+  png(filename = paste0(dir_path, file_path), width = 15, height = 15, units = "in", res = 300)
   
-  # Arrange the forest plot and correlation heatmap side by side, and add sparsity text to the lower-right
-  gridExtra::grid.arrange(correlation_grob, underlying_correlation_grob, forest_plot_grob, sparsity_text_grob, ncol = 2)
+  # Arrange the plots: heatmaps on the top row, forest plot and ridge plot on the bottom row
+  gridExtra::grid.arrange(correlation_grob, underlying_correlation_grob, forest_plot_grob, ridge_plot_grob, ncol = 2, nrow = 2)
   
   # Close the device to save the file
   dev.off()
   
   return(list(
-    W_corr_sparsity = W_corr_sparsity,
-    proposed_corr_sparsity = proposed_corr_sparsity,
     forest_plot_data = forest_plot_data  # Keep the forest plot data intact
   ))
 }
+
 
 
 
