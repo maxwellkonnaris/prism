@@ -617,14 +617,14 @@ calculate_mcse <- function(bootstrap_estimates) {
 #' @examples
 #' \dontrun{
 #' set.seed(123)
-#' simulated_data <- prism.simulate_data_sparsecorr(
+#' simulated_data <- prism.simulate_prepost(
 #'   n_taxa = 20, n_samples = 50, rare_pct = 0.2, medium_pct = 0.3, seq_depth = 1000, sparsity = 50
 #' )
 #' }
 #'
 #' @export
 # Load necessary libraries
-prism.simulate_data_sparsecorr <- function(
+prism.simulate_prepost <- function(
   n_taxa = 20,
   n_samples = 50,
   rare_pct = 0.2,
@@ -636,7 +636,8 @@ prism.simulate_data_sparsecorr <- function(
   post_scale_factor = 0.68,
   taxa_index = 20,
   total_abundance_scale = 1e13,
-  minimalsparsity=FALSE
+  minimalsparsity=FALSE,
+  iterations=1000
 ) {
   
   ## 1. Assign Taxa Categories and use total abundance scale specified (e.g., 10 trillion)
