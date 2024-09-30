@@ -1681,7 +1681,7 @@ prism.trueabundanceplot <- function(W.perp, W, corr_matrix, W.condition, dir_pat
   
   # Calculate standard deviation (scale) for log-transformed flow_data
   scale_sd <- sd(log(W.perp))
-  print(paste("Scale standard deviation (SD) of flow data: ", scale_sd))
+  print(paste("Scale standard deviation (SD) of W", scale_sd))
   
   # Calculate correlation matrix for W (true abundances)
   truecorrelations <- cor(t(taxa_data))
@@ -1696,6 +1696,9 @@ prism.trueabundanceplot <- function(W.perp, W, corr_matrix, W.condition, dir_pat
     color = colorRampPalette(c("blue", "white", "red"))(100),
     breaks = seq(-1, 1, length.out = 101), 
     border_color = NA, 
+    fontsize = 15,
+    fontsize_row = 15,  
+    fontsize_col = 15,   
     silent = TRUE
   )
   
@@ -1714,13 +1717,16 @@ prism.trueabundanceplot <- function(W.perp, W, corr_matrix, W.condition, dir_pat
     color = colorRampPalette(c("blue", "white", "red"))(100),
     breaks = seq(-1, 1, length.out = 101), 
     border_color = NA, 
+    fontsize = 15,
+    fontsize_row = 15,  
+    fontsize_col = 15,   
     silent = TRUE
   )
   
   # Create forest plot for true correlations with W.perp
   forest_plot <- ggplot(data = data.frame(taxa = taxa_labels, rho = truerhocorrelation), 
                         aes(x = rho, y = reorder(taxa, -as.numeric(sub("Taxa", "", taxa))))) +
-    geom_point(color = "steelblue", size = 4) +
+    geom_point(color = "steelblue", size = 6) +
     geom_segment(aes(x = 0, xend = rho, y = taxa, yend = taxa), color = "steelblue", size = 1.2) +
     geom_vline(xintercept = 0, linetype = "dotted", color = "black") +
     scale_x_continuous(limits = c(-1, 1), breaks = seq(-1, 1, by = 0.1)) +
@@ -1728,27 +1734,37 @@ prism.trueabundanceplot <- function(W.perp, W, corr_matrix, W.condition, dir_pat
     theme_minimal() +
     theme(
       axis.title.y = element_blank(),
-      axis.text.y = element_text(size = 12),
+      axis.text.y = element_text(size = 15),
+      axis.text.x = element_text(size = 15),
+      axis.title.x = element_text(size = 15),
       plot.title = element_text(hjust = 0.5, size = 15)
     ) +
-    ggtitle("True Correlations of Taxa and Scale")
+    ggtitle("True Correlations of Taxa and Scale",
+	   ,"\nLog Standard Deviation of W Scale: ", scale_sd))
   
   # Add the "Condition" column (Pre/Post) to the relative abundances data
   W.para_long <- reshape2::melt(W.para)
   colnames(W.para_long) <- c("Sample", "Taxa", "Value")
   W.para_long$Condition <- W.condition$Condition
   
-  # Convert Taxa to factor
-  W.para_long$Taxa <- as.factor(W.para_long$Taxa)
+ # Reverse the order of the Taxa factor
+ W.para_long$Taxa <- fct_rev(as.factor(W.para_long$Taxa))
 
-  # Ridge plot showing Pre and Post conditions for each taxon
-  ridge_plot <- ggplot(W.para_long, aes(x = Value, y = Taxa, fill = Condition)) +
-    geom_density_ridges(scale = 1, alpha = 0.4) +
-    labs(title = "Ridge Plot of Taxa with Pre and Post Conditions",
-         x = "Relative Abundance",
-         y = "Taxa") +
-    theme_ridges() +
-    theme(legend.position = "right")
+ # Ridge plot showing Pre and Post conditions for each taxon
+ ridge_plot <- ggplot(W.para_long, aes(x = Value, y = Taxa, fill = Condition)) +
+  geom_density_ridges(scale = 1, alpha = 0.4) +
+  labs(title = "Taxa with Pre and Post Conditions",
+       x = "Relative Abundance",
+       y = "Taxa") +
+  theme_ridges() +
+  theme(
+    legend.position = "right",
+    axis.title.x = element_text(size = 15),  # Increase x-axis title font size
+    axis.title.y = element_text(size = 15),  # Increase y-axis title font size
+    axis.text.x = element_text(size = 15),   # Increase x-axis text font size
+    axis.text.y = element_text(size = 15)    # Increase y-axis text font size
+  )
+
   
   # Convert plots to grobs
   forest_plot_grob <- ggplotGrob(forest_plot)
@@ -1756,24 +1772,16 @@ prism.trueabundanceplot <- function(W.perp, W, corr_matrix, W.condition, dir_pat
   underlying_correlation_grob <- grid::grid.grabExpr(grid::grid.draw(correlation_heatmap_underlying$gtable))
   ridge_plot_grob <- ggplotGrob(ridge_plot)
 
-  # Text grob to display the scale standard deviation at the bottom of the plot
-  sd_text_grob <- grid::textGrob(
-    label = paste("Scale standard deviation (SD) of flow data:", round(scale_sd, 3)),
-    gp = grid::gpar(fontsize = 14, fontface = "italic"),
-    x = 0.5,  # Centered horizontally
-    y = unit(1, "npc") - unit(1.5, "lines")  # Placed just above the bottom of the plot
-  )
-  
   # Check if "plots" directory exists, if not, create it
   if (!dir.exists(dir_path)) {
     dir.create(dir_path)
   }
   
   # Save the combined plot as a PNG file
-  png(filename = paste0(dir_path, file_path), width = 15, height = 15, units = "in", res = 300)
+  png(filename = paste0(dir_path, file_path), width = 16, height = 16, units = "in", res = 300)
   
   # Arrange the plots: heatmaps on the top row, forest plot and ridge plot on the bottom row
-  gridExtra::grid.arrange(correlation_grob, underlying_correlation_grob, forest_plot_grob, ridge_plot_grob, ncol = 2, nrow = 2, bottom = sd_text_grob)
+  gridExtra::grid.arrange(correlation_grob, underlying_correlation_grob, forest_plot_grob, ridge_plot_grob, ncol = 2, nrow = 2)
   
   # Close the device to save the file
   dev.off()
