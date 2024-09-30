@@ -755,7 +755,7 @@ prism.simulate_prepost <- function(
   min_sparsity_diff <- Inf  # Start with a large difference
 
   # Optimization Loop: Run 1000 iterations to find the best W
-  for (i in 1:iterations) {
+  #for (i in 1:iterations) {
 
     latent_vars <- generate_latent_variables(n_samples, log_cov_matrix, taxa_means_pre)
     
@@ -792,18 +792,18 @@ prism.simulate_prepost <- function(
     W_corr_matrix <- cor(W)
     
     # Step 4: Calculate the sparsity of W's correlation matrix
-    sparsity_W_corr <- calculate_sparsity(W_corr_matrix)
+    #sparsity_W_corr <- calculate_sparsity(W_corr_matrix)
     
     # Step 5: Compute the difference in sparsity from the target
-    sparsity_diff <- abs(sparsity_W_corr - target_sparsity)
+    #sparsity_diff <- abs(sparsity_W_corr - target_sparsity)
     
     # Step 6: If this W's sparsity is closer to the target, update the best result
-    if (sparsity_diff < min_sparsity_diff) {
+    #if (sparsity_diff < min_sparsity_diff) {
       best_W <- W
       best_W_pre <- W_pre
       best_W_post_scaled <- W_post_scaled
-    }
-  }
+    #}
+  #}
   Condition <- factor(rep(c("Pre", "Post"), each = n_samples/2), levels = c("Pre", "Post"))
   
   ## 9. Normalize to Get Relative Abundances
