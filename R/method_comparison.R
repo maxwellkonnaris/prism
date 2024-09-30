@@ -12,7 +12,7 @@
 #' @return A list of covariance results for each method and saved plots.
 #' @export
 prism.method_comparison <- function(Y, 
-                                    flow,
+                                    externalscalemeasurements = flow,
                                     trueabundances = NULL,
                                     filename_prefix = "simulation_", 
                                     S = 4000, 
@@ -22,7 +22,7 @@ prism.method_comparison <- function(Y,
   cat("Start PRISM\n")
   
   results <- PRISM::prism.covariance(Y = Y, S = S, uncertaintydistribution = uncertaintydistribution,  
-                                     externalscalemeasurements = flow, algorithm = algorithm, 
+                                     externalscalemeasurements = externalscalemeasurements, algorithm = algorithm, 
                                      outputdirectory = output_directory)
   
   final_results_filename <- paste0(filename_prefix, "finalresults_", uncertaintydistribution, "_", algorithm, ".csv")
