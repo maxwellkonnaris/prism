@@ -746,7 +746,7 @@ prism.simulate_prepost <- function(
   }
 
   # Define the sparsity level of the original correlation matrix
-  target_sparsity <- calculate_sparsity(corr_matrix, sparsity_threshold=1e-4)
+  target_sparsity <- calculate_sparsity(corr_matrix, sparsity_threshold=0.05)
   
   # Store results of the best simulation
   best_W <- NULL
@@ -793,7 +793,7 @@ prism.simulate_prepost <- function(
     W_corr_matrix <- cor(W)
     
     # Step 4: Calculate the sparsity of W's correlation matrix
-    sparsity_W_corr <- calculate_sparsity(W_corr_matrix, sparsity_threshold)
+    sparsity_W_corr <- calculate_sparsity(W_corr_matrix, sparsity_threshold=0.05)
     
     # Step 5: Compute the difference in sparsity from the target
     sparsity_diff <- abs(sparsity_W_corr - target_sparsity)
