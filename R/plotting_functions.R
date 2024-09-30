@@ -1713,7 +1713,7 @@ prism.trueabundanceplot <- function(W.perp, W, corr_matrix, W.condition, dir_pat
     corr_matrix, 
     labels_row = taxa_labels,
     labels_col = taxa_labels,
-    main = paste("Proposed Correlation Matrix (Sparsity: ", round(sum(abs(corr_matrix) <= 0.05) / (D * D), 3), ")"),
+    main = paste("Latent Correlation Matrix for MVLognorm (Sparsity: ", round(sum(abs(corr_matrix) <= 0.05) / (D * D), 3), ")"),
     color = colorRampPalette(c("blue", "white", "red"))(100),
     breaks = seq(-1, 1, length.out = 101), 
     border_color = NA, 
@@ -1739,8 +1739,8 @@ prism.trueabundanceplot <- function(W.perp, W, corr_matrix, W.condition, dir_pat
       axis.title.x = element_text(size = 15),
       plot.title = element_text(hjust = 0.5, size = 15)
     ) +
-    ggtitle(paste("True Correlations of Taxa and Scale",
-	   "\nLog Standard Deviation of W Scale: ", round(scale_sd,3)))
+    ggtitle(paste("True Correlations of W.para (Composition) and W.perp (scale)",
+	   "\nLog Standard Deviation of W.perp (Scale): ", round(scale_sd,3)))
   
   # Add the "Condition" column (Pre/Post) to the relative abundances data
   W.para_long <- reshape2::melt(W.para)
@@ -1754,15 +1754,15 @@ prism.trueabundanceplot <- function(W.perp, W, corr_matrix, W.condition, dir_pat
  ridge_plot <- ggplot(W.para_long, aes(x = Value, y = Taxa, fill = Condition)) +
   geom_density_ridges(scale = 1, alpha = 0.4) +
   labs(title = "Taxa with Pre and Post Conditions",
-       x = "Relative Abundance",
+       x = "Composition (W.para)",
        y = "Taxa") +
   theme_ridges() +
   theme(
     legend.position = "right", 
-    axis.title.x = element_text(size = 15),  # Increase x-axis title font size
-    axis.title.y = element_text(size = 15),  # Increase y-axis title font size
-    axis.text.x = element_text(size = 15),   # Increase x-axis text font size
-    axis.text.y = element_text(size = 15)    # Increase y-axis text font size
+    axis.title.x = element_text(size = 15, hjust = 0.5), 
+    axis.title.y = element_text(size = 15, hjust = 0.5),
+    axis.text.x = element_text(size = 15), 
+    axis.text.y = element_text(size = 15) 
   )
 
   
