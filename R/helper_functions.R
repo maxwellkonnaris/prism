@@ -904,7 +904,7 @@ prism.simulate_data_sparsecorr <- function(
     return(corr_matrix)
   }
   
-  corr_matrix <- create_correlation_matrix(n_taxa, sparsity)
+  corr_matrix <- create_correlation_matrix(n_taxa, sparsity, taxa_index)
   
   ## Ensure Positive Definiteness
   cov_matrix <- tryCatch({
