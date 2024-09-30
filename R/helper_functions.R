@@ -864,18 +864,39 @@ prism.simulate_data_sparsecorr <- function(
   names(taxa_means_pre) <- paste0("Taxa_", 1:n_taxa)
   
   ## 3. Create Correlation Matrix with Specified Sparsity
-  create_correlation_matrix <- function(n_taxa, sparsity) {
-    corr_matrix <- diag(1, n_taxa, n_taxa)
+  create_correlation_matrix <- function(n_taxa, sparsity, taxa_index) {
+    corr_matrix <- diag(1, n_taxa, n_taxa)  # Initialize as an identity matrix (no correlation)
+
+    # Calculate the total number of unique pairs (n_taxa choose 2)
     n_pairs <- n_taxa * (n_taxa - 1) / 2
-    n_correlations <- round((sparsity / 100) * n_pairs)
+
+    # Determine how many correlations to add based on sparsity level (0 to 100)
+    n_correlations <- ifelse(sparsity == 1, 1, round((sparsity / 100) * n_pairs))
     
-    all_pairs <- combn(n_taxa, 2, simplify = TRUE)
-    selected_pairs <- all_pairs[, sample(ncol(all_pairs), n_correlations)]
+    # Create a list of all possible unique pairs (ignoring diagonal)
+    all_pairs <- combn(1:n_taxa, 2, simplify = TRUE)
     
+    # Ensure the first pair involves taxa_index
+    remaining_taxa <- setdiff(1:n_taxa, taxa_index)  # Remove taxa_index from the list of possible pairs
+    first_pair <- c(taxa_index, sample(remaining_taxa, 1))  # First correlation pair involves taxa_index
+    
+    # Select additional random pairs if sparsity > 1
+    if (sparsity > 1) {
+      selected_pairs <- all_pairs[, sample(ncol(all_pairs), n_correlations - 1)]
+      selected_pairs <- cbind(first_pair, selected_pairs)  # Add the first pair involving taxa_index
+    } else {
+      selected_pairs <- matrix(first_pair, nrow = 2)  # Only the first pair is used
+    }
+    
+    # Add positive and negative correlations to the selected pairs
     for (i in 1:ncol(selected_pairs)) {
       idx1 <- selected_pairs[1, i]
       idx2 <- selected_pairs[2, i]
+      
+      # Randomly assign either strong positive or negative correlation
       corr_value <- sample(c(-0.9, -0.8, -0.7, 0.7, 0.8, 0.9), 1)
+      
+      # Assign the correlation to the matrix
       corr_matrix[idx1, idx2] <- corr_value
       corr_matrix[idx2, idx1] <- corr_value
     }
