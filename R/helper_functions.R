@@ -678,13 +678,17 @@ prism.simulate_prepost <- function(
   ## 3. Create Correlation Matrix with Specified Sparsity
   create_correlation_matrix <- function(n_taxa, sparsity, taxa_index) {
     corr_matrix <- diag(1, n_taxa, n_taxa)  # Initialize as an identity matrix (no correlation)
-
+  
     # Calculate the total number of unique pairs (n_taxa choose 2)
     n_pairs <- n_taxa * (n_taxa - 1) / 2
     
-    # Ensure the first pair involves taxa_index
+    # Ensure the first pairs involve taxa_index
     remaining_taxa <- setdiff(1:n_taxa, taxa_index)  # Remove taxa_index from the list of possible pairs
-    first_pairs <- cbind(rep(taxa_index, each = length(remaining_taxa)), remaining_taxa)  # Pairs involving taxa_index
+    first_pairs <- NULL
+    
+    for (taxon in taxa_index) {
+      first_pairs <- rbind(first_pairs, cbind(rep(taxon, length(remaining_taxa)), remaining_taxa))
+    }
     
     if (sparsity == 100) {
       # Add correlation for every possible pair
@@ -698,7 +702,7 @@ prism.simulate_prepost <- function(
       
       # Select additional random pairs if sparsity > 1
       if (sparsity > 1) {
-        selected_pairs <- all_pairs[, sample(ncol(all_pairs), n_correlations - length(taxa_index))]
+        selected_pairs <- all_pairs[, sample(ncol(all_pairs), n_correlations - nrow(first_pairs))]
         selected_pairs <- cbind(first_pairs, selected_pairs)  # Add the pairs involving taxa_index
       } else {
         selected_pairs <- first_pairs  # Only pairs with taxa_index
