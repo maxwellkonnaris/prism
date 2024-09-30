@@ -634,16 +634,17 @@ prism.simulate_prepost <- function(
   flow_sd = 0.55,
   replicates = 1,
   post_scale_factor = 0.8,
-  taxa_index = 15,
+  taxa_index = c(15),
   total_abundance_scale = 1e13,
-  minimalsparsity=FALSE,
-  iterations=1000,
-  seed=NULL
+  minimalsparsity = FALSE,
+  iterations = 1000,
+  seed = NULL
 ) {
 
   if (!is.null(seed)) {
     set.seed(seed)
   }
+
   ## 1. Assign Taxa Categories and use total abundance scale specified (e.g., 10 trillion)
   if (minimalsparsity) {
     taxa_means_pre <- rep(0, n_taxa)
@@ -683,7 +684,7 @@ prism.simulate_prepost <- function(
     
     # Ensure the first pair involves taxa_index
     remaining_taxa <- setdiff(1:n_taxa, taxa_index)  # Remove taxa_index from the list of possible pairs
-    first_pair <- c(taxa_index, sample(remaining_taxa, 1))  # First correlation pair involves taxa_index
+    first_pairs <- cbind(rep(taxa_index, each = length(remaining_taxa)), remaining_taxa)  # Pairs involving taxa_index
     
     if (sparsity == 100) {
       # Add correlation for every possible pair
@@ -697,10 +698,10 @@ prism.simulate_prepost <- function(
       
       # Select additional random pairs if sparsity > 1
       if (sparsity > 1) {
-        selected_pairs <- all_pairs[, sample(ncol(all_pairs), n_correlations - 1)]
-        selected_pairs <- cbind(first_pair, selected_pairs)  # Add the first pair involving taxa_index
+        selected_pairs <- all_pairs[, sample(ncol(all_pairs), n_correlations - length(taxa_index))]
+        selected_pairs <- cbind(first_pairs, selected_pairs)  # Add the pairs involving taxa_index
       } else {
-        selected_pairs <- matrix(first_pair, nrow = 2)  # Only the first pair is used
+        selected_pairs <- first_pairs  # Only pairs with taxa_index
       }
     }
     
@@ -710,7 +711,7 @@ prism.simulate_prepost <- function(
       idx2 <- selected_pairs[2, i]
       
       # Randomly assign either positive or negative correlation
-      corr_value <- sample(c(-0.9, -0.8, -0.7, -0.6, -0.5, -0.4, -0.3, -0.2, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9), 1)
+      corr_value <- sample(c(-0.9, -0.8, -0.7, -0.6, -0.5, -0.4, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9), 1)
       
       # Assign the correlation to the matrix
       corr_matrix[idx1, idx2] <- corr_value
@@ -737,81 +738,41 @@ prism.simulate_prepost <- function(
   # Multiply the correlation matrix by the standard deviation matrix to get the covariance matrix
   log_cov_matrix <- D %*% corr_matrix %*% D
 
-  # Helper function to calculate sparsity of a matrix
-  calculate_sparsity <- function(mat, threshold=0.05) {
-    off_diag_values <- mat[upper.tri(mat)]  # Get off-diagonal elements
-    sparsity <- sum(abs(off_diag_values) < threshold) / length(off_diag_values)
-    return(sparsity)
-  }
-
   ## 4. Simulate Latent Variables
   generate_latent_variables <- function(n_samples, cov_matrix, taxa_means_pre) {
     mvrnorm(n_samples, mu = taxa_means_pre, Sigma = cov_matrix)
   }
 
-  # Define the sparsity level of the original correlation matrix
-  target_sparsity <- calculate_sparsity(corr_matrix)
+  latent_vars <- generate_latent_variables(n_samples, log_cov_matrix, taxa_means_pre)
   
-  # Store results of the best simulation
-  best_W <- NULL
-  best_W_pre <- NULL
-  best_W_post <- NULL
-  min_sparsity_diff <- Inf  # Start with a large difference
-
-  # Optimization Loop: Run 1000 iterations to find the best W
-  #for (i in 1:iterations) {
-
-    latent_vars <- generate_latent_variables(n_samples, log_cov_matrix, taxa_means_pre)
-    
-    ## 5. Exponentiate Latent Variables to Obtain Positive Values
-    W_sampled <- exp(latent_vars)
-    W_pre <- W_sampled[1:(n_samples/2),]
-    W_post <- W_sampled[((n_samples/2) + 1):n_samples,]
-    ## 6. No Scaling of Pre-Treatment Data to represent the baseline abundances
+  ## 5. Exponentiate Latent Variables to Obtain Positive Values
+  W_sampled <- exp(latent_vars)
+  W_pre <- W_sampled[1:(n_samples/2),]
+  W_post <- W_sampled[((n_samples/2) + 1):n_samples,]
   
-    ## 7. Introduce Narrow Spectrum Antibiotic Effect on Post-Treatment Data
-    # The specified taxa's mean is reduced by post_scale_factor
-    # Other taxa are adjusted based on the correlation matrix
-    
-    # Apply antibiotic effect only to post-treatment
-    W_post_scaled <- W_post
-    W_post_scaled[, taxa_index] <- W_post_scaled[, taxa_index] * post_scale_factor
-    
-    # Adjust other taxa based on correlation
-    correlations <- corr_matrix[taxa_index, ]
-    correlations[taxa_index] <- 0  # Exclude self-correlation
-    
-    adjustment_proportion <- 1 - (1 - post_scale_factor) * correlations
-    adjustment_proportion[adjustment_proportion < 0] <- 0
-    
-    W_post_scaled <- sweep(W_post_scaled, 2, adjustment_proportion, FUN = "*")
-    
-    # Record Post-treatment Means
-    taxa_means_post <- colMeans(W_post_scaled)
-    
-    ## 8. Combine Pre and Post Data
-    W <- rbind(W_pre, W_post_scaled)
-    
-    # Step 3: Compute correlation matrix of W
-    W_corr_matrix <- cor(W)
-    
-    # Step 4: Calculate the sparsity of W's correlation matrix
-    #sparsity_W_corr <- calculate_sparsity(W_corr_matrix)
-    
-    # Step 5: Compute the difference in sparsity from the target
-    #sparsity_diff <- abs(sparsity_W_corr - target_sparsity)
-    
-    # Step 6: If this W's sparsity is closer to the target, update the best result
-    #if (sparsity_diff < min_sparsity_diff) {
-      best_W <- W
-      best_W_pre <- W_pre
-      best_W_post_scaled <- W_post_scaled
-    #}
-  #}
+  ## 6. Introduce Narrow Spectrum Antibiotic Effect on Post-Treatment Data
+  W_post_scaled <- W_post
+  
+  for (taxon in taxa_index) {
+    W_post_scaled[, taxon] <- W_post_scaled[, taxon] * post_scale_factor
+  }
+  
+  # Adjust other taxa based on correlation
+  correlations <- rowSums(corr_matrix[taxa_index, , drop = FALSE])
+  correlations[taxa_index] <- 0  # Exclude self-correlation
+  
+  adjustment_proportion <- 1 - (1 - post_scale_factor) * correlations
+  adjustment_proportion[adjustment_proportion < 0] <- 0
+  
+  W_post_scaled <- sweep(W_post_scaled, 2, adjustment_proportion, FUN = "*")
+  
+  ## 8. Combine Pre and Post Data
+  W <- rbind(W_pre, W_post_scaled)
+  
   Condition <- factor(rep(c("Pre", "Post"), each = n_samples/2), levels = c("Pre", "Post"))
   
   ## 9. Normalize to Get Relative Abundances
-  W_para <- sweep(best_W, 1, rowSums(best_W), "/")
+  W_para <- sweep(W, 1, rowSums(W), "/")
   
   ## 10. Simulate Sequencing Counts Using Multinomial Distribution
   resample_data <- function(W_para, seq_depth) {
@@ -832,7 +793,7 @@ prism.simulate_prepost <- function(
     return(flow_data)
   }
   
-  W_perp <- rowSums(best_W)
+  W_perp <- rowSums(W)
   flow_data <- flow_cytometry(W_perp, replicates, flow_sd)
   
   ## 12. Collapse Flow Data if Replicates > 1
@@ -844,23 +805,23 @@ prism.simulate_prepost <- function(
   }
 
   # Convert W_combined to a data frame and assign column names
-  dummy <- as.data.frame(best_W)
-  colnames(dummy) <- paste0("Taxa", 1:ncol(best_W)) 
+  dummy <- as.data.frame(W)
+  colnames(dummy) <- paste0("Taxa", 1:ncol(W)) 
   dummy$Condition <- Condition
 
   names(taxa_means_pre) <- paste0("Taxa_", 1:n_taxa)
   
   ## 13. Compile Results
   results <- list(
-    W.pre = best_W_pre,
-    W.post = best_W_post_scaled,
-    W = best_W,
+    W.pre = W_pre,
+    W.post = W_post_scaled,
+    W = W,
     W.para = W_para,
     W.perp = W_perp,
     Y = Y,
     W.condition = dummy,
     taxa_means_pre = taxa_means_pre,
-    taxa_means_post = taxa_means_post,
+    taxa_means_post = colMeans(W_post_scaled),
     flow = flow_data,
     corr_matrix = corr_matrix, 
     cov_matrix = log_cov_matrix
