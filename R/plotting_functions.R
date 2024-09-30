@@ -469,7 +469,7 @@ prism.sigmaplot <- function(all_inner_results, bg="white", filename = NULL, save
 #' @import dplyr
 #' @import gridExtra
 #' @export
-prism.diagnose_mcmcerror <- function(combined_results, convergence_results) {
+prism.diagnose_mcmcerror <- function(combined_results, convergence_results, filename="specifydatasetname") {
   
   # Plot convergence of bootstrap estimates
   plot_convergence <- function(bootstrap_results) {
@@ -604,7 +604,8 @@ prism.3dscatterplot_comparisons <- function(data, output_directory = "./plots/",
                                         correlation_relativetaxa_scale_range = c(-1, 1), 
                                         scale_sd_range = c(0.49, 0.51),
                                         plot_all = TRUE,
-                                        alpha_value = 1) {
+                                        alpha_value = 1,
+					filename="specifydatasetname") {
   # Ensure output directory exists
   if (!dir.exists(output_directory)) {
     dir.create(output_directory, recursive = TRUE)
@@ -775,7 +776,7 @@ prism.3dscatterplot_comparisons <- function(data, output_directory = "./plots/",
              title = "MinSigma and MaxSigma Scatter Plot for All Comparisons")
     
     # Define file path for saving the combined plot
-    output_file <- file.path(output_directory, "sigma_scatter_all_comparisons.html")
+    output_file <- file.path(output_directory,filename, "_sigma_scatter_all_comparisons.html")
     
     # Save the combined plot as an HTML file
     htmlwidgets::saveWidget(plot, file = output_file)
@@ -803,7 +804,7 @@ prism.3dscatterplot_comparisons <- function(data, output_directory = "./plots/",
 #' @return This function saves the plots and returns no value.
 #' @import plotly htmlwidgets alphashape3d
 #' @export
-prism.3dscatterplot <- function(data, output_directory = "./plots/", rho_scale_range = c(min(data$rho1, na.rm = TRUE), max(data$rho1, na.rm = TRUE)), scalestdevstep_range = c(min(data$scalestdevstep, na.rm = TRUE), max(data$scalestdevstep, na.rm = TRUE)), plot_all = TRUE, alpha_value = 1) {
+prism.3dscatterplot <- function(data, output_directory = "./plots/", filename="specifydatasetname", rho_scale_range = c(min(data$rho1, na.rm = TRUE), max(data$rho1, na.rm = TRUE)), scalestdevstep_range = c(min(data$scalestdevstep, na.rm = TRUE), max(data$scalestdevstep, na.rm = TRUE)), plot_all = TRUE, alpha_value = 1) {
   
   # Ensure output directory exists
   if (!dir.exists(output_directory)) {
@@ -893,7 +894,7 @@ prism.3dscatterplot <- function(data, output_directory = "./plots/", rho_scale_r
       )
     
     # Define file path for saving the combined plot
-    output_file <- file.path(output_directory, "sigma_scatter_all_comparisons.html")
+    output_file <- file.path(output_directory, filename, "sigma_scatter_all_comparisons.html")
     
     # Save the combined plot as an HTML file
     htmlwidgets::saveWidget(plot, file = output_file)
@@ -953,7 +954,7 @@ prism.3dscatterplot <- function(data, output_directory = "./plots/", rho_scale_r
 #' }
 #' 
 #' @export
-prism.spsd <- function(data, output_directory = "./plots/", rho_scale_range = c(min(data$rho1), max(data$rho1)), scalestdevstep_range = c(min(data$scalestdevstep), max(data$scalestdevstep)), alpha_value = 1) {
+prism.spsd <- function(data, output_directory = "./plots/", rho_scale_range = c(min(data$rho1), max(data$rho1)), filename = "specifydatasetname", scalestdevstep_range = c(min(data$scalestdevstep), max(data$scalestdevstep)), alpha_value = 1) {
 
   # Ensure output directory exists
   if (!dir.exists(output_directory)) {
@@ -1016,7 +1017,7 @@ prism.spsd <- function(data, output_directory = "./plots/", rho_scale_range = c(
         title = "Sigma Scatter Plot with SPSD Uncertainty",
         showlegend = TRUE
       )
-  output_file <- file.path(output_directory, "sigma_scatter_with_CI.html")
+  output_file <- file.path(output_directory, filename, "_sigma_scatter_with_CI.html")
   htmlwidgets::saveWidget(plot, file = output_file)
   message("Generated and saved scatter plot with CI for SPSD uncertainty.")
 }
@@ -1062,7 +1063,7 @@ prism.spsd <- function(data, output_directory = "./plots/", rho_scale_range = c(
 #' }
 #' 
 #' @export
-prism.bivariate <- function(data, output_directory = "./plots/", sample_size = 3000) {
+prism.bivariate <- function(data, output_directory = "./plots/", sample_size = 3000, filename="specifydatasetname") {
 
   # Ensure output directory exists
   if (!dir.exists(output_directory)) {
@@ -1106,7 +1107,7 @@ prism.bivariate <- function(data, output_directory = "./plots/", sample_size = 3
   print(pairwise_plot)
 
   # Save the plot as a PNG file
-  output_file <- file.path(output_directory, "bivariate_plot_matrix.png")
+  output_file <- file.path(output_directory, filename, "_bivariate_plot_matrix.png")
   ggsave(output_file, pairwise_plot, width = 8, height = 8, dpi = 300)
 
   # Optionally, print a message to confirm plot generation
@@ -1217,7 +1218,7 @@ prism.proportions <- function(data, comparison_col = "comparison", proportion_co
 #' @importFrom ggridges geom_density_ridges
 #' @importFrom reshape2 melt
 #' @keywords internal
-prism.rhoridges <- function(rhobounds, D, S, dir_path="./plots/") {
+prism.rhoridges <- function(rhobounds, D, S, dir_path="./plots/", filename="specifydatasetname") {
   
   # Reshape the rhobounds array into a long-format data frame
   melted_data <- reshape2::melt(rhobounds)
@@ -1295,7 +1296,7 @@ prism.rhoridges <- function(rhobounds, D, S, dir_path="./plots/") {
   
   # Save the plot to the "plots" directory with white background
   ggplot2::ggsave(
-    filename = paste0(dir_path,"correlation_ridges.png"),
+    filename = paste0(dir_path,filename, "_correlation_ridges.png"),
     plot = plot,
     width = 12, height = 8, dpi = 300, bg = "white"
   )
@@ -1323,7 +1324,7 @@ prism.rhoridges <- function(rhobounds, D, S, dir_path="./plots/") {
 #' @importFrom ggplot2 element_text scale_fill_manual scale_color_manual ggsave after_stat geom_vline
 #' @importFrom ggplot2 annotate
 #' @keywords internal
-prism.scalesdhistogram <- function(scalestdev, S, dir_path="./plots/") {
+prism.scalesdhistogram <- function(scalestdev, S, dir_path="./plots/", filename="specifydatasetname") {
   
   # Prepare the data
   plot_data <- data.frame(
@@ -1379,7 +1380,7 @@ prism.scalesdhistogram <- function(scalestdev, S, dir_path="./plots/") {
   }
   
   # Save the plot to the "plots" directory with white background
-  ggplot2::ggsave(filename = paste0(dir_path,"scalesd_histogram.png"), plot = plot, 
+  ggplot2::ggsave(filename = paste0(dir_path,filename,"_scalesd_histogram.png"), plot = plot, 
                   width = 10, height = 8, dpi = 300, bg = "white")
   
   return(plot)
@@ -1401,7 +1402,7 @@ prism.scalesdhistogram <- function(scalestdev, S, dir_path="./plots/") {
 #' @param dpi The resolution of the saved plot in dots per inch (dpi). Default is 300.
 #'
 #' @keywords internal
-prism.posteriordensity <- function(rWparaoriginal, save = TRUE, file_name = "taxa_posterior_density.png", width = 8, height = 8, dpi = 300) {
+prism.posteriordensity <- function(rWparaoriginal, save = TRUE, filename = "specifydatasetname", width = 8, height = 8, dpi = 300) {
   
   # Get the number of taxa (D) and iterations (S)
   D <- dim(rWparaoriginal)[1]
@@ -1435,7 +1436,7 @@ prism.posteriordensity <- function(rWparaoriginal, save = TRUE, file_name = "tax
   
   if (save == TRUE){	
   # Save the plot with high resolution
-  ggsave(filename = file_name, plot = p, width = width, height = height, dpi = dpi, bg = "white")
+  ggsave(filename = paste0(filename, "_taxa_posterior_density.png"), plot = p, width = width, height = height, dpi = dpi, bg = "white")
   } 
   return(p)
 }
@@ -1455,7 +1456,7 @@ prism.posteriordensity <- function(rWparaoriginal, save = TRUE, file_name = "tax
 #' @param dpi The resolution of the saved plot in dots per inch (dpi). Default is 300.
 #'
 #' @keywords internal
-prism.posteriorboxplot <- function(rWparaoriginal, save = TRUE, file_name = "taxa_posterior_boxplot.png", width = 8, height = 6, dpi = 300) {
+prism.posteriorboxplot <- function(rWparaoriginal, save = TRUE, filename = "specifydatasetname", width = 8, height = 6, dpi = 300) {
   
   # Get the number of taxa (D) and iterations (S)
   D <- dim(rWparaoriginal)[1]
@@ -1489,7 +1490,7 @@ prism.posteriorboxplot <- function(rWparaoriginal, save = TRUE, file_name = "tax
   
   if (save == TRUE){	
   # Save the plot with high resolution
-  ggsave(filename = file_name, plot = p, width = width, height = height, dpi = dpi, bg = "white")
+  ggsave(filename = paste0(filename,"taxa_posterior_boxplot.png"), plot = p, width = width, height = height, dpi = dpi, bg = "white")
   } 
   return(p)
 }
@@ -1510,7 +1511,7 @@ prism.posteriorboxplot <- function(rWparaoriginal, save = TRUE, file_name = "tax
 #' @param dpi The resolution of the saved plot in dots per inch (dpi). Default is 300.
 #'
 #' @keywords internal
-prism.posteriorviolin <- function(rWparaoriginal, save = TRUE, file_name = "taxa_posterior_violin.png", width = 8, height = 8, dpi = 300) {
+prism.posteriorviolin <- function(rWparaoriginal, save = TRUE, filename = "specifydatasetname", width = 8, height = 8, dpi = 300) {
   
   # Get the number of taxa (D) and iterations (S)
   D <- dim(rWparaoriginal)[1]
@@ -1544,12 +1545,12 @@ prism.posteriorviolin <- function(rWparaoriginal, save = TRUE, file_name = "taxa
   
   if (save == TRUE){	
   # Save the plot with high resolution
-  ggsave(filename = file_name, plot = p, width = width, height = height, dpi = dpi, bg = "white")
+  ggsave(filename = paste0(filename,"_taxa_posterior_violin.png"), plot = p, width = width, height = height, dpi = dpi, bg = "white")
   } 
   return(p)
 }
 
-prism.posteriorlineplot <- function(rWparaoriginal, save = TRUE, file_name = "taxa_posterior_samples.png", width = 8, height = 8, dpi = 300) {
+prism.posteriorlineplot <- function(rWparaoriginal, save = TRUE, filename = "specifydatasetname", width = 8, height = 8, dpi = 300) {
   
   # Get the number of taxa (D)
   D <- dim(rWparaoriginal)[1]
@@ -1585,7 +1586,7 @@ prism.posteriorlineplot <- function(rWparaoriginal, save = TRUE, file_name = "ta
 
   if (save == TRUE){	
   # Save the plot with high resolution
-  ggsave(filename = file_name, plot = p, width = width, height = height, dpi = dpi, bg = "white")
+  ggsave(filename = paste0(filename, "_taxa_posterior_samples.png"), plot = p, width = width, height = height, dpi = dpi, bg = "white")
   } 
 	
   return(p)
@@ -1608,7 +1609,7 @@ prism.posteriorlineplot <- function(rWparaoriginal, save = TRUE, file_name = "ta
 #' @keywords internal
 #' @import ggplot2
 #' @import gridExtra
-prism.posteriorsamples <- function(rWparaoriginal, dir_path="./plots/", file_name = "posterior_plots.png", width = 16, height = 16, dpi = 300) {
+prism.posteriorsamples <- function(rWparaoriginal, dir_path="./plots/", filename = "specifydatasetname", width = 16, height = 16, dpi = 300) {
   
   # Generate individual plots
   p1 <- prism.posteriordensity(rWparaoriginal, save=FALSE)   # Density plot
@@ -1631,7 +1632,7 @@ prism.posteriorsamples <- function(rWparaoriginal, dir_path="./plots/", file_nam
   }
   
   # Save the combined plot as a PNG
-  ggsave(filename = paste0(dir_path, file_name), plot = combined_plot, width = width, height = height, dpi = dpi, bg = "white")
+  ggsave(filename = paste0(dir_path, filename, "_posterior_plots.png"), plot = combined_plot, width = width, height = height, dpi = dpi, bg = "white")
   
   return(combined_plot)
 }
@@ -1661,7 +1662,7 @@ prism.posteriorsamples <- function(rWparaoriginal, dir_path="./plots/", file_nam
 #'   # Generate correlation plot and covariance heatmap
 #'   plot_true_abundances(rdat, flow_data, dat, file_path = "true_abundances_plot.png")
 #' }
-prism.trueabundanceplot <- function(W.perp, W, corr_matrix, W.condition, dir_path = "./plots/", file_path = "true_abundances.png") {
+prism.trueabundanceplot <- function(W.perp, W, corr_matrix, W.condition, dir_path = "./plots/", filename = "specifydatasetname") {
   
   # Get the number of taxa (D) from the data
   D <- ncol(W)
@@ -1784,7 +1785,7 @@ ridge_plot <- ggplot(W.para_long, aes(x = Value, y = Taxa, fill = Condition)) +
   }
   
   # Save the combined plot as a PNG file
-  png(filename = paste0(dir_path, file_path), width = 16, height = 16, units = "in", res = 300)
+  png(filename = paste0(dir_path, filename, "_true_abundances.png"), width = 16, height = 16, units = "in", res = 300)
   
   # Arrange the plots: heatmaps on the top row, forest plot and ridge plot on the bottom row
   gridExtra::grid.arrange(correlation_grob, underlying_correlation_grob, forest_plot_grob, ridge_plot_grob, ncol = 2, nrow = 2)
@@ -1848,7 +1849,7 @@ ridge_plot <- ggplot(W.para_long, aes(x = Value, y = Taxa, fill = Condition)) +
 #' @examples
 #' prism.network(results, pvalue = TRUE)
 
-prism.network <- function(results, pvalue = FALSE, dir_path="./plots/", file_name = "network.png", save_plot = TRUE) {
+prism.network <- function(results, pvalue = FALSE, dir_path="./plots/", filename = "network.png", save_plot = TRUE) {
   # Filter rows with non-NA taxa
   filtered_results <- results[!is.na(results$taxa1) & !is.na(results$taxa2), ]
   
@@ -1975,7 +1976,7 @@ prism.network <- function(results, pvalue = FALSE, dir_path="./plots/", file_nam
 #' @examples
 #' prism.circlenetwork(list(df1 = df1, df2 = df2), pvalue = TRUE)
 prism.circlenetwork <- function(data_list, metric = "covariance", pvalue = FALSE, dir_path = "./plots/", 
-                                file_name = "circlenetwork", save_plot = TRUE, combine_plots = FALSE) {
+                                filename = "specifydatasetname", save_plot = TRUE, combine_plots = FALSE) {
   
   # Validate input: data_list must be a named list of dataframes
   if (!is.list(data_list) || is.null(names(data_list))) {
@@ -2085,7 +2086,7 @@ prism.circlenetwork <- function(data_list, metric = "covariance", pvalue = FALSE
       )
     
     if (save_plot) {
-      ggsave(paste0(dir_path, file_name, "_combined.png"), combined_plot, width = 15, height = 10, dpi = 300)
+      ggsave(paste0(dir_path, filename, "_circlenetwork_combined.png"), combined_plot, width = 20, height = 15, dpi = 300)
     }
     return(combined_plot)  # Return the combined plot
   } else {
@@ -2098,7 +2099,7 @@ prism.circlenetwork <- function(data_list, metric = "covariance", pvalue = FALSE
           dir.create(dir_path)
         }
         # Save each plot with the dataset name as the suffix
-        ggsave(paste0(dir_path, file_name, "_", dataset_name, ".png"), plot, width = 10, height = 10, dpi = 300)
+        ggsave(paste0(dir_path, filename, "_circlenetwork_", dataset_name, ".png"), plot, width = 10, height = 10, dpi = 300)
       }
     }
     return(plot_list)  # Return the list of individual plots
