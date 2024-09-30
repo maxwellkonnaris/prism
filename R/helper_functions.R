@@ -959,7 +959,7 @@ prism.simulate_data_sparsecorr <- function(
   W_post_scaled[, taxa_index] <- W_post_scaled[, taxa_index] * post_scale_factor
   
   # Adjust other taxa based on correlation
-  correlations <- cov_matrix[taxa_index, ]
+  correlations <- corr_matrix[taxa_index, ]
   correlations[taxa_index] <- 0  # Exclude self-correlation
   
   adjustment_proportion <- 1 - (1 - post_scale_factor) * correlations
