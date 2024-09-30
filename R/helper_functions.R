@@ -849,6 +849,7 @@ prism.simulate_data_sparsecorr <- function(
   ## 1. Assign Taxa Categories and use total abundance scale specified (e.g., 10 trillion)
   if (minimalsparsity) {
     taxa_means_pre <- rep(0, n_taxa)
+    log_scale_sds <- rep(n_taxa, 0.01)  
     cat("Adjust sequencing depth accordingly between ranges [100:5000]\n")
   } else {
     n_rare <- round(n_taxa * rare_pct)
@@ -870,6 +871,9 @@ prism.simulate_data_sparsecorr <- function(
     
     taxa_means_pre <- c(means_rare, means_medium, means_frequent)
     taxa_means_pre <- log(taxa_means_pre)
+    
+    # Define the standard deviations for each taxon on the log scale
+    log_scale_sds <- runif(n_taxa, 0.05, 0.3)  # Adjust range based on biological expectations
   }
   
   ## 3. Create Correlation Matrix with Specified Sparsity
@@ -908,7 +912,7 @@ prism.simulate_data_sparsecorr <- function(
       idx2 <- selected_pairs[2, i]
       
       # Randomly assign either positive or negative correlation
-      corr_value <- sample(c(-0.9, -0.8, -0.7, -0.6, -0.5, -0.4, -0.3, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9), 1)
+      corr_value <- sample(c(-0.9, -0.8, -0.7, -0.6, -0.5, -0.4, -0.3, -0.2, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9), 1)
       
       # Assign the correlation to the matrix
       corr_matrix[idx1, idx2] <- corr_value
@@ -929,9 +933,6 @@ prism.simulate_data_sparsecorr <- function(
 
   # log-scale covariance matrix
 
-  # Define the standard deviations for each taxon on the log scale
-  log_scale_sds <- runif(n_taxa, 0.05, 0.3)  # Adjust range based on biological expectations
-
   # Create a diagonal matrix with log-scale standard deviations
   D <- diag(log_scale_sds)
 
@@ -950,11 +951,9 @@ prism.simulate_data_sparsecorr <- function(
   W_pre <- exp(latent_vars_pre)
   W_post <- exp(latent_vars_post)
   
-  ## 6. No Scaling of Pre-Treatment Data
-  # Leave W_pre unchanged to represent the baseline abundances
+  ## 6. No Scaling of Pre-Treatment Data to represent the baseline abundances
 
-  ## 7. Introduce Antibiotic Effect on Post-Treatment Data
-  # Assign Post-Treatment Means: same as Pre except for the specified taxa
+  ## 7. Introduce Narrow Spectrum Antibiotic Effect on Post-Treatment Data
   # The specified taxa's mean is reduced by post_scale_factor
   # Other taxa are adjusted based on the correlation matrix
   
