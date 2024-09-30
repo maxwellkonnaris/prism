@@ -1756,9 +1756,10 @@ prism.trueabundanceplot <- function(W.perp, W, corr_matrix, W.condition, dir_pat
  # Reverse the order of the Taxa factor
  W.para_long$Taxa <- fct_rev(as.factor(W.para_long$Taxa))
 
- # Ridge plot showing Pre and Post conditions for each taxon
- ridge_plot <- ggplot(W.para_long, aes(x = Value, y = Taxa, fill = Condition)) +
+# Ridge plot showing Pre and Post conditions for each taxon
+ridge_plot <- ggplot(W.para_long, aes(x = Value, y = Taxa, fill = Condition)) +
   geom_density_ridges(scale = 1, alpha = 0.4) +
+  scale_fill_manual(values = c("Pre" = "#BEBEBE", "Post" = "#023E8A")) + 
   labs(title = "Taxa with Pre and Post Conditions",
        x = "Composition (W.para)",
        y = "Taxa") +
@@ -1768,10 +1769,9 @@ prism.trueabundanceplot <- function(W.perp, W, corr_matrix, W.condition, dir_pat
     axis.title.x = element_text(size = 15, hjust = 0.5), 
     axis.title.y = element_text(size = 15, hjust = 0.5),
     axis.text.x = element_text(size = 15), 
-    axis.text.y = element_text(size = 15) 
+    axis.text.y = element_text(size = 15)
   )
 
-  
   # Convert plots to grobs
   forest_plot_grob <- ggplotGrob(forest_plot)
   correlation_grob <- grid::grid.grabExpr(grid::grid.draw(correlation_heatmap$gtable))
