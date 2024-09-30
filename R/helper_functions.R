@@ -745,100 +745,66 @@ prism.simulate_prepost <- function(
     mvrnorm(n_samples, mu = taxa_means_pre, Sigma = cov_matrix)
   }
 
-  if (sparsity == 1) {
-    # Define the sparsity level of the original correlation matrix
-    target_sparsity <- calculate_sparsity(corr_matrix)
-    
-    # Store results of the best simulation
-    best_W <- NULL
-    best_W_pre <- NULL
-    best_W_post <- NULL
-    min_sparsity_diff <- Inf  # Start with a large difference
+  # Define the sparsity level of the original correlation matrix
+  target_sparsity <- calculate_sparsity(corr_matrix)
   
-    # Optimization Loop: Run 1000 iterations to find the best W
-    for (i in 1:iterations) {
-  
-      latent_vars_pre <- generate_latent_variables(n_samples, log_cov_matrix, taxa_means_pre)
-      latent_vars_post <- generate_latent_variables(n_samples, log_cov_matrix, taxa_means_pre)
-      
-      ## 5. Exponentiate Latent Variables to Obtain Positive Values
-      W_pre <- exp(latent_vars_pre)
-      W_post <- exp(latent_vars_post)
-      
-      ## 6. No Scaling of Pre-Treatment Data to represent the baseline abundances
+  # Store results of the best simulation
+  best_W <- NULL
+  best_W_pre <- NULL
+  best_W_post <- NULL
+  min_sparsity_diff <- Inf  # Start with a large difference
+
+  # Optimization Loop: Run 1000 iterations to find the best W
+  for (i in 1:iterations) {
+
+    latent_vars_pre <- generate_latent_variables(n_samples, log_cov_matrix, taxa_means_pre)
+    latent_vars_post <- generate_latent_variables(n_samples, log_cov_matrix, taxa_means_pre)
     
-      ## 7. Introduce Narrow Spectrum Antibiotic Effect on Post-Treatment Data
-      # The specified taxa's mean is reduced by post_scale_factor
-      # Other taxa are adjusted based on the correlation matrix
-      
-      # Apply antibiotic effect only to post-treatment
-      W_post_scaled <- W_post
-      W_post_scaled[, taxa_index] <- W_post_scaled[, taxa_index] * post_scale_factor
-      
-      # Adjust other taxa based on correlation
-      correlations <- corr_matrix[taxa_index, ]
-      correlations[taxa_index] <- 0  # Exclude self-correlation
-      
-      adjustment_proportion <- 1 - (1 - post_scale_factor) * correlations
-      adjustment_proportion[adjustment_proportion < 0] <- 0
-      
-      W_post_scaled <- sweep(W_post_scaled, 2, adjustment_proportion, FUN = "*")
-      
-      # Record Post-treatment Means
-      taxa_means_post <- colMeans(W_post_scaled)
-      
-      ## 8. Combine Pre and Post Data
-      W <- rbind(W_pre, W_post_scaled)
-      
-      # Step 3: Compute correlation matrix of W
-      W_corr_matrix <- cor(W)
-      
-      # Step 4: Calculate the sparsity of W's correlation matrix
-      sparsity_W_corr <- calculate_sparsity(W_corr_matrix)
-      
-      # Step 5: Compute the difference in sparsity from the target
-      sparsity_diff <- abs(sparsity_W_corr - target_sparsity)
-      
-      # Step 6: If this W's sparsity is closer to the target, update the best result
-      if (sparsity_diff < min_sparsity_diff) {
-        print(paste0("Minimum sparsity difference between correlation matrices:", sparsity_diff))
-        best_W <- W
-        best_W_pre <- W_pre
-        best_W_post_scaled <- W_post_scaled
-      }
+    ## 5. Exponentiate Latent Variables to Obtain Positive Values
+    W_pre <- exp(latent_vars_pre)
+    W_post <- exp(latent_vars_post)
+    
+    ## 6. No Scaling of Pre-Treatment Data to represent the baseline abundances
+  
+    ## 7. Introduce Narrow Spectrum Antibiotic Effect on Post-Treatment Data
+    # The specified taxa's mean is reduced by post_scale_factor
+    # Other taxa are adjusted based on the correlation matrix
+    
+    # Apply antibiotic effect only to post-treatment
+    W_post_scaled <- W_post
+    W_post_scaled[, taxa_index] <- W_post_scaled[, taxa_index] * post_scale_factor
+    
+    # Adjust other taxa based on correlation
+    correlations <- corr_matrix[taxa_index, ]
+    correlations[taxa_index] <- 0  # Exclude self-correlation
+    
+    adjustment_proportion <- 1 - (1 - post_scale_factor) * correlations
+    adjustment_proportion[adjustment_proportion < 0] <- 0
+    
+    W_post_scaled <- sweep(W_post_scaled, 2, adjustment_proportion, FUN = "*")
+    
+    # Record Post-treatment Means
+    taxa_means_post <- colMeans(W_post_scaled)
+    
+    ## 8. Combine Pre and Post Data
+    W <- rbind(W_pre, W_post_scaled)
+    
+    # Step 3: Compute correlation matrix of W
+    W_corr_matrix <- cor(W)
+    
+    # Step 4: Calculate the sparsity of W's correlation matrix
+    sparsity_W_corr <- calculate_sparsity(W_corr_matrix)
+    
+    # Step 5: Compute the difference in sparsity from the target
+    sparsity_diff <- abs(sparsity_W_corr - target_sparsity)
+    
+    # Step 6: If this W's sparsity is closer to the target, update the best result
+    if (sparsity_diff < min_sparsity_diff) {
+      print(paste0("Minimum sparsity difference between correlation matrices:", sparsity_diff))
+      best_W <- W
+      best_W_pre <- W_pre
+      best_W_post_scaled <- W_post_scaled
     }
-  } else {
-      latent_vars_pre <- generate_latent_variables(n_samples, log_cov_matrix, taxa_means_pre)
-      latent_vars_post <- generate_latent_variables(n_samples, log_cov_matrix, taxa_means_pre)
-      
-      ## 5. Exponentiate Latent Variables to Obtain Positive Values
-      best_W_pre <- exp(latent_vars_pre)
-      W_post <- exp(latent_vars_post)
-      
-      ## 6. No Scaling of Pre-Treatment Data to represent the baseline abundances
-    
-      ## 7. Introduce Narrow Spectrum Antibiotic Effect on Post-Treatment Data
-      # The specified taxa's mean is reduced by post_scale_factor
-      # Other taxa are adjusted based on the correlation matrix
-      
-      # Apply antibiotic effect only to post-treatment
-      W_post_scaled <- W_post
-      W_post_scaled[, taxa_index] <- W_post_scaled[, taxa_index] * post_scale_factor
-      
-      # Adjust other taxa based on correlation
-      correlations <- corr_matrix[taxa_index, ]
-      correlations[taxa_index] <- 0  # Exclude self-correlation
-      
-      adjustment_proportion <- 1 - (1 - post_scale_factor) * correlations
-      adjustment_proportion[adjustment_proportion < 0] <- 0
-      
-      best_W_post_scaled <- sweep(W_post_scaled, 2, adjustment_proportion, FUN = "*")
-      
-      # Record Post-treatment Means
-      taxa_means_post <- colMeans(W_post_scaled)
-      
-      ## 8. Combine Pre and Post Data
-      best_W <- rbind(best_W_pre, best_W_post_scaled)
   }
   Condition <- factor(rep(c("Pre", "Post"), each = n_samples), levels = c("Pre", "Post"))
   
