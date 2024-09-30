@@ -903,8 +903,8 @@ prism.simulate_data_sparsecorr <- function(
       idx1 <- selected_pairs[1, i]
       idx2 <- selected_pairs[2, i]
       
-      # Randomly assign either strong positive or negative correlation
-      corr_value <- sample(c(-0.9, -0.8, -0.7, 0.7, 0.8, 0.9), 1)
+      # Randomly assign either positive or negative correlation
+      corr_value <- sample(c(-0.9, -0.8, -0.7, -0.6, -0.5, -0.4, -0.3, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9), 1)
       
       # Assign the correlation to the matrix
       corr_matrix[idx1, idx2] <- corr_value
@@ -976,7 +976,7 @@ prism.simulate_data_sparsecorr <- function(
   ## 11. Simulate Flow Cytometry Data
   flow_cytometry <- function(totals, replicates, flow_sd) {
     flow_vals <- sapply(totals, function(total) {
-      rnorm(replicates, mean = total, sd = flow_sd)
+      rlnorm(replicates, meanlog = log(total), sdlog = flow_sd)
     })
     flow_data <- data.frame(
       sample = rep(1:length(totals), each = replicates),
