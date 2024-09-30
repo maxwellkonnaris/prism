@@ -637,8 +637,13 @@ prism.simulate_prepost <- function(
   taxa_index = 15,
   total_abundance_scale = 1e13,
   minimalsparsity=FALSE,
-  iterations=1000
+  iterations=1000,
+  seed=NULL
 ) {
+
+  if (!is.null(seed)) {
+      set.seed(seed)
+  }
   
   ## 1. Assign Taxa Categories and use total abundance scale specified (e.g., 10 trillion)
   if (minimalsparsity) {
