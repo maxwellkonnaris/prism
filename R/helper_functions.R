@@ -642,7 +642,7 @@ prism.simulate_prepost <- function(
 ) {
 
   if (!is.null(seed)) {
-    set.seet(10241994)
+    set.seed(seed)
   }
   ## 1. Assign Taxa Categories and use total abundance scale specified (e.g., 10 trillion)
   if (minimalsparsity) {
