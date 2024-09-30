@@ -917,19 +917,30 @@ prism.simulate_data_sparsecorr <- function(
   corr_matrix <- create_correlation_matrix(n_taxa, sparsity, taxa_index)
   
   ## Ensure Positive Definiteness
-  cov_matrix <- tryCatch({
+  corr_matrix <- tryCatch({
     as.matrix(nearPD(corr_matrix)$mat)
   }, error = function(e) {
     diag(1, n_taxa, n_taxa)
   })
-  
+
+  # log-scale covariance matrix
+
+  # Define the standard deviations for each taxon on the log scale
+  log_scale_sds <- runif(n_taxa, 0.1, 0.5)  # Adjust range based on biological expectations
+
+  # Create a diagonal matrix with log-scale standard deviations
+  D <- diag(log_scale_sds)
+
+  # Multiply the correlation matrix by the standard deviation matrix to get the covariance matrix
+  log_cov_matrix <- D %*% corr_matrix %*% D
+
   ## 4. Simulate Latent Variables
   generate_latent_variables <- function(n_samples, cov_matrix, taxa_means_pre) {
     mvrnorm(n_samples, mu = taxa_means_pre, Sigma = cov_matrix)
   }
   
-  latent_vars_pre <- generate_latent_variables(n_samples, cov_matrix, taxa_means_pre)
-  latent_vars_post <- generate_latent_variables(n_samples, cov_matrix, taxa_means_pre)
+  latent_vars_pre <- generate_latent_variables(n_samples, log_cov_matrix, taxa_means_pre)
+  latent_vars_post <- generate_latent_variables(n_samples, log_cov_matrix, taxa_means_pre)
   
   ## 5. Exponentiate Latent Variables to Obtain Positive Values
   W_pre <- exp(latent_vars_pre)
