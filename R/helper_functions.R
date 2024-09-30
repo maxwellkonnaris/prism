@@ -626,7 +626,7 @@ calculate_mcse <- function(bootstrap_estimates) {
 # Load necessary libraries
 prism.simulate_prepost <- function(
   n_taxa = 20,
-  n_samples = 50,
+  n_samples = 300,
   rare_pct = 0.2,
   medium_pct = 0.4,
   seq_depth = 1000,
@@ -762,7 +762,7 @@ prism.simulate_prepost <- function(
     ## 5. Exponentiate Latent Variables to Obtain Positive Values
     W_sampled <- exp(latent_vars)
     W_pre <- W_sampled[1:(n_samples/2),]
-    W_post <- W_sampled[(n_samples/2)+1:,]
+    W_post <- W_sampled[((n_samples/2) + 1):n_samples,]
     ## 6. No Scaling of Pre-Treatment Data to represent the baseline abundances
   
     ## 7. Introduce Narrow Spectrum Antibiotic Effect on Post-Treatment Data
