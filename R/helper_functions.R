@@ -678,7 +678,7 @@ prism.simulate_prepost <- function(
   ## 3. Create Correlation Matrix with Specified Sparsity
   create_correlation_matrix <- function(n_taxa, sparsity, taxa_index) {
     corr_matrix <- diag(1, n_taxa, n_taxa)  # Initialize as an identity matrix (no correlation)
-  
+
     # Calculate the total number of unique pairs (n_taxa choose 2)
     n_pairs <- n_taxa * (n_taxa - 1) / 2
     
@@ -768,8 +768,10 @@ prism.simulate_prepost <- function(
   correlations <- rowSums(corr_matrix[taxa_index, , drop = FALSE])
   correlations[taxa_index] <- 0  # Exclude self-correlation
   
+  # Ensure adjustment_proportion is a vector of the correct length
   adjustment_proportion <- 1 - (1 - post_scale_factor) * correlations
   adjustment_proportion[adjustment_proportion < 0] <- 0
+  adjustment_proportion <- adjustment_proportion[1:n_taxa]  # Ensure it's the right length
   
   W_post_scaled <- sweep(W_post_scaled, 2, adjustment_proportion, FUN = "*")
   
@@ -781,9 +783,18 @@ prism.simulate_prepost <- function(
   ## 9. Normalize to Get Relative Abundances
   W_para <- sweep(W, 1, rowSums(W), "/")
   
+  # Ensure no NA values exist in the probability matrix
+  W_para[is.na(W_para)] <- 0  # Replace any NAs with zeros
+  
   ## 10. Simulate Sequencing Counts Using Multinomial Distribution
   resample_data <- function(W_para, seq_depth) {
-    t(apply(W_para, 1, function(p) rmultinom(1, size = seq_depth, prob = p)))
+    t(apply(W_para, 1, function(p) {
+      if (any(is.na(p)) || sum(p) == 0) {
+        rep(0, length(p))  # Return all zeros if any NA or sum is 0
+      } else {
+        rmultinom(1, size = seq_depth, prob = p)
+      }
+    }))
   }
   
   Y <- resample_data(W_para, seq_depth)
@@ -840,6 +851,7 @@ prism.simulate_prepost <- function(
   
   return(results)
 }
+
 
 
 
