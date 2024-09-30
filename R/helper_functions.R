@@ -926,7 +926,7 @@ prism.simulate_data_sparsecorr <- function(
   # log-scale covariance matrix
 
   # Define the standard deviations for each taxon on the log scale
-  log_scale_sds <- runif(n_taxa, 0.1, 0.5)  # Adjust range based on biological expectations
+  log_scale_sds <- runif(n_taxa, 0.1, 0.3)  # Adjust range based on biological expectations
 
   # Create a diagonal matrix with log-scale standard deviations
   D <- diag(log_scale_sds)
