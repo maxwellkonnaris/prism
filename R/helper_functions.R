@@ -804,7 +804,7 @@ prism.simulate_prepost <- function(
       best_W_post_scaled <- W_post_scaled
     }
   }
-  Condition <- factor(rep(c("Pre", "Post"), each = n_samples), levels = c("Pre", "Post"))
+  Condition <- factor(rep(c("Pre", "Post"), each = n_samples/2), levels = c("Pre", "Post"))
   
   ## 9. Normalize to Get Relative Abundances
   W_para <- sweep(best_W, 1, rowSums(best_W), "/")
