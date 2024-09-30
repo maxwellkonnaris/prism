@@ -869,23 +869,28 @@ prism.simulate_data_sparsecorr <- function(
 
     # Calculate the total number of unique pairs (n_taxa choose 2)
     n_pairs <- n_taxa * (n_taxa - 1) / 2
-
-    # Determine how many correlations to add based on sparsity level (0 to 100)
-    n_correlations <- ifelse(sparsity == 1, 1, round((sparsity / 100) * n_pairs))
-    
-    # Create a list of all possible unique pairs (ignoring diagonal)
-    all_pairs <- combn(1:n_taxa, 2, simplify = TRUE)
     
     # Ensure the first pair involves taxa_index
     remaining_taxa <- setdiff(1:n_taxa, taxa_index)  # Remove taxa_index from the list of possible pairs
     first_pair <- c(taxa_index, sample(remaining_taxa, 1))  # First correlation pair involves taxa_index
     
-    # Select additional random pairs if sparsity > 1
-    if (sparsity > 1) {
-      selected_pairs <- all_pairs[, sample(ncol(all_pairs), n_correlations - 1)]
-      selected_pairs <- cbind(first_pair, selected_pairs)  # Add the first pair involving taxa_index
+    if (sparsity == 100) {
+      # Add correlation for every possible pair
+      selected_pairs <- combn(1:n_taxa, 2, simplify = TRUE)
     } else {
-      selected_pairs <- matrix(first_pair, nrow = 2)  # Only the first pair is used
+      # Determine how many correlations to add based on sparsity level (0 to 100)
+      n_correlations <- ifelse(sparsity == 1, 1, round((sparsity / 100) * n_pairs))
+      
+      # Create a list of all possible unique pairs (ignoring diagonal)
+      all_pairs <- combn(1:n_taxa, 2, simplify = TRUE)
+      
+      # Select additional random pairs if sparsity > 1
+      if (sparsity > 1) {
+        selected_pairs <- all_pairs[, sample(ncol(all_pairs), n_correlations - 1)]
+        selected_pairs <- cbind(first_pair, selected_pairs)  # Add the first pair involving taxa_index
+      } else {
+        selected_pairs <- matrix(first_pair, nrow = 2)  # Only the first pair is used
+      }
     }
     
     # Add positive and negative correlations to the selected pairs
