@@ -857,9 +857,9 @@ prism.simulate_data_sparsecorr <- function(
   frequent_taxa_indices <- (n_rare + n_medium + 1):n_taxa
   
   ## 2. Assign Means Based on Categories
-  means_rare <- runif(n_rare, 0.01, 0.05)
-  means_medium <- runif(n_medium, 0.1, 0.4)
-  means_frequent <- runif(n_frequent, 0.5, 1.0)
+  means_rare <- runif(n_rare, 10, 50)
+  means_medium <- runif(n_medium, 100, 400)
+  means_frequent <- runif(n_frequent, 500, 1000)
 
   means_rare <- means_rare * total_abundance_scale
   means_medium <- means_medium * total_abundance_scale
