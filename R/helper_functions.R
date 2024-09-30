@@ -757,13 +757,12 @@ prism.simulate_prepost <- function(
   # Optimization Loop: Run 1000 iterations to find the best W
   for (i in 1:iterations) {
 
-    latent_vars_pre <- generate_latent_variables(n_samples, log_cov_matrix, taxa_means_pre)
-    latent_vars_post <- generate_latent_variables(n_samples, log_cov_matrix, taxa_means_pre)
+    latent_vars <- generate_latent_variables(n_samples, log_cov_matrix, taxa_means_pre)
     
     ## 5. Exponentiate Latent Variables to Obtain Positive Values
-    W_pre <- exp(latent_vars_pre)
-    W_post <- exp(latent_vars_post)
-    
+    W_sampled <- exp(latent_vars)
+    W_pre <- W_sampled[1:(n_samples/2),]
+    W_post <- W_sampled[(n_samples/2)+1:,]
     ## 6. No Scaling of Pre-Treatment Data to represent the baseline abundances
   
     ## 7. Introduce Narrow Spectrum Antibiotic Effect on Post-Treatment Data
