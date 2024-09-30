@@ -842,32 +842,36 @@ prism.simulate_data_sparsecorr <- function(
   replicates = 1,
   post_scale_factor = 0.68,
   taxa_index = 20,
-  total_abundance_scale = 1e13
+  total_abundance_scale = 1e13,
+  minimalsparsity=FALSE
 ) {
   
-  set.seed(123)  # For reproducibility
-  
   ## 1. Assign Taxa Categories and use total abundance scale specified (e.g., 10 trillion)
-  n_rare <- round(n_taxa * rare_pct)
-  n_medium <- round(n_taxa * medium_pct)
-  n_frequent <- n_taxa - n_rare - n_medium
+  if (minimalsparsity) {
+    taxa_means_pre <- rep(0, n_taxa)
+    cat("Adjust sequencing depth accordingly between ranges [100:5000]\n")
+  } else {
+    n_rare <- round(n_taxa * rare_pct)
+    n_medium <- round(n_taxa * medium_pct)
+    n_frequent <- n_taxa - n_rare - n_medium
+    
+    rare_taxa_indices <- 1:n_rare
+    medium_taxa_indices <- (n_rare + 1):(n_rare + n_medium)
+    frequent_taxa_indices <- (n_rare + n_medium + 1):n_taxa
+    
+    ## 2. Assign Means Based on Categories
+    means_rare <- runif(n_rare, .0001, .005)
+    means_medium <- runif(n_medium, .006, .07)
+    means_frequent <- runif(n_frequent, .5, .7)
   
-  rare_taxa_indices <- 1:n_rare
-  medium_taxa_indices <- (n_rare + 1):(n_rare + n_medium)
-  frequent_taxa_indices <- (n_rare + n_medium + 1):n_taxa
+    means_rare <- means_rare * total_abundance_scale
+    means_medium <- means_medium * total_abundance_scale
+    means_frequent <- means_frequent * total_abundance_scale
+    
+    taxa_means_pre <- c(means_rare, means_medium, means_frequent)
+    taxa_means_pre <- log(taxa_means_pre)
+  }
   
-  ## 2. Assign Means Based on Categories
-  means_rare <- runif(n_rare, .0001, .005)
-  means_medium <- runif(n_medium, .006, .07)
-  means_frequent <- runif(n_frequent, .5, .7)
-
-  means_rare <- means_rare * total_abundance_scale
-  means_medium <- means_medium * total_abundance_scale
-  means_frequent <- means_frequent * total_abundance_scale
-  
-  taxa_means_pre <- c(means_rare, means_medium, means_frequent)
-  taxa_means_pre <- log(taxa_means_pre)
-
   ## 3. Create Correlation Matrix with Specified Sparsity
   create_correlation_matrix <- function(n_taxa, sparsity, taxa_index) {
     corr_matrix <- diag(1, n_taxa, n_taxa)  # Initialize as an identity matrix (no correlation)
@@ -926,7 +930,7 @@ prism.simulate_data_sparsecorr <- function(
   # log-scale covariance matrix
 
   # Define the standard deviations for each taxon on the log scale
-  log_scale_sds <- runif(n_taxa, 0.1, 0.3)  # Adjust range based on biological expectations
+  log_scale_sds <- runif(n_taxa, 0.05, 0.3)  # Adjust range based on biological expectations
 
   # Create a diagonal matrix with log-scale standard deviations
   D <- diag(log_scale_sds)
