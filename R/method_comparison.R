@@ -23,7 +23,7 @@ prism.method_comparison <- function(Y,
   
   results <- PRISM::prism.covariance(Y = Y, S = S, uncertaintydistribution = uncertaintydistribution,  
                                      externalscalemeasurements = externalscalemeasurements, algorithm = algorithm, 
-                                     outputdirectory = output_directory)
+                                     outputdirectory = output_directory, prefix=filename)
   
   final_results_filename <- paste0(filename_prefix, "finalresults_", uncertaintydistribution, "_", algorithm, ".csv")
   all_inner_results_filename <- paste0(filename_prefix, "allinnerresults_", uncertaintydistribution, "_", algorithm, ".csv")
