@@ -13,6 +13,7 @@
 #' @export
 prism.method_comparison <- function(Y, 
                                     flow,
+                                    trueabundances = NULL,
                                     filename_prefix = "simulation_", 
                                     S = 4000, 
                                     output_directory = getwd(),
@@ -31,7 +32,7 @@ prism.method_comparison <- function(Y,
   write.csv(results$all_inner_results, file = file.path(output_directory, all_inner_results_filename))
   
   forest_plot_filename <- paste0(filename_prefix, "forestplot_", uncertaintydistribution, "_", algorithm)
-  
+  prismresults = results$final_results
   cat("END PRISM\n")
   
   rdat3 <- Y + 0.5
@@ -270,8 +271,8 @@ prism.method_comparison <- function(Y,
                            CClasso = cclassoresults, 
                            Propr = proprresults)
   
-  if (!is.null(forest_plot_data)) { 
-    covarianceresults$TrueAbundances = forest_plot_data
+  if (!is.null(trueabundances)) { 
+    covarianceresults$TrueAbundances = trueabundances
   }
   
   # Save the results as RDS files
