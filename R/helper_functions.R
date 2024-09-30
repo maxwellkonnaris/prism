@@ -800,7 +800,6 @@ prism.simulate_prepost <- function(
     
     # Step 6: If this W's sparsity is closer to the target, update the best result
     if (sparsity_diff < min_sparsity_diff) {
-      print(paste0("Minimum sparsity difference between correlation matrices:", sparsity_diff))
       best_W <- W
       best_W_pre <- W_pre
       best_W_post_scaled <- W_post_scaled
