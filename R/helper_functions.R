@@ -700,9 +700,12 @@ prism.simulate_prepost <- function(
       # Create a list of all possible unique pairs (ignoring diagonal)
       all_pairs <- combn(1:n_taxa, 2, simplify = TRUE)
       
-      # Select additional random pairs if sparsity > 1
-      if (sparsity > 1) {
-        selected_pairs <- all_pairs[, sample(ncol(all_pairs), n_correlations - nrow(first_pairs))]
+      # Calculate the number of additional pairs to sample, ensuring it is non-negative
+      additional_pairs_to_sample <- max(0, n_correlations - nrow(first_pairs))
+      
+      # Select additional random pairs if sparsity > 1 and there are pairs to sample
+      if (additional_pairs_to_sample > 0) {
+        selected_pairs <- all_pairs[, sample(ncol(all_pairs), additional_pairs_to_sample)]
         selected_pairs <- cbind(first_pairs, selected_pairs)  # Add the pairs involving taxa_index
       } else {
         selected_pairs <- first_pairs  # Only pairs with taxa_index
