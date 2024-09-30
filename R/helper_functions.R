@@ -924,7 +924,7 @@ prism.simulate_data_sparsecorr <- function(
   })
   
   ## 4. Simulate Latent Variables
-  generate_latent_variables <- function(n_samples, cov_matrix, ) {
+  generate_latent_variables <- function(n_samples, cov_matrix, taxa_means_pre) {
     mvrnorm(n_samples, mu = taxa_means_pre, Sigma = cov_matrix)
   }
   
