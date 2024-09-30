@@ -1681,7 +1681,7 @@ prism.trueabundanceplot <- function(W.perp, W, corr_matrix, W.condition, dir_pat
   
   # Calculate standard deviation (scale) for log-transformed flow_data
   scale_sd <- sd(log(W.perp))
-  print(paste("Scale standard deviation (SD) of W", scale_sd))
+  print(paste("Scale standard deviation (SD) of W:", scale_sd))
   
   # Calculate correlation matrix for W (true abundances)
   truecorrelations <- cor(t(taxa_data))
@@ -1740,7 +1740,7 @@ prism.trueabundanceplot <- function(W.perp, W, corr_matrix, W.condition, dir_pat
       plot.title = element_text(hjust = 0.5, size = 15)
     ) +
     ggtitle(paste("True Correlations of Taxa and Scale",
-	   ,"\nLog Standard Deviation of W Scale: ", scale_sd))
+	   "\nLog Standard Deviation of W Scale: ", scale_sd))
   
   # Add the "Condition" column (Pre/Post) to the relative abundances data
   W.para_long <- reshape2::melt(W.para)
