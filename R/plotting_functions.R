@@ -1736,11 +1736,11 @@ prism.trueabundanceplot <- function(W.perp, W, corr_matrix, W.condition, dir_pat
       axis.title.y = element_blank(),
       axis.text.y = element_text(size = 15),
       axis.text.x = element_text(size = 15),
-      axis.title.x = element_text(size = 15),
+      axis.title.x = element_text(size = 12),
       plot.title = element_text(hjust = 0.5, size = 15)
     ) +
     ggtitle(paste("True Correlations of Taxa and Scale",
-	   "\nLog Standard Deviation of W Scale: ", scale_sd))
+	   "\nLog Standard Deviation of W Scale: ", round(scale_sd,3)))
   
   # Add the "Condition" column (Pre/Post) to the relative abundances data
   W.para_long <- reshape2::melt(W.para)
@@ -1758,7 +1758,7 @@ prism.trueabundanceplot <- function(W.perp, W, corr_matrix, W.condition, dir_pat
        y = "Taxa") +
   theme_ridges() +
   theme(
-    legend.position = "right",
+    legend.position = "right", 
     axis.title.x = element_text(size = 15),  # Increase x-axis title font size
     axis.title.y = element_text(size = 15),  # Increase y-axis title font size
     axis.text.x = element_text(size = 15),   # Increase x-axis text font size
