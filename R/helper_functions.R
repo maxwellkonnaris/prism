@@ -512,7 +512,7 @@ constraint_gradient_function <- function(params, taxa1relativesd, taxa2relatives
 #' @export
 prism.simulate_prepost <- function(n = 50, d = 20, seq_depth = 5000, replicate = 1, corr_strengths = NULL, 
                                    scenario = "both", percent_changed = 0.4, change_magnitude = c(0.3, 1), 
-                                   custom_stddevs = NULL, coverage = 1, perfect_resolution = FALSE, flow_sd = 300) {
+                                   custom_stddevs = NULL, coverage = 1, perfect_resolution = FALSE, flow_sd = 0.55) {
   
   # Check if corr_strengths is provided and if its dimensions match the number of taxa (d)
   if (!is.null(corr_strengths)) {
@@ -597,7 +597,7 @@ prism.simulate_prepost <- function(n = 50, d = 20, seq_depth = 5000, replicate =
   flow_cytometry <- function(totals, samp_names, replicates, flow_sd) {
     samp_names <- rep(samp_names, each = replicates)
     flow_vals <- sapply(totals, FUN = function(total, replicates) {
-      stats::rnorm(replicates, mean = total, sd = flow_sd)
+      stats::rlnorm(replicates, meanlog = log(total), sdlog = flow_sd)
     }, replicates = replicates, simplify = TRUE)
     flow_data <- data.frame("sample" = samp_names, "flow" = c(flow_vals))
     return(flow_data)
@@ -838,10 +838,10 @@ prism.simulate_data_sparsecorr <- function(
   medium_pct = 0.4,
   seq_depth = 1000,
   sparsity = 20,
-  flow_sd = 300,
+  flow_sd = 0.55,
   replicates = 1,
   post_scale_factor = 0.68,
-  taxa_index = 1,
+  taxa_index = 20,
   total_abundance_scale = 1e13
 ) {
   
