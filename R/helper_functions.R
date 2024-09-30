@@ -841,12 +841,13 @@ prism.simulate_data_sparsecorr <- function(
   flow_sd = 300,
   replicates = 1,
   post_scale_factor = 0.68,
-  taxa_index = 1
+  taxa_index = 1,
+  total_abundance_scale = 1e13
 ) {
   
   set.seed(123)  # For reproducibility
   
-  ## 1. Assign Taxa Categories
+  ## 1. Assign Taxa Categories and use total abundance scale specified (e.g., 10 trillion)
   n_rare <- round(n_taxa * rare_pct)
   n_medium <- round(n_taxa * medium_pct)
   n_frequent <- n_taxa - n_rare - n_medium
@@ -859,10 +860,14 @@ prism.simulate_data_sparsecorr <- function(
   means_rare <- runif(n_rare, 0.01, 0.05)
   means_medium <- runif(n_medium, 0.1, 0.4)
   means_frequent <- runif(n_frequent, 0.5, 0.7)
+
+  means_rare <- means_rare * total_abundance_scale
+  means_medium <- means_medium * total_abundance_scale
+  means_frequent <- means_frequent * total_abundance_scale
   
   taxa_means_pre <- c(means_rare, means_medium, means_frequent)
-  names(taxa_means_pre) <- paste0("Taxa_", 1:n_taxa)
-  
+  taxa_means_pre <- log(taxa_means_pre)
+
   ## 3. Create Correlation Matrix with Specified Sparsity
   create_correlation_matrix <- function(n_taxa, sparsity, taxa_index) {
     corr_matrix <- diag(1, n_taxa, n_taxa)  # Initialize as an identity matrix (no correlation)
@@ -919,12 +924,12 @@ prism.simulate_data_sparsecorr <- function(
   })
   
   ## 4. Simulate Latent Variables
-  generate_latent_variables <- function(n_samples, cov_matrix) {
-    mvrnorm(n_samples, mu = rep(0, n_taxa), Sigma = cov_matrix)
+  generate_latent_variables <- function(n_samples, cov_matrix, ) {
+    mvrnorm(n_samples, mu = taxa_means_pre, Sigma = cov_matrix)
   }
   
-  latent_vars_pre <- generate_latent_variables(n_samples, cov_matrix)
-  latent_vars_post <- generate_latent_variables(n_samples, cov_matrix)
+  latent_vars_pre <- generate_latent_variables(n_samples, cov_matrix, taxa_means_pre)
+  latent_vars_post <- generate_latent_variables(n_samples, cov_matrix, taxa_means_pre)
   
   ## 5. Exponentiate Latent Variables to Obtain Positive Values
   W_pre <- exp(latent_vars_pre)
@@ -995,6 +1000,8 @@ prism.simulate_data_sparsecorr <- function(
   dummy <- as.data.frame(W_combined)
   colnames(dummy) <- paste0("Taxa", 1:ncol(W_combined)) 
   dummy$Condition <- Condition
+
+  names(taxa_means_pre) <- paste0("Taxa_", 1:n_taxa)
   
   ## 13. Compile Results
   results <- list(
