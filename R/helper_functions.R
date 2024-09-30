@@ -842,7 +842,7 @@ prism.simulate_data_sparsecorr <- function(
   replicates = 1,
   post_scale_factor = 0.68,
   taxa_index = 1,
-  total_abundance_scale = 1e13
+  total_abundance_scale = 1e11
 ) {
   
   set.seed(123)  # For reproducibility
