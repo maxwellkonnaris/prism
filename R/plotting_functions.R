@@ -1130,7 +1130,7 @@ prism.bivariate <- function(data, output_directory = "./plots/", sample_size = 3
 #' # Assuming you have a dataframe called `results_df` with columns for comparison and proportion_intervals_dontcoverzero
 #' # prism.proportions(results_df)
 prism.proportions <- function(data, comparison_col = "comparison", proportion_col = "proportion_intervals_dontcoverzero", 
-                                       ci_upper = "ninetyfive_ci_upper", ci_lower = "ninetyfive_ci_lower", outputdirectory = "./plots/") {
+                                       ci_upper = "ninetyfive_ci_upper", ci_lower = "ninetyfive_ci_lower", outputdirectory = "./plots/", filename=NULL) {
   
   # Check if the directory exists
   if (!dir.exists(outputdirectory)) {
@@ -1183,10 +1183,16 @@ prism.proportions <- function(data, comparison_col = "comparison", proportion_co
     geom_text(data = subset(data, data[[proportion_col]] == 0), 
               aes_string(label = proportion_col), 
               vjust = -0.5, color = "black", size = 3.5)  # Adjust position above bars
-  
-  # Save the plot in high resolution suitable for publications
-  ggsave(paste0(outputdirectory, "proportion_coverage_plot.jpg"), plot = p, width = 15, height = 5, dpi = 300, units = "in")
-  
+
+  if (save) {
+	  if (filename) {
+		# Save the plot in high resolution suitable for publications
+  		ggsave(paste0(outputdirectory, filename, "proportion_coverage_plot.png"), plot = p, width = 15, height = 8, dpi = 300, units = "in")
+	} else {
+  		# Save the plot in high resolution suitable for publications
+ 		 ggsave(paste0(outputdirectory, "proportion_coverage_plot.png"), plot = p, width = 15, height = 8, dpi = 300, units = "in")
+  	}
+  }	  
   # Return the plot object
   return(p)
 }
