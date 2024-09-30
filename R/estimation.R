@@ -138,7 +138,7 @@
 #' @import ggridges
 #' @import fido
 #' @export
-prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinomialdirichlet", bootstrap = TRUE, externalscalemeasurements = NULL, lowerrhobound = rep(-1.0, nrow(Y)), upperrhobound = rep(1.0, nrow(Y)), S = 1000, lowerscalestdev = 0.450, upperscalestdev = 0.650, algorithm = "GRID_SEARCH", outputdirectory = NULL, seed = NULL) {
+prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinomialdirichlet", bootstrap = TRUE, externalscalemeasurements = NULL, lowerrhobound = rep(-1.0, nrow(Y)), upperrhobound = rep(1.0, nrow(Y)), S = 1000, lowerscalestdev = 0.450, upperscalestdev = 0.650, algorithm = "GRID_SEARCH", prefix="setprefix", outputdirectory = NULL, seed = NULL) {
   
   ## COMPUTATIONAL TIME -------------------------------------------------------------------------------------------------------------------------------------
   start_time <- Sys.time()
@@ -346,10 +346,10 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
     rm(rhoandsd_list)
 
     # plot the scale SD
-    prism.scalesdhistogram(scalestdev, S)
+    prism.scalesdhistogram(scalestdev, S, filename=prefix)
                                      
     # plot the rho
-    prism.rhoridges(rhobounds, D, S)
+    prism.rhoridges(rhobounds, D, S, filename=prefix)
 
   } else {
     rhobounds = NULL
@@ -833,6 +833,8 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
     maxsigma <- max(sortedmax, na.rm = TRUE)
     cilower <- quantile(sortedmin, probs = 0.025, na.rm = TRUE)
     ciupper <- quantile(sortedmax, probs = 0.975, na.rm = TRUE)
+    range <- maxsigma - minsigma 
+    ciintervalrange <- ciupper - cilower
     
     # Obtain parameters for the minimum and maximum sigma values
     min_index <- which.min(minsigma_values)
@@ -870,6 +872,8 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
         ninetyfive_ci_upper = ifelse(is.null(ciupper), NA, ciupper),
         minsigma_absolute_minimum_covariance = ifelse(is.null(minsigma), NA, minsigma),
         maxsigma_absolute_maximum_covariance = ifelse(is.null(maxsigma), NA, maxsigma),
+        range = ifelse(is.null(range), NA, range),
+        cirange = ifelse(is.null(cirange), NA, cirange),
         minsigma_correlation_relativetaxa1_scale = ifelse(is.null(min_rho1), NA, min_rho1),
         minsigma_correlation_relativetaxa2_scale = ifelse(is.null(min_rho2), NA, min_rho2),
         minsigma_scale_sd = ifelse(is.null(min_x), NA, min_x),
