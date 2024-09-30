@@ -12,9 +12,9 @@
 #' @return A list of covariance results for each method and saved plots.
 #' @export
 prism.method_comparison <- function(Y, 
-                                    externalscalemeasurements = flow,
+                                    externalscalemeasurements = NULL,
                                     trueabundances = NULL,
-                                    filename_prefix = "simulation_", 
+                                    filename = "simulation_", 
                                     S = 4000, 
                                     output_directory = getwd(),
                                     algorithm = "GRID_SEARCH",
@@ -207,19 +207,19 @@ prism.method_comparison <- function(Y,
   cov_matrix_banocc_CI <- banocc::get_banocc_output(banoccfit = banocc_results, conf_alpha = 0.05)
   
   # Save PRISM results
-  saveRDS(prismresults, "PRISM_results.rds")
+  saveRDS(prismresults, paste0(filename,"PRISM_results.rds"))
   
   # Save SpiecEasi results
-  saveRDS(spieceasiresults, "SpiecEasi_results.rds")
+  saveRDS(spieceasiresults, paste0(filename,"SpiecEasi_results.rds"))
   
   # Save SparCC results
-  saveRDS(sparccresults, "SparCC_results.rds")
+  saveRDS(sparccresults, paste0(filename,"SparCC_results.rds"))
   
   # Save CClasso results
-  saveRDS(cclassoresults, "CClasso_results.rds")
+  saveRDS(cclassoresults, paste0(filename,"CClasso_results.rds"))
   
   # Save Proportionality results
-  saveRDS(proprresults, "Propr_results.rds")
+  saveRDS(proprresults, paste0(filename,"Propr_results.rds"))
   
   banoccresults <- data.frame(
     comparison = character(),
@@ -258,7 +258,7 @@ prism.method_comparison <- function(Y,
   }
   
   #Save Banocc results
-  saveRDS(banocc_results, "Banocc_results.rds")
+  saveRDS(banocc_results, paste0(filename,"Banocc_results.rds"))
   
   cat("END Banocc\n")
   # Visualize and save the plots
@@ -276,15 +276,15 @@ prism.method_comparison <- function(Y,
   }
   
   # Save the results as RDS files
-  saveRDS(covarianceresults, file = file.path(output_directory, paste0(filename_prefix, "covariance_comparisons.rds")))
+  saveRDS(covarianceresults, file = file.path(output_directory, paste0(filename, "covariance_comparisons.rds")))
   
   # Create forest plot and save
   PRISM::prism.forestplot(covarianceresults, 
                           save = "png", 
-                          filename = file.path(output_directory, forest_plot_filename), 
+                          filename = file.path(output_directory, filename, forest_plot_filename), 
                           color_y_axis_by_ci = TRUE)
 
-  PRISM::prism.circlenetwork(covarianceresults, metric = "covariance", combine_plots = TRUE)
+  PRISM::prism.circlenetwork(covarianceresults, metric = "covariance", combine_plots = TRUE, filename=filename)
   
   cat("Pipeline complete.\n")
 }
