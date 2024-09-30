@@ -1739,7 +1739,7 @@ prism.trueabundanceplot <- function(W.perp, W, corr_matrix, W.condition, dir_pat
       axis.title.x = element_text(size = 15),
       plot.title = element_text(hjust = 0.5, size = 15)
     ) +
-    ggtitle("True Correlations of Taxa and Scale",
+    ggtitle(paste("True Correlations of Taxa and Scale",
 	   ,"\nLog Standard Deviation of W Scale: ", scale_sd))
   
   # Add the "Condition" column (Pre/Post) to the relative abundances data
