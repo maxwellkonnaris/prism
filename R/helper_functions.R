@@ -849,7 +849,7 @@ prism.simulate_data_sparsecorr <- function(
   ## 1. Assign Taxa Categories and use total abundance scale specified (e.g., 10 trillion)
   if (minimalsparsity) {
     taxa_means_pre <- rep(0, n_taxa)
-    log_scale_sds <- rep(n_taxa, 0.01)  
+    log_scale_sds <- c(rep(0.01, n_taxa))
     cat("Adjust sequencing depth accordingly between ranges [100:5000]\n")
   } else {
     n_rare <- round(n_taxa * rare_pct)
