@@ -1030,7 +1030,7 @@ prism.simulate_data_sparsecorr <- function(
     taxa_means_post = taxa_means_post,
     flow = flow_data,
     corr_matrix = corr_matrix, 
-    cov_matrix - log_cov_matrix
+    cov_matrix = log_cov_matrix
   )
   
   if (replicates > 1) {
