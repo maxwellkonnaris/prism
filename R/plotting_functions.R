@@ -1735,8 +1735,8 @@ prism.trueabundanceplot <- function(W.perp, W, corr_matrix, W.condition, dir_pat
     theme(
       axis.title.y = element_blank(),
       axis.text.y = element_text(size = 15),
-      axis.text.x = element_text(size = 15),
-      axis.title.x = element_text(size = 12),
+      axis.text.x = element_text(size = 12),
+      axis.title.x = element_text(size = 15),
       plot.title = element_text(hjust = 0.5, size = 15)
     ) +
     ggtitle(paste("True Correlations of Taxa and Scale",
