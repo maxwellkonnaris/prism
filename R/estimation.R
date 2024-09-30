@@ -288,7 +288,7 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
   # Log transform relative abundances
   rWparaoriginal <- log(rWparaoriginal)
 
-  prism.posteriorsamples(rWparaoriginal, file_name = "combined_log_posterior_plots.png")
+  prism.posteriorsamples(rWparaoriginal, filename = prefix)
   
   ## END ACCOUNTING FOR UNCERTAINTY IN OBSERVED RELATIVE ABUNDANCES ---------------------------------------------------------------------------------------
   ## ESTIMATING RHO AND SD --------------------------------------------------------------------------------------------------------------------------------
