@@ -15,7 +15,6 @@ export(prism.bivariate)
 export(prism.spsd)
 export(prism.proportions)
 export(prism.covariance_comparison)
-export(prism.simulate_data_sparsecorr)
 export(cclasso)
 export(SparCC_count)
 
