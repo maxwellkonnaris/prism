@@ -683,7 +683,7 @@ prism.simulate_prepost <- function(
   }
 
   # Function to create a sparse, symmetric, PSD correlation matrix using Matrix package
-  create_sparse_psd_corr_matrix <- function(n_taxa, sparsity, taxa_index, corr_min = -0.95, corr_max = 0.95, max_attempts = 10000, sparsity_threshold = 50) {
+  create_sparse_psd_corr_matrix <- function(n_taxa, sparsity, taxa_index, corr_min = -0.9, corr_max = 0.9, max_attempts = 10000) {
     n_pairs <- n_taxa * (n_taxa - 1) / 2
     n_correlations <- ifelse(sparsity >= 100, n_pairs, round((sparsity / 100) * n_pairs))
     n_correlations <- max(n_correlations, 1)  # Ensure at least one correlation
@@ -730,7 +730,7 @@ prism.simulate_prepost <- function(
       # Check for positive semi-definiteness
       eigenvalues <- eigen(as.matrix(sparse_sym), symmetric = TRUE, only.values = TRUE)$values
       if (all(eigenvalues >= 0)) {
-        # If the matrix is already PSD, return it
+        # Valid PSD matrix found
         actual_nonzero <- length(corr_values)
         actual_sparsity <- (actual_nonzero / n_pairs) * 100
         cat(sprintf("PSD matrix achieved on attempt %d with sparsity %.2f%%\n", attempt, actual_sparsity))
@@ -740,19 +740,13 @@ prism.simulate_prepost <- function(
       # Increment attempt counter
       attempt <- attempt + 1
     }
+
+    # If maximum attempts reached without finding a PSD matrix
+    message(sprintf("Failed to generate a PSD correlation matrix after %d attempts. Using nearPD to approximate.", max_attempts))
+    nearPD_result <- nearPD(sparse_sym, corr = TRUE, keepDiag = TRUE)
+    return(as.matrix(nearPD_result))
+                     
     
-    # If we reach here, the matrix is not PSD after max_attempts
-    # For sparsity > threshold, try finding the nearest PSD matrix
-    if (sparsity > sparsity_threshold) {
-      cat(sprintf("Using nearPD() to find nearest PSD matrix for sparsity level %.2f%%\n", sparsity))
-      sparse_psd <- nearPD(as.matrix(sparse_sym))$mat
-      actual_nonzero <- sum(sparse_psd[lower.tri(sparse_psd)] != 0)
-      actual_sparsity <- (actual_nonzero / n_pairs) * 100
-      cat(sprintf("Nearest PSD matrix found with sparsity %.2f%%\n", actual_sparsity))
-      return(sparse_psd)
-    } else {
-      stop(sprintf("Failed to generate a PSD correlation matrix after %d attempts.", max_attempts))
-    }
   }
   
   # Generate the sparse, PSD correlation matrix
