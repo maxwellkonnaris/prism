@@ -175,7 +175,8 @@ prism.method_comparison <- function(Y,
   
       # Create the comparison name (e.g., "Taxa1:Taxa2")
       comparison_name <- paste0(colnames(corr_matrix_proportionality)[i], ":", colnames(corr_matrix_proportionality)[j])
-  
+      comparison_name <- paste0("Taxa",i, ":", "Taxa",j) # fix and remove
+      
       # Append this comparison to the data frame
       proprresults <- rbind(proprresults, data.frame(
         comparison = comparison_name,
