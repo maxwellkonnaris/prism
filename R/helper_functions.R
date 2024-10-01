@@ -681,8 +681,8 @@ prism.simulate_prepost <- function(
     # Define the standard deviations for each taxon on the log scale
     log_scale_sds <- runif(n_taxa, 0.05, 0.3)  # Adjust range based on biological expectations
   }
-  
-  ## 3. Create Correlation Matrix with Specified Sparsity and Constraints using Matrix package
+
+  # Function to create a sparse, symmetric, PSD correlation matrix using Matrix package
   create_sparse_psd_corr_matrix <- function(n_taxa, sparsity, taxa_index, corr_min = -0.9, corr_max = 0.9, max_attempts = 1000) {
     n_pairs <- n_taxa * (n_taxa - 1) / 2
     n_correlations <- ifelse(sparsity >= 100, n_pairs, round((sparsity / 100) * n_pairs))
@@ -713,25 +713,28 @@ prism.simulate_prepost <- function(
       
       # Create a sparse matrix in triplet form
       triplet <- do.call(rbind, selected_pairs)
-      triplet_matrix <- sparseMatrix(
+      sparse_triplet <- sparseMatrix(
         i = triplet[,1],
         j = triplet[,2],
         x = corr_values,
         dims = c(n_taxa, n_taxa),
-        symmetric = TRUE
+        symmetric = FALSE  # Initially not symmetric
       )
       
+      # Now make the matrix symmetric
+      sparse_sym <- forceSymmetric(sparse_triplet, uplo = "U")  # Use only the upper triangle
+      
       # Set diagonal to 1
-      diag(triplet_matrix) <- 1
+      diag(sparse_sym) <- 1
       
       # Check for positive semi-definiteness
-      eigenvalues <- eigen(as.matrix(triplet_matrix), symmetric = TRUE, only.values = TRUE)$values
+      eigenvalues <- eigen(as.matrix(sparse_sym), symmetric = TRUE, only.values = TRUE)$values
       if (all(eigenvalues >= 0)) {
         # Valid PSD matrix found
         actual_nonzero <- length(corr_values)
         actual_sparsity <- (actual_nonzero / n_pairs) * 100
         cat(sprintf("PSD matrix achieved on attempt %d with sparsity %.2f%%\n", attempt, actual_sparsity))
-        return(triplet_matrix)
+        return(sparse_sym)
       }
       
       # Increment attempt counter
