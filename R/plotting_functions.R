@@ -2077,13 +2077,13 @@ prism.circlenetwork <- function(data_list, metric = "covariance", pvalue = FALSE
     combined_plot <- wrap_plots(plot_list)  # Use patchwork to combine
     
     # Add a single legend for "Thick = High Certainty, Thin = Low Certainty" at the bottom of the combined plot
-    combined_plot <- combined_plot + 
-      plot_annotation(
-        caption = "Thick = High Certainty, Thin = Low Certainty",
-        theme = theme(
-          plot.caption = element_text(hjust = 0.5, size = 16, face = "italic")
-        )
-      )
+    # combined_plot <- combined_plot + 
+    #   plot_annotation(
+    #     caption = "Thick = High Certainty, Thin = Low Certainty",
+    #     theme = theme(
+    #       plot.caption = element_text(hjust = 0.5, size = 16, face = "italic")
+    #     )
+    #   )
     
     if (save_plot) {
       ggsave(paste0(dir_path, filename, "_circlenetwork_combined.png"), combined_plot, width = 20, height = 15, dpi = 300)
