@@ -630,25 +630,32 @@ prism.simulate_prepost <- function(
   rare_pct = 0.2,
   medium_pct = 0.4,
   seq_depth = 10000,
-  sparsity = 20,
+  sparsity = 20,  # Percentage of non-zero correlations
   flow_sd = 0.55,
   replicates = 1,
   post_scale_factor = 0.8,
   taxa_index = 8,
   total_abundance_scale = 1e7,
-  minimalsparsity=FALSE,
-  iterations=1000,
-  seed=NULL
+  minimalsparsity = FALSE,
+  iterations = 1000,
+  seed = NULL
 ) {
-
-  if (!is.null(seed)) {
-      set.seed(seed)
+  
+  # Load necessary libraries
+  if (!requireNamespace("Matrix", quietly = TRUE)) {
+    install.packages("Matrix")
   }
   
-  ## 1. Assign Taxa Categories and use total abundance scale specified (e.g., 10 trillion)
+  library(Matrix)     # For sparse matrices
+  
+  if (!is.null(seed)) {
+    set.seed(seed)
+  }
+  
+  ## 1. Assign Taxa Categories and use total abundance scale specified
   if (minimalsparsity) {
     taxa_means_pre <- rep(0, n_taxa)
-    log_scale_sds <- c(rep(0.01, n_taxa))
+    log_scale_sds <- rep(0.01, n_taxa)
     cat("Adjust sequencing depth accordingly between ranges [100:5000]\n")
   } else {
     n_rare <- round(n_taxa * rare_pct)
@@ -663,7 +670,7 @@ prism.simulate_prepost <- function(
     means_rare <- runif(n_rare, .0001, .005)
     means_medium <- runif(n_medium, .006, .07)
     means_frequent <- runif(n_frequent, .5, .7)
-  
+    
     means_rare <- means_rare * total_abundance_scale
     means_medium <- means_medium * total_abundance_scale
     means_frequent <- means_frequent * total_abundance_scale
@@ -675,82 +682,94 @@ prism.simulate_prepost <- function(
     log_scale_sds <- runif(n_taxa, 0.05, 0.3)  # Adjust range based on biological expectations
   }
   
-  ## 3. Create Correlation Matrix with Specified Sparsity
-  create_correlation_matrix <- function(n_taxa, sparsity, taxa_index) {
-    corr_matrix <- diag(1, n_taxa, n_taxa)  # Initialize as an identity matrix (no correlation)
-
-    # Calculate the total number of unique pairs (n_taxa choose 2)
+  ## 3. Create Correlation Matrix with Specified Sparsity and Constraints using Matrix package
+  create_sparse_psd_corr_matrix <- function(n_taxa, sparsity, taxa_index, corr_min = -0.9, corr_max = 0.9, max_attempts = 1000) {
     n_pairs <- n_taxa * (n_taxa - 1) / 2
+    n_correlations <- ifelse(sparsity >= 100, n_pairs, round((sparsity / 100) * n_pairs))
+    n_correlations <- max(n_correlations, 1)  # Ensure at least one correlation
     
-    # Ensure the first pair involves taxa_index
-    remaining_taxa <- setdiff(1:n_taxa, taxa_index)  # Remove taxa_index from the list of possible pairs
-    first_pair <- c(taxa_index, sample(remaining_taxa, 1))  # First correlation pair involves taxa_index
+    # Create all possible unique pairs (excluding diagonal)
+    all_pairs <- combn(1:n_taxa, 2, simplify = FALSE)
     
-    if (sparsity == 100) {
-      # Add correlation for every possible pair
-      selected_pairs <- combn(1:n_taxa, 2, simplify = TRUE)
-    } else {
-      # Determine how many correlations to add based on sparsity level (0 to 100)
-      n_correlations <- ifelse(sparsity == 1, 1, round((sparsity / 100) * n_pairs))
-      
-      # Create a list of all possible unique pairs (ignoring diagonal)
-      all_pairs <- combn(1:n_taxa, 2, simplify = TRUE)
-      
-      # Select additional random pairs if sparsity > 1
-      if (sparsity > 1) {
-        selected_pairs <- all_pairs[, sample(ncol(all_pairs), n_correlations - 1)]
-        selected_pairs <- cbind(first_pair, selected_pairs)  # Add the first pair involving taxa_index
+    # Ensure the first pair includes taxa_index
+    remaining_taxa <- setdiff(1:n_taxa, taxa_index)
+    first_pair <- c(taxa_index, sample(remaining_taxa, 1))
+    all_pairs <- all_pairs[!sapply(all_pairs, function(x) identical(x, first_pair))]
+    
+    # Initialize attempt counter
+    attempt <- 1
+    
+    while (attempt <= max_attempts) {
+      # Select (n_correlations - 1) random pairs
+      if (n_correlations > 1) {
+        selected_pairs <- sample(all_pairs, n_correlations - 1, replace = FALSE)
+        selected_pairs <- c(list(first_pair), selected_pairs)
       } else {
-        selected_pairs <- matrix(first_pair, nrow = 2)  # Only the first pair is used
+        selected_pairs <- list(first_pair)
       }
+      
+      # Assign random correlation values within [corr_min, corr_max]
+      corr_values <- runif(length(selected_pairs), min = corr_min, max = corr_max)
+      
+      # Create a sparse matrix in triplet form
+      triplet <- do.call(rbind, selected_pairs)
+      triplet_matrix <- sparseMatrix(
+        i = triplet[,1],
+        j = triplet[,2],
+        x = corr_values,
+        dims = c(n_taxa, n_taxa),
+        symmetric = TRUE
+      )
+      
+      # Set diagonal to 1
+      diag(triplet_matrix) <- 1
+      
+      # Check for positive semi-definiteness
+      eigenvalues <- eigen(as.matrix(triplet_matrix), symmetric = TRUE, only.values = TRUE)$values
+      if (all(eigenvalues >= 0)) {
+        # Valid PSD matrix found
+        actual_nonzero <- length(corr_values)
+        actual_sparsity <- (actual_nonzero / n_pairs) * 100
+        cat(sprintf("PSD matrix achieved on attempt %d with sparsity %.2f%%\n", attempt, actual_sparsity))
+        return(triplet_matrix)
+      }
+      
+      # Increment attempt counter
+      attempt <- attempt + 1
     }
     
-    # Add positive and negative correlations to the selected pairs
-    for (i in 1:ncol(selected_pairs)) {
-      idx1 <- selected_pairs[1, i]
-      idx2 <- selected_pairs[2, i]
-      
-      # Randomly assign either positive or negative correlation
-      corr_value <- sample(c(-0.9, -0.8, -0.7, -0.6, -0.5, -0.4, -0.3, -0.2, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9), 1)
-      
-      # Assign the correlation to the matrix
-      corr_matrix[idx1, idx2] <- corr_value
-      corr_matrix[idx2, idx1] <- corr_value
-    }
-    
-    return(corr_matrix)
+    # If maximum attempts reached without finding a PSD matrix
+    stop(sprintf("Failed to generate a PSD correlation matrix after %d attempts.", max_attempts))
   }
   
-  corr_matrix <- create_correlation_matrix(n_taxa, sparsity, taxa_index)
+  # Generate the sparse, PSD correlation matrix
+  corr_matrix_sparse <- create_sparse_psd_corr_matrix(n_taxa, sparsity, taxa_index)
   
-  ## Ensure Positive Definiteness
-  corr_matrix <- tryCatch({
-    as.matrix(nearPD(corr_matrix)$mat)
-  }, error = function(e) {
-    diag(1, n_taxa, n_taxa)
-  })
-
+  # Convert sparse matrix to dense for covariance computation
+  corr_matrix_dense <- as.matrix(corr_matrix_sparse)
+  
   # log-scale covariance matrix
-
   # Create a diagonal matrix with log-scale standard deviations
   D <- diag(log_scale_sds)
-
+  
   # Multiply the correlation matrix by the standard deviation matrix to get the covariance matrix
-  log_cov_matrix <- D %*% corr_matrix %*% D
-
+  log_cov_matrix <- D %*% corr_matrix_dense %*% D
+  
   ## 4. Simulate Latent Variables
   generate_latent_variables <- function(n_samples, cov_matrix, taxa_means_pre) {
-    mvrnorm(n_samples, mu = taxa_means_pre, Sigma = cov_matrix)
+    MASS::mvrnorm(n_samples, mu = taxa_means_pre, Sigma = cov_matrix)
   }
-
+  
   latent_vars <- generate_latent_variables(n_samples, log_cov_matrix, taxa_means_pre)
   
   ## 5. Exponentiate Latent Variables to Obtain Positive Values
   W_sampled <- exp(latent_vars)
-  W_pre <- W_sampled[1:(n_samples/2),]
-  W_post <- W_sampled[((n_samples/2) + 1):n_samples,]
+  half_samples <- floor(n_samples / 2)
+  W_pre <- W_sampled[1:half_samples, ]
+  W_post <- W_sampled[(half_samples + 1):n_samples, ]
+  
   ## 6. No Scaling of Pre-Treatment Data to represent the baseline abundances
-
+  
   ## 7. Introduce Narrow Spectrum Antibiotic Effect on Post-Treatment Data
   # The specified taxa's mean is reduced by post_scale_factor
   # Other taxa are adjusted based on the correlation matrix
@@ -759,7 +778,7 @@ prism.simulate_prepost <- function(
   W_post[, taxa_index] <- W_post[, taxa_index] * post_scale_factor
   
   # Adjust other taxa based on correlation
-  correlations <- corr_matrix[taxa_index, ]
+  correlations <- corr_matrix_dense[taxa_index, ]
   correlations[taxa_index] <- 0  # Exclude self-correlation
   
   adjustment_proportion <- 1 - (1 - post_scale_factor) * correlations
@@ -773,10 +792,16 @@ prism.simulate_prepost <- function(
   ## 8. Combine Pre and Post Data
   W <- rbind(W_pre, W_post)
   
-  # Step 3: Compute correlation matrix of W
+  # Compute correlation matrix of W
   W_corr_matrix <- cor(W)
-
-  Condition <- factor(rep(c("Pre", "Post"), each = n_samples/2), levels = c("Pre", "Post"))
+  
+  # Report sparsity of W_corr_matrix
+  W_nonzero <- sum(W_corr_matrix[lower.tri(W_corr_matrix)] != 0)
+  W_total_pairs <- n_taxa * (n_taxa - 1) / 2
+  W_sparsity <- (W_nonzero / W_total_pairs) * 100
+  cat(sprintf("W correlation matrix sparsity: %.2f%%\n", W_sparsity))
+  
+  Condition <- factor(rep(c("Pre", "Post"), each = half_samples), levels = c("Pre", "Post"))
   
   ## 9. Normalize to Get Relative Abundances
   W_para <- sweep(W, 1, rowSums(W), "/")
@@ -810,12 +835,12 @@ prism.simulate_prepost <- function(
       summarise(mean_flow = mean(flow), stdev_flow = sd(flow)) %>%
       ungroup()
   }
-
+  
   # Convert W_combined to a data frame and assign column names
   dummy <- as.data.frame(W)
   colnames(dummy) <- paste0("Taxa", 1:ncol(W)) 
   dummy$Condition <- Condition
-
+  
   names(taxa_means_pre) <- paste0("Taxa_", 1:n_taxa)
   
   ## 13. Compile Results
@@ -830,8 +855,9 @@ prism.simulate_prepost <- function(
     taxa_means_pre = taxa_means_pre,
     taxa_means_post = taxa_means_post,
     flow = flow_data,
-    corr_matrix = corr_matrix, 
-    cov_matrix = log_cov_matrix
+    corr_matrix = corr_matrix_sparse, 
+    cov_matrix = log_cov_matrix,
+    W_corr_matrix = W_corr_matrix
   )
   
   if (replicates > 1) {
@@ -840,6 +866,7 @@ prism.simulate_prepost <- function(
   
   return(results)
 }
+
 
 
 
