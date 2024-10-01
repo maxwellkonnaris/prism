@@ -629,7 +629,7 @@ prism.simulate_prepost <- function(
   n_samples = 1000,
   rare_pct = 0.2,
   medium_pct = 0.4,
-  seq_depth = 100000,
+  seq_depth = 10000,
   sparsity = 20,
   flow_sd = 0.55,
   replicates = 1,
