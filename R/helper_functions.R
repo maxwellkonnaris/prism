@@ -780,7 +780,7 @@ prism.simulate_prepost <- function(
   Condition <- factor(rep(c("Pre", "Post"), each = n_samples/2), levels = c("Pre", "Post"))
   
   ## 9. Normalize to Get Relative Abundances
-  W_para <- sweep(best_W, 1, rowSums(W), "/")
+  W_para <- sweep(W, 1, rowSums(W), "/")
   
   ## 10. Simulate Sequencing Counts Using Multinomial Distribution
   resample_data <- function(W_para, seq_depth) {
@@ -813,7 +813,7 @@ prism.simulate_prepost <- function(
   }
 
   # Convert W_combined to a data frame and assign column names
-  dummy <- as.data.frame(best_W)
+  dummy <- as.data.frame(W)
   colnames(dummy) <- paste0("Taxa", 1:ncol(W)) 
   dummy$Condition <- Condition
 
