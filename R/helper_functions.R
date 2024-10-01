@@ -629,13 +629,13 @@ prism.simulate_prepost <- function(
   n_samples = 1000,
   rare_pct = 0.2,
   medium_pct = 0.4,
-  seq_depth = 1000000,
+  seq_depth = 100000,
   sparsity = 20,
   flow_sd = 0.55,
   replicates = 1,
   post_scale_factor = 0.8,
   taxa_index = 8,
-  total_abundance_scale = 1e8,
+  total_abundance_scale = 1e7,
   minimalsparsity=FALSE,
   iterations=1000,
   seed=NULL
@@ -756,7 +756,7 @@ prism.simulate_prepost <- function(
   # Other taxa are adjusted based on the correlation matrix
   
   # Apply antibiotic effect only to post-treatment 
-  W_post_scaled[, taxa_index] <- W_post[, taxa_index] * post_scale_factor
+  W_post[, taxa_index] <- W_post[, taxa_index] * post_scale_factor
   
   # Adjust other taxa based on correlation
   correlations <- corr_matrix[taxa_index, ]
@@ -765,13 +765,13 @@ prism.simulate_prepost <- function(
   adjustment_proportion <- 1 - (1 - post_scale_factor) * correlations
   adjustment_proportion[adjustment_proportion < 0] <- 0
   
-  W_post_scaled <- sweep(W_post_scaled, 2, adjustment_proportion, FUN = "*")
+  W_post <- sweep(W_post, 2, adjustment_proportion, FUN = "*")
   
   # Record Post-treatment Means
-  taxa_means_post <- colMeans(W_post_scaled)
+  taxa_means_post <- colMeans(W_post)
   
   ## 8. Combine Pre and Post Data
-  W <- rbind(W_pre, W_post_scaled)
+  W <- rbind(W_pre, W_post)
   
   # Step 3: Compute correlation matrix of W
   W_corr_matrix <- cor(W)
@@ -821,7 +821,7 @@ prism.simulate_prepost <- function(
   ## 13. Compile Results
   results <- list(
     W.pre = W_pre,
-    W.post = W_post_scaled,
+    W.post = W_post,
     W = W,
     W.para = W_para,
     W.perp = W_perp,
