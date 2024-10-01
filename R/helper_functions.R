@@ -743,7 +743,7 @@ prism.simulate_prepost <- function(
     
     # If we reach here, the matrix is not PSD after max_attempts
     # For sparsity > threshold, try finding the nearest PSD matrix
-    if (sparsity >= sparsity_threshold) {
+    if (sparsity > sparsity_threshold) {
       cat(sprintf("Using nearPD() to find nearest PSD matrix for sparsity level %.2f%%\n", sparsity))
       sparse_psd <- nearPD(as.matrix(sparse_sym))$mat
       actual_nonzero <- sum(sparse_psd[lower.tri(sparse_psd)] != 0)
