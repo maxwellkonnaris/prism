@@ -873,7 +873,7 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
         minsigma_absolute_minimum_covariance = ifelse(is.null(minsigma), NA, minsigma),
         maxsigma_absolute_maximum_covariance = ifelse(is.null(maxsigma), NA, maxsigma),
         range = ifelse(is.null(range), NA, range),
-        cirange = ifelse(is.null(cirange), NA, cirange),
+        cirange = ifelse(is.null(ciintervalrange), NA, ciintervalrange),
         minsigma_correlation_relativetaxa1_scale = ifelse(is.null(min_rho1), NA, min_rho1),
         minsigma_correlation_relativetaxa2_scale = ifelse(is.null(min_rho2), NA, min_rho2),
         minsigma_scale_sd = ifelse(is.null(min_x), NA, min_x),
