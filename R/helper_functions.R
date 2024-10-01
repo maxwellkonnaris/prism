@@ -683,7 +683,7 @@ prism.simulate_prepost <- function(
   }
 
   # Function to create a sparse, symmetric, PSD correlation matrix using Matrix package
-  create_sparse_psd_corr_matrix <- function(n_taxa, sparsity, taxa_index, corr_min = -0.9, corr_max = 0.9, max_attempts = 1000) {
+  create_sparse_psd_corr_matrix <- function(n_taxa, sparsity, taxa_index, corr_min = -0.9, corr_max = 0.9, max_attempts = 100000) {
     n_pairs <- n_taxa * (n_taxa - 1) / 2
     n_correlations <- ifelse(sparsity >= 100, n_pairs, round((sparsity / 100) * n_pairs))
     n_correlations <- max(n_correlations, 1)  # Ensure at least one correlation
@@ -797,12 +797,6 @@ prism.simulate_prepost <- function(
   
   # Compute correlation matrix of W
   W_corr_matrix <- cor(W)
-  
-  # Report sparsity of W_corr_matrix
-  W_nonzero <- sum(W_corr_matrix[lower.tri(W_corr_matrix)] != 0)
-  W_total_pairs <- n_taxa * (n_taxa - 1) / 2
-  W_sparsity <- (W_nonzero / W_total_pairs) * 100
-  cat(sprintf("W correlation matrix sparsity: %.2f%%\n", W_sparsity))
   
   Condition <- factor(rep(c("Pre", "Post"), each = half_samples), levels = c("Pre", "Post"))
   
