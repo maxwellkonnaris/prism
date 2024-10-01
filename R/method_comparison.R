@@ -147,11 +147,11 @@ prism.method_comparison <- function(Y,
   cat("END CClasso\n")
   cat("Start Propr\n")
 
-  prop_result <- tryCatch(propr(t(Y), metric = "rho", ivar = "clr", p = 100),
+  prop_result <- tryCatch(propr(t(Y), metric = "phi", ivar = "clr", p = 100),
                               error = function(e) stop("Proportionality failed: ", e$message))
   pr <- updateCutoffs(
           prop_result,
-          number_of_cutoffs = 100,  # number of cutoffs to estimate FDR
+          custom_cutoffs = c(0.1),  # number of cutoffs to estimate FDR
           tails = 'right',  # consider only the positive values ('right') or both sides ('both')
           ncores = 4  # parallelize here
         ) 
