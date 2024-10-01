@@ -755,9 +755,8 @@ prism.simulate_prepost <- function(
   # The specified taxa's mean is reduced by post_scale_factor
   # Other taxa are adjusted based on the correlation matrix
   
-  # Apply antibiotic effect only to post-treatment
-  W_post_scaled <- W_post
-  W_post_scaled[, taxa_index] <- W_post_scaled[, taxa_index] * post_scale_factor
+  # Apply antibiotic effect only to post-treatment 
+  W_post_scaled[, taxa_index] <- W_post[, taxa_index] * post_scale_factor
   
   # Adjust other taxa based on correlation
   correlations <- corr_matrix[taxa_index, ]
