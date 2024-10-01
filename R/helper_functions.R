@@ -743,10 +743,18 @@ prism.simulate_prepost <- function(
 
     # If maximum attempts reached without finding a PSD matrix
     message(sprintf("Failed to generate a PSD correlation matrix after %d attempts. Using nearPD to approximate.", max_attempts))
+    calculate_sparsity <- function(matrix) {
+      total_elements <- length(matrix)
+      zero_elements <- sum(matrix == 0)
+      sparsity <- (zero_elements / total_elements) * 100
+      return(sparsity)
+    }
+
     nearPD_result <- nearPD(sparse_sym, corr = TRUE, keepDiag = TRUE)
+    sparsity <- calculate_sparsity(corr_matrix_dense)
+    cat(sprintf("Sparsity of the returned matrix is: %.2f%%\n", sparsity))
     return(as.matrix(nearPD_result))
                      
-    
   }
   
   # Generate the sparse, PSD correlation matrix
