@@ -276,7 +276,7 @@ prism.method_comparison <- function(Y,
   }
   
   # Save the results as RDS files
-  saveRDS(covarianceresults, file = file.path(output_directory, paste0(filename, "covariance_comparisons.rds")))
+  saveRDS(covarianceresults, file = file.path(paste0(filename, "covariance_comparisons.rds")))
   
   # Create forest plot and save
   PRISM::prism.forestplot(covarianceresults, 
