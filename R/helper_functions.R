@@ -751,7 +751,7 @@ prism.simulate_prepost <- function(
     }
 
     nearPD_result <- nearPD(sparse_sym, corr = TRUE, keepDiag = TRUE)
-    sparsity <- calculate_sparsity(corr_matrix_dense)
+    sparsity <- calculate_sparsity(nearPD_result)
     cat(sprintf("Sparsity of the returned matrix is: %.2f%%\n", sparsity))
     return(as.matrix(nearPD_result))
                      
