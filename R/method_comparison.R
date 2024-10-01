@@ -4,7 +4,7 @@
 #' It allows the user to save the resulting plots and outputs with a user-specified filename prefix.
 #'
 #' @param Y A matrix of abundance data to apply the covariance estimation methods.
-#' @param filename_prefix A character string to prefix the filenames of saved plots and results.
+#' @param prefix A character string to prefix the filenames of saved plots and results.
 #' @param S The number of samples to draw in the PRISM covariance method (default: 4000).
 #' @param output_directory The directory to save output files (default: current working directory).
 #' @param algorithm The algorithm used for PRISM (default: "GRID_SEARCH").
@@ -25,13 +25,13 @@ prism.method_comparison <- function(Y,
                                      externalscalemeasurements = externalscalemeasurements, algorithm = algorithm, 
                                      outputdirectory = output_directory, prefix=filename)
   
-  final_results_filename <- paste0(filename_prefix, "finalresults_", uncertaintydistribution, "_", algorithm, ".csv")
-  all_inner_results_filename <- paste0(filename_prefix, "allinnerresults_", uncertaintydistribution, "_", algorithm, ".csv")
+  final_results_filename <- paste0(filename, "finalresults_", uncertaintydistribution, "_", algorithm, ".csv")
+  all_inner_results_filename <- paste0(filename, "allinnerresults_", uncertaintydistribution, "_", algorithm, ".csv")
   
   write.csv(results$final_results, file = file.path(output_directory, final_results_filename))
   write.csv(results$all_inner_results, file = file.path(output_directory, all_inner_results_filename))
   
-  forest_plot_filename <- paste0(filename_prefix, "forestplot_", uncertaintydistribution, "_", algorithm)
+  forest_plot_filename <- paste0(filename, "forestplot_", uncertaintydistribution, "_", algorithm)
   prismresults = results$final_results
   cat("END PRISM\n")
   
