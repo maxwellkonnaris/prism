@@ -846,6 +846,7 @@ prism.simulate_prepost <- function(
   }
   
   # Convert W_combined to a data frame and assign column names
+  colnames(W) <- paste0("Taxa", 1:ncol(W)) 
   dummy <- as.data.frame(W)
   colnames(dummy) <- paste0("Taxa", 1:ncol(W)) 
   dummy$Condition <- Condition
