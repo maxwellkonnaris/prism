@@ -302,9 +302,6 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
         var_lower <- (n - 1) * S2 / chi2_upper
         var_upper <- (n - 1) * S2 / chi2_lower
         scalestdev_s <- c(sqrt(var_lower), sqrt(var_upper))
-
-        # remove this when measurement error model is fixed
-        sampled_externalscalemeasurements = externalscalemeasurements
       
         # Initialize matrix for rhobounds for each taxa
         rhobounds_s <- matrix(NA, nrow = D, ncol = 2)  # [D x 2]
@@ -316,7 +313,7 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
             #sampled_externalscalemeasurements <- rnorm(length(externalscalemeasurements), mean = externalscalemeasurements, sd = sampled_sd)
   
             # Compute correlation
-            r <- cor(rWparaoriginal[taxa, sample_indices, s], sampled_externalscalemeasurements[sample_indices])
+            r <- cor(rWparaoriginal[taxa, sample_indices, s], externalscalemeasurements[sample_indices])
             # Fisher Z-transformation
             z <- 0.5 * log((1 + r) / (1 - r))
             # Standard error of z
@@ -722,48 +719,57 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
     
                            
                            if (nrow(rpars) == 0) {
-                             # Return a data frame with NA values
-                             res_min <- list(
-                               objective = NA,
-                               solution = c(NA, NA, NA),
-                               message = "GRIDSEARCH_NO_VALID_ROWS",
-                               status = "GRIDSEARCH_NO_VALID_ROWS",
-                               iterations = NA
-                             )
-                             
-                             res_max <- list(
-                               objective = NA,
-                               solution = c(NA, NA, NA),
-                               message = "GRIDSEARCH_NO_VALID_ROWS",
-                               status = "GRIDSEARCH_NO_VALID_ROWS",
-                               iterations = NA
-                             )
-                           } else {
-                             # Find min and max
-                             min_sigma_row <- rpars[which.min(rpars$sigma), , drop = FALSE]
-                             max_sigma_row <- rpars[which.max(rpars$sigma), , drop = FALSE]
-                             
-                             # Extract values from min_sigma_row
-                             res_min <- list(
-                               objective = min_sigma_row$sigma,
-                               solution = c(min_sigma_row$rho1, min_sigma_row$rho2, min_sigma_row$scalestdevstep),
-                               message = "GRIDSEARCH_SUCCESS",
-                               status = "GRIDSEARCH_SUCCESS",
-                               iterations = nrow(rpars)
-                             )
-                             
-                             # Extract values from max_sigma_row
-                             res_max <- list(
-                               objective = -max_sigma_row$sigma,  
-                               solution = c(max_sigma_row$rho1, max_sigma_row$rho2, max_sigma_row$scalestdevstep),
-                               message = "GRIDSEARCH_SUCCESS",
-                               status = "GRIDSEARCH_SUCCESS",
-                               iterations = nrow(rpars)
-                             )
-                           }
-                           
-                           list(res_min = res_min, res_max = res_max)
+                            # Return a data frame with NA values
+                            res_min <- list(
+                              objective = NA,
+                              solution = c(NA, NA, NA),
+                              message = "GRIDSEARCH_NO_VALID_ROWS",
+                              status = "GRIDSEARCH_NO_VALID_ROWS",
+                              iterations = NA
+                            )
+                            
+                            res_max <- list(
+                              objective = NA,
+                              solution = c(NA, NA, NA),
+                              message = "GRIDSEARCH_NO_VALID_ROWS",
+                              status = "GRIDSEARCH_NO_VALID_ROWS",
+                              iterations = NA
+                            )
                           
+                            message(paste("No valid rows found for pair d1:", d1, "d2:", d2, "in iteration:", s, "| returning NA values."))
+                          
+                           } else {
+                            # Find min and max
+                            min_sigma_row <- rpars[which.min(rpars$sigma), , drop = FALSE]
+                            max_sigma_row <- rpars[which.max(rpars$sigma), , drop = FALSE]
+                            
+                            # Extract values from min_sigma_row
+                            res_min <- list(
+                              objective = ifelse(is.null(min_sigma_row$sigma), {message("min_sigma_row$sigma is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, min_sigma_row$sigma),
+                              solution = c(ifelse(is.null(min_sigma_row$rho1), {message("min_sigma_row$rho1 is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, min_sigma_row$rho1),
+                                           ifelse(is.null(min_sigma_row$rho2), {message("min_sigma_row$rho2 is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, min_sigma_row$rho2),
+                                           ifelse(is.null(min_sigma_row$scalestdevstep), {message("min_sigma_row$scalestdevstep is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, min_sigma_row$scalestdevstep)),
+                              message = "GRIDSEARCH_SUCCESS",
+                              status = "GRIDSEARCH_SUCCESS",
+                              iterations = nrow(pars),
+                              spsd = nrow(rpars)
+                            )
+                            
+                            # Extract values from max_sigma_row
+                            res_max <- list(
+                              objective = ifelse(is.null(max_sigma_row$sigma), {message("max_sigma_row$sigma is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, -max_sigma_row$sigma),  # Negative for maximization
+                              solution = c(ifelse(is.null(max_sigma_row$rho1), {message("max_sigma_row$rho1 is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, max_sigma_row$rho1),
+                                           ifelse(is.null(max_sigma_row$rho2), {message("max_sigma_row$rho2 is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, max_sigma_row$rho2),
+                                           ifelse(is.null(max_sigma_row$scalestdevstep), {message("max_sigma_row$scalestdevstep is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, max_sigma_row$scalestdevstep)),
+                              message = "GRIDSEARCH_SUCCESS",
+                              status = "GRIDSEARCH_SUCCESS",
+                              iterations = nrow(pars),
+                              spsd = nrow(rpars)
+                            )
+                            
+                            message("Valid rows found, returning min and max results for d1:", d1, "d2:", d2, "s:", s)
+                           }
+                           list(res_min = res_min, res_max = res_max)
                          },
                          stop("Invalid algorithm selected") # Default case if no match is found
         )
@@ -772,33 +778,37 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
         res_max <- result$res_max
         
         data.frame(
-          d1 = d1,
-          d2 = d2,
+          d1 = d1, 
+          d2 = d2, 
           s = s,
-          minsigma_absolute_minimum_covariance = ifelse(is.null(res_min$objective), NA, res_min$objective),
-          minsigma_correlation_relativetaxa1_scale = ifelse(is.null(res_min$solution[1]), NA, res_min$solution[1]),
-          minsigma_correlation_relativetaxa2_scale = ifelse(is.null(res_min$solution[2]), NA, res_min$solution[2]),
-          minsigma_scale_sd = ifelse(is.null(res_min$solution[3]), NA, res_min$solution[3]),
-          minsigma_message = res_min$message,
-          minsigma_status = res_min$status,
-          minsigma_iterations = ifelse(is.null(res_min$iterations), NA, res_min$iterations),
-          maxsigma_absolute_maximum_covariance = ifelse(is.null(res_max$objective), NA, -res_max$objective),
-          maxsigma_correlation_relativetaxa1_scale = ifelse(is.null(res_max$solution[1]), NA, res_max$solution[1]),
-          maxsigma_correlation_relativetaxa2_scale = ifelse(is.null(res_max$solution[2]), NA, res_max$solution[2]),
-          maxsigma_scale_sd = ifelse(is.null(res_max$solution[3]), NA, res_max$solution[3]),
-          maxsigma_message = res_max$message,
-          maxsigma_status = res_max$status,
-          maxsigma_iterations = ifelse(is.null(res_max$iterations), NA, res_max$iterations),
-          taxa1relativesd = taxa1relativesd,
-          taxa2relativesd = taxa2relativesd,
-          relativecorrelation = relativecorrelation,
-          relativecovariance = relativecovariance,
-          d1lowerrhobound = rho_lower_bound_1,
-          d1upperrhobound = rho_upper_bound_1,
-          d2lowerrhobound = rho_lower_bound_2,
-          d2upperrhobound = rho_upper_bound_2,
-          scalesdlowerbound = lowerscalestdev,
-          scalesdupperbound = upperscalestdev
+          minsigma_absolute_minimum_covariance = ifelse(is.null(res_min$objective), {message("res_min$objective is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, res_min$objective),
+          minsigma_correlation_relativetaxa1_scale = ifelse(is.null(res_min$solution[1]), {message("res_min$solution[1] is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, res_min$solution[1]),
+          minsigma_correlation_relativetaxa2_scale = ifelse(is.null(res_min$solution[2]), {message("res_min$solution[2] is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, res_min$solution[2]),
+          minsigma_scale_sd = ifelse(is.null(res_min$solution[3]), {message("res_min$solution[3] is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, res_min$solution[3]),
+          minsigma_message = ifelse(is.null(res_min$message), {message("res_min$message is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, res_min$message),
+          minsigma_status = ifelse(is.null(res_min$status), {message("res_min$status is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, res_min$status),
+          minsigma_iterations = ifelse(is.null(res_min$iterations), {message("res_min$iterations is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, res_min$iterations),
+          
+          maxsigma_absolute_maximum_covariance = ifelse(is.null(res_max$objective), {message("res_max$objective is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, -res_max$objective),
+          maxsigma_correlation_relativetaxa1_scale = ifelse(is.null(res_max$solution[1]), {message("res_max$solution[1] is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, res_max$solution[1]),
+          maxsigma_correlation_relativetaxa2_scale = ifelse(is.null(res_max$solution[2]), {message("res_max$solution[2] is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, res_max$solution[2]),
+          maxsigma_scale_sd = ifelse(is.null(res_max$solution[3]), {message("res_max$solution[3] is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, res_max$solution[3]),
+          maxsigma_message = ifelse(is.null(res_max$message), {message("res_max$message is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, res_max$message),
+          maxsigma_status = ifelse(is.null(res_max$status), {message("res_max$status is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, res_max$status),
+          maxsigma_iterations = ifelse(is.null(res_max$iterations), {message("res_max$iterations is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, res_max$iterations),
+          
+          taxa1relativesd = ifelse(is.null(taxa1relativesd), {message("taxa1relativesd is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, taxa1relativesd),
+          taxa2relativesd = ifelse(is.null(taxa2relativesd), {message("taxa2relativesd is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, taxa2relativesd),
+          relativecorrelation = ifelse(is.null(relativecorrelation), {message("relativecorrelation is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, relativecorrelation),
+          relativecovariance = ifelse(is.null(relativecovariance), {message("relativecovariance is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, relativecovariance),
+          
+          d1lowerrhobound = ifelse(is.null(rho_lower_bound_1), {message("rho_lower_bound_1 is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, rho_lower_bound_1),
+          d1upperrhobound = ifelse(is.null(rho_upper_bound_1), {message("rho_upper_bound_1 is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, rho_upper_bound_1),
+          d2lowerrhobound = ifelse(is.null(rho_lower_bound_2), {message("rho_lower_bound_2 is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, rho_lower_bound_2),
+          d2upperrhobound = ifelse(is.null(rho_upper_bound_2), {message("rho_upper_bound_2 is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, rho_upper_bound_2),
+          
+          scalesdlowerbound = ifelse(is.null(lowerscalestdev), {message("lowerscalestdev is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, lowerscalestdev),
+          scalesdupperbound = ifelse(is.null(upperscalestdev), {message("upperscalestdev is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, upperscalestdev)
         )
       }
 
@@ -858,42 +868,44 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
     lowerscalestdev <- results_inner$scalesdupperbound[min_index]
     upperscalestdev <- results_inner$scalesdlowerbound[min_index]
     
-    list(
-      resultsinner = results_inner,
-      results = data.frame(
-        comparison = comparison,
-        taxa1 = ifelse(is.null(rownames(Y)[d1]), NA, rownames(Y)[d1]),
-        taxa2 = ifelse(is.null(rownames(Y)[d2]), NA, rownames(Y)[d2]),
-        proportion_intervals_dontcoverzero = ifelse(is.null(proportion_intervals_dontcoverzero), NA, proportion_intervals_dontcoverzero),
-        proportion_positiveintervals_dontcoverzero = ifelse(is.null(proportion_positiveintervals_dontcoverzero), NA, proportion_positiveintervals_dontcoverzero),
-        proportion_negativeintervals_dontcoverzero = ifelse(is.null(proportion_negativeintervals_dontcoverzero), NA, proportion_negativeintervals_dontcoverzero),
-        numbootstrapsfailedspsd = ifelse(is.null(numbootstrapsfailedspsd), NA, numbootstrapsfailedspsd),
-        ninetyfive_ci_lower = ifelse(is.null(cilower), NA, cilower),
-        ninetyfive_ci_upper = ifelse(is.null(ciupper), NA, ciupper),
-        minsigma_absolute_minimum_covariance = ifelse(is.null(minsigma), NA, minsigma),
-        maxsigma_absolute_maximum_covariance = ifelse(is.null(maxsigma), NA, maxsigma),
-        range = ifelse(is.null(range), NA, range),
-        cirange = ifelse(is.null(ciintervalrange), NA, ciintervalrange),
-        minsigma_correlation_relativetaxa1_scale = ifelse(is.null(min_rho1), NA, min_rho1),
-        minsigma_correlation_relativetaxa2_scale = ifelse(is.null(min_rho2), NA, min_rho2),
-        minsigma_scale_sd = ifelse(is.null(min_x), NA, min_x),
-        maxsigma_correlation_relativetaxa1_scale = ifelse(is.null(max_rho1), NA, max_rho1),
-        maxsigma_correlation_relativetaxa2_scale = ifelse(is.null(max_rho2), NA, max_rho2),
-        maxsigma_scale_sd = ifelse(is.null(max_x), NA, max_x),
-        relative_standard_dev_taxa1 = ifelse(is.null(taxa1relativesd), NA, taxa1relativesd),
-        relative_standard_dev_taxa2 = ifelse(is.null(taxa2relativesd), NA, taxa2relativesd),
-        relative_correlation = ifelse(is.null(relativecorrelation), NA, relativecorrelation),
-        relative_covariance = ifelse(is.null(relativecovariance), NA, relativecovariance),
-        d1lowerrhobound = ifelse(is.null(rho_lower_bound_1), NA, rho_lower_bound_1),
-        d1upperrhobound = ifelse(is.null(rho_upper_bound_1), NA, rho_upper_bound_1),
-        d2lowerrhobound = ifelse(is.null(rho_lower_bound_2), NA, rho_lower_bound_2),
-        d2upperrhobound = ifelse(is.null(rho_upper_bound_2), NA, rho_upper_bound_2),
-        scalesdlowerbound = ifelse(is.null(lowerscalestdev), NA, lowerscalestdev),
-        scalesdupperbound = ifelse(is.null(upperscalestdev), NA, upperscalestdev),
-        stringsAsFactors = FALSE
-      )
+    # Construct list of dataframes considering the inner results of each optimization and of the final estimates for each pair indices.
+    results_inner <- ifelse(is.null(results_inner), {message("results_inner is NULL for d1:", d1, "d2:", d2); ""}, results_inner)
+    
+    results_df <- data.frame(
+      comparison = ifelse(is.null(comparison), {message("comparison is NULL for d1:", d1, "d2:", d2); NA}, comparison),
+      taxa1 = ifelse(is.null(rownames(Y)[d1]), {message("taxa1 is NULL for d1:", d1, "d2:", d2); NA}, rownames(Y)[d1]),
+      taxa2 = ifelse(is.null(rownames(Y)[d2]), {message("taxa2 is NULL for d1:", d1, "d2:", d2); NA}, rownames(Y)[d2]),
+      proportion_intervals_dontcoverzero = ifelse(is.null(proportion_intervals_dontcoverzero), {message("proportion_intervals_dontcoverzero is NULL for d1:", d1, "d2:", d2); NA}, proportion_intervals_dontcoverzero),
+      proportion_positiveintervals_dontcoverzero = ifelse(is.null(proportion_positiveintervals_dontcoverzero), {message("proportion_positiveintervals_dontcoverzero is NULL for d1:", d1, "d2:", d2); NA}, proportion_positiveintervals_dontcoverzero),
+      proportion_negativeintervals_dontcoverzero = ifelse(is.null(proportion_negativeintervals_dontcoverzero), {message("proportion_negativeintervals_dontcoverzero is NULL for d1:", d1, "d2:", d2); NA}, proportion_negativeintervals_dontcoverzero),
+      numbootstrapsfailedspsd = ifelse(is.null(numbootstrapsfailedspsd), {message("numbootstrapsfailedspsd is NULL for d1:", d1, "d2:", d2); NA}, numbootstrapsfailedspsd),
+      ninetyfive_ci_lower = ifelse(is.null(cilower), {message("ninetyfive_ci_lower is NULL for d1:", d1, "d2:", d2); NA}, cilower),
+      ninetyfive_ci_upper = ifelse(is.null(ciupper), {message("ninetyfive_ci_upper is NULL for d1:", d1, "d2:", d2); NA}, ciupper),
+      minsigma_absolute_minimum_covariance = ifelse(is.null(minsigma), {message("minsigma_absolute_minimum_covariance is NULL for d1:", d1, "d2:", d2); NA}, minsigma),
+      maxsigma_absolute_maximum_covariance = ifelse(is.null(maxsigma), {message("maxsigma_absolute_maximum_covariance is NULL for d1:", d1, "d2:", d2); NA}, maxsigma),
+      range = ifelse(is.null(range), {message("range is NULL for d1:", d1, "d2:", d2); NA}, range),
+      cirange = ifelse(is.null(ciintervalrange), {message("cirange is NULL for d1:", d1, "d2:", d2); NA}, ciintervalrange),
+      minsigma_correlation_relativetaxa1_scale = ifelse(is.null(min_rho1), {message("minsigma_correlation_relativetaxa1_scale is NULL for d1:", d1, "d2:", d2); NA}, min_rho1),
+      minsigma_correlation_relativetaxa2_scale = ifelse(is.null(min_rho2), {message("minsigma_correlation_relativetaxa2_scale is NULL for d1:", d1, "d2:", d2); NA}, min_rho2),
+      minsigma_scale_sd = ifelse(is.null(min_x), {message("minsigma_scale_sd is NULL for d1:", d1, "d2:", d2); NA}, min_x),
+      maxsigma_correlation_relativetaxa1_scale = ifelse(is.null(max_rho1), {message("maxsigma_correlation_relativetaxa1_scale is NULL for d1:", d1, "d2:", d2); NA}, max_rho1),
+      maxsigma_correlation_relativetaxa2_scale = ifelse(is.null(max_rho2), {message("maxsigma_correlation_relativetaxa2_scale is NULL for d1:", d1, "d2:", d2); NA}, max_rho2),
+      maxsigma_scale_sd = ifelse(is.null(max_x), {message("maxsigma_scale_sd is NULL for d1:", d1, "d2:", d2); NA}, max_x),
+      relative_standard_dev_taxa1 = ifelse(is.null(taxa1relativesd), {message("relative_standard_dev_taxa1 is NULL for d1:", d1, "d2:", d2); NA}, taxa1relativesd),
+      relative_standard_dev_taxa2 = ifelse(is.null(taxa2relativesd), {message("relative_standard_dev_taxa2 is NULL for d1:", d1, "d2:", d2); NA}, taxa2relativesd),
+      relative_correlation = ifelse(is.null(relativecorrelation), {message("relative_correlation is NULL for d1:", d1, "d2:", d2); NA}, relativecorrelation),
+      relative_covariance = ifelse(is.null(relativecovariance), {message("relative_covariance is NULL for d1:", d1, "d2:", d2); NA}, relativecovariance),
+      d1lowerrhobound = ifelse(is.null(rho_lower_bound_1), {message("d1lowerrhobound is NULL for d1:", d1, "d2:", d2); NA}, rho_lower_bound_1),
+      d1upperrhobound = ifelse(is.null(rho_upper_bound_1), {message("d1upperrhobound is NULL for d1:", d1, "d2:", d2); NA}, rho_upper_bound_1),
+      d2lowerrhobound = ifelse(is.null(rho_lower_bound_2), {message("d2lowerrhobound is NULL for d1:", d1, "d2:", d2); NA}, rho_lower_bound_2),
+      d2upperrhobound = ifelse(is.null(rho_upper_bound_2), {message("d2upperrhobound is NULL for d1:", d1, "d2:", d2); NA}, rho_upper_bound_2),
+      scalesdlowerbound = ifelse(is.null(lowerscalestdev), {message("scalesdlowerbound is NULL for d1:", d1, "d2:", d2); NA}, lowerscalestdev),
+      scalesdupperbound = ifelse(is.null(upperscalestdev), {message("scalesdupperbound is NULL for d1:", d1, "d2:", d2); NA}, upperscalestdev),
+      stringsAsFactors = FALSE
     )
 
+    # Combine the results into a list of two data frames
+    results_list <- list(resultsinner = results_inner, results = results_df)
   }
   
   ## END SIGMA ESTIMATION --------------------------------------------------------------------------------------------------------------------------------------
