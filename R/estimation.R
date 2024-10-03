@@ -158,6 +158,12 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
   N <- ncol(Y)
   D <- nrow(Y)
 
+    # Check if rownames are NULL, and if so, assign default rownames
+  if (is.null(rownames(Y))) {
+    message("Taxa labels not specified, default taxa labels have been assigned")
+    rownames(Y) <- paste0("Taxa", 1:D)
+  }
+
   cat("Priors used for the analysis:\n")
   cat("Alpha:\n")
   print(alpha)
