@@ -1191,7 +1191,7 @@ optimize_sigma <- function(algorithm, initialparameters, taxa1relativesd, taxa2r
                         iterations = NA
                       )
                     
-                      flog.info("No valid rows found for pair d1:", d1, "d2:", d2, "in iteration:", s, "| returning NA values.")
+                      flog.info("No valid rows found for d1 %s : d2 %s for bootstrap %s | returning NA values", d1,d2,s)
                     
                      } else {
                       # Find min and max
@@ -1212,17 +1212,17 @@ optimize_sigma <- function(algorithm, initialparameters, taxa1relativesd, taxa2r
                       
                       # Extract values from max_sigma_row
                       res_max <- list(
-                        objective = ifelse(is.null(max_sigma_row$sigma), {flog.info("max_sigma_row$sigma is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, -max_sigma_row$sigma),  # Negative for maximization
-                        solution = c(ifelse(is.null(max_sigma_row$rho1), {flog.info("max_sigma_row$rho1 is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, max_sigma_row$rho1),
-                                     ifelse(is.null(max_sigma_row$rho2), {flog.info("max_sigma_row$rho2 is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, max_sigma_row$rho2),
-                                     ifelse(is.null(max_sigma_row$scalestdevstep), {flog.info("max_sigma_row$scalestdevstep is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, max_sigma_row$scalestdevstep)),
+                        objective = ifelse(is.null(max_sigma_row$sigma), {flog.info("max_sigma_row$sigma is NULL for d1 %s : d2 %s for bootstrap %s", d1,d2,s); NA}, -max_sigma_row$sigma),  # Negative for maximization
+                        solution = c(ifelse(is.null(max_sigma_row$rho1), {flog.info("max_sigma_row$rho1 is NULL for d1 %s : d2 %s for bootstrap %s", d1,d2,s); NA}, max_sigma_row$rho1),
+                                     ifelse(is.null(max_sigma_row$rho2), {flog.info("max_sigma_row$rho2 is NULL for d1 %s : d2 %s for bootstrap %s", d1,d2,s); NA}, max_sigma_row$rho2),
+                                     ifelse(is.null(max_sigma_row$scalestdevstep), {flog.info("max_sigma_row$scalestdevstep is NULL for d1 %s : d2 %s for bootstrap %s", d1,d2,s); NA}, max_sigma_row$scalestdevstep)),
                         message = "GRIDSEARCH_SUCCESS",
                         status = "GRIDSEARCH_SUCCESS",
                         iterations = nrow(pars),
                         spsd = nrow(rpars)
                       )
                       
-                      flog.info("Valid rows found, returning min and max results for d1:", d1, "d2:", d2, "s:", s)
+                      flog.info("Valid rows found, returning min and max results for d1 %s : d2 %s for bootstrap %s", d1,d2,s)
                      }
                      list(res_min = res_min, res_max = res_max)
                    },
@@ -1318,7 +1318,6 @@ estimate_rho_and_sd <- function(externalscalemeasurements, Y, S, D, rWparaorigin
     return(list(scalestdev = scalestdev, rhobounds = rhobounds))
     
   } else {
-    flog.info("External scale measurements are NULL or invalid. Skipping SD and Rho estimation.")
     return(NULL)
   }
 }
