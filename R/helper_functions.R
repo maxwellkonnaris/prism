@@ -851,8 +851,6 @@ prism.simulate_prepost <- function(
   
   # Generate the sparse, PSD correlation matrix
   corr_matrix_sparse <- create_sparse_psd_corr_matrix(n_taxa, sparsity, taxa_index)
-  
-  # Convert sparse matrix to dense for covariance computation
   corr_matrix_dense <- as.matrix(corr_matrix_sparse)
   
   # log-scale covariance matrix
@@ -966,8 +964,8 @@ prism.simulate_prepost <- function(
     taxa_means_pre = taxa_means_pre,
     taxa_means_post = taxa_means_post,
     flow = flow_data,
-    corr_matrix = corr_matrix_sparse, 
-    cov_matrix = log_cov_matrix,
+    latent_corr_matrix = corr_matrix_sparse, 
+    latent_cov_matrix = log_cov_matrix,
     W_corr_matrix = W_corr_matrix
   )
   
