@@ -774,13 +774,20 @@ prism.simulate_prepost <- function(
   
   ## 4. Simulate Latent Variables
   generate_latent_variables <- function(n_samples, cov_matrix, taxa_means_pre) {
-    MASS::mvrnorm(n_samples, mu = taxa_means_pre, Sigma = cov_matrix)
+    latent_vars = MASS::mvrnorm(n_samples, mu = taxa_means_pre, Sigma = cov_matrix)
+
+    # Step 2: Exponentiate to get Poisson rate parameters (lambda)
+    lambda <- exp(latent_vars)
+
+    # Step 3: Sample from Poisson distribution
+    W_sampled_poisson <- matrix(rpois(n = n_samples * ncol(lambda), lambda = lambda), nrow = n_samples, ncol = ncol(lambda))
+
+    return(W_sampled_poisson)
   }
   
-  latent_vars <- generate_latent_variables(n_samples, log_cov_matrix, taxa_means_pre)
+  W_sampled <- generate_latent_variables(n_samples, log_cov_matrix, taxa_means_pre)
   
   ## 5. Exponentiate Latent Variables to Obtain Positive Values
-  W_sampled <- exp(latent_vars)
   half_samples <- floor(n_samples / 2)
   W_pre <- W_sampled[1:half_samples, ]
   W_post <- W_sampled[(half_samples + 1):n_samples, ]
