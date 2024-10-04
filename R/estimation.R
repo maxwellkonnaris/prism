@@ -148,7 +148,7 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
   
   ## COMPUTATIONAL TIME -------------------------------------------------------------------------------------------------------------------------------------
   start_time_total <- Sys.time()  # Start time for the entire function
-  flog.info("Start time: %s", start_time_total)
+  flog.info("Start time: %s", format_elapsed_time(start_time_total))
   ## END COMPUTATIONAL TIME SETUP ---------------------------------------------------------------------------------------------------------------------------
   
   ## SETUP --------------------------------------------------------------------------------------------------------------------------------------------------
@@ -203,7 +203,7 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
       flog.info("Using default Scale standard deviation bounds %s ", paste0(lowerscalestdev, ":", upperscalestdev))
   }
 
-  flog.info("Input Y:", head(Y))
+  flog.info("Input Y %s", head(Y))
   ## END SETUP ----------------------------------------------------------------------------------------------------------------------------------------------
   
   ## CLUSTER RESOURCES --------------------------------------------------------------------------------------------------------------------------------------
@@ -217,7 +217,7 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
       stop("Parallel backend is not registered.")
   } else {
       # Check the number of workers
-      flog.info("Number of workers/cpus %s ", foreach::getDoParWorkers())
+      flog.info("Number of workers/cpus: %s ", foreach::getDoParWorkers())
   }
   ## END CLUSTER RESOURCES ----------------------------------------------------------------------------------------------------------------------------------
   
@@ -317,7 +317,7 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
   ## ESTIMATING COVARIANCE --------------------------------------------------------------------------------------------------------------------------------
 
   # Share large data objects with the cluster
-  parallel::clusterExport(cl, varlist = c("rWparaoriginal", "bootstrap_samples", "rhobounds", "scalestdev"))
+  parallel::clusterExport(cl, varlist = c("Y", "rWparaoriginal", "bootstrap_samples", "rhobounds", "scalestdev"))
                                      
   flog.info("Running Sigma estimation")
   sigmastart = Sys.time()
@@ -335,7 +335,7 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
       d1 <- pair[1]
       d2 <- pair[2]
       comparison <- paste(rownames(Y)[d1], rownames(Y)[d2], sep = ":")
-      flog.info("Start Current Comparison %s", comparison)
+      flog.info("Start Current Comparison: %s", comparison)
       comparisonstart = Sys.time()
     
       # Use sequential foreach for the inner loop
@@ -404,7 +404,7 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
     elapsed_time = comparisonend - comparisonstart
     formatted_time <- format_elapsed_time(elapsed_time)
     flog.info("Comparison %s --- Total time taken %s", comparison, formatted_time)
-    flog.info("End Comparison %s ", comparison)
+    flog.info("End Comparison: %s ", comparison)
     
     if (nrow(results_inner) == 0) {
       stop("Error: No valid inner results generated")
@@ -503,8 +503,7 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
   }
   sigmaend = Sys.time()
   elapsed_time = sigmaend - sigmastart
-  formatted_time <- format_elapsed_time(elapsed_time)
-  flog.info("Sigma Total time taken %s", formatted_time)
+  flog.info("Sigma Total time taken %s", format_elapsed_time(elapsed_time))
   flog.info("End Sigma estimation")
   ## END SIGMA ESTIMATION --------------------------------------------------------------------------------------------------------------------------------------
   
@@ -532,9 +531,8 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
   # Calculate and print the total elapsed time
   end_time <- Sys.time()
   elapsed_time <- end_time - start_time
-  formatted_time <- format_elapsed_time(elapsed_time)
 
-  flog.info("Total time taken: %s", formatted_time)
+  flog.info("Total time taken: %s", format_elapsed_time(elapsed_time))
                            
   ## END LOGGING --------------------------------------------------------------------------------------------------------------------------------------------
   return(list(final_results = final_results, all_inner_results = all_inner_results))
