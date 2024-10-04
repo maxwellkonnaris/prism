@@ -1127,53 +1127,53 @@ optimize_sigma <- function(algorithm, initialparameters, taxa1relativesd, taxa2r
                      list(res_min = res_min, res_max = res_max)
                    },
                    
-                   "GRID_SEARCH" = {
-                     # Define parameter steps (unchanged for now)
-                     scale <- (upperscalestdev - lowerscalestdev) / 5
-                     bound1 <- (rho_upper_bound_1 - rho_lower_bound_1) / 5
-                     bound2 <- (rho_upper_bound_2 - rho_lower_bound_2) / 5
-                     
-                     rho1 <- seq(rho_lower_bound_1, rho_upper_bound_1, by = bound1)
-                     rho2 <- seq(rho_lower_bound_2, rho_upper_bound_2, by = bound2)
-                     scalestdevstep <- seq(lowerscalestdev, upperscalestdev, by = scale)
-                     iterations <- length(rho1) * length(rho2) * length(scalestdevstep)
-                     
-                     # Create the grid of parameters
-                     pars <- expand.grid(rho1 = rho1, rho2 = rho2, scalestdevstep = scalestdevstep, iterations = iterations)
-                     
-                     # Calculate the constraint
-                     constraint_values <- vectorized_constraint_function(
-                       pars$rho1,
-                       pars$rho2,
-                       pars$scalestdevstep,
-                       taxa1relativesd,
-                       taxa2relativesd,
-                       relativecovariance
-                     )
-                     
-                     # Add the calculated constraint as a new column to 'pars'
-                     pars$SPSD <- constraint_values
-                     
-                     # Calculate rpars without filtering based on SPSD
-                     rpars <- pars %>%
-                       dplyr::mutate(sigma = relativecovariance + scalestdevstep * taxa1relativesd * rho1 + scalestdevstep * taxa2relativesd * rho2 + scalestdevstep^2,
-                                     s = s,
-                                     comparison = paste0(d1, ":", d2),
-                                     taxa1relativesd = taxa1relativesd,
-                                     taxa2relativesd = taxa2relativesd,
-                                     relativecovariance = relativecovariance
-                       )
-                     
-                     # Append the rpars to the file for this pair
-                     pair_file_name <- paste0("gridresults_taxa_", d1, "_", d2, ".txt")
-                     append_to_pair_file(rpars, pair_file_name, outputdirectory)
-                     
-                     # Filter rows where SPSD is >= 0
-                     rpars <- rpars %>%
-                       dplyr::filter(SPSD >= 0)
-      
-                     
-                     if (nrow(rpars) == 0) {
+                  "GRID_SEARCH" = {
+                    # Define parameter steps (unchanged for now)
+                    scale <- (upperscalestdev - lowerscalestdev) / 5
+                    bound1 <- (rho_upper_bound_1 - rho_lower_bound_1) / 5
+                    bound2 <- (rho_upper_bound_2 - rho_lower_bound_2) / 5
+                    
+                    rho1 <- seq(rho_lower_bound_1, rho_upper_bound_1, by = bound1)
+                    rho2 <- seq(rho_lower_bound_2, rho_upper_bound_2, by = bound2)
+                    scalestdevstep <- seq(lowerscalestdev, upperscalestdev, by = scale)
+                    iterations <- length(rho1) * length(rho2) * length(scalestdevstep)
+                    
+                    # Create the grid of parameters
+                    pars <- expand.grid(rho1 = rho1, rho2 = rho2, scalestdevstep = scalestdevstep, iterations = iterations)
+                    
+                    # Calculate the constraint
+                    constraint_values <- vectorized_constraint_function(
+                      pars$rho1,
+                      pars$rho2,
+                      pars$scalestdevstep,
+                      taxa1relativesd,
+                      taxa2relativesd,
+                      relativecovariance
+                    )
+                    
+                    # Add the calculated constraint as a new column to 'pars'
+                    pars$SPSD <- constraint_values
+                    
+                    # Calculate rpars without filtering based on SPSD
+                    rpars <- pars %>%
+                      dplyr::mutate(sigma = relativecovariance + scalestdevstep * taxa1relativesd * rho1 + scalestdevstep * taxa2relativesd * rho2 + scalestdevstep^2,
+                                    s = s,
+                                    comparison = paste0(d1, ":", d2),
+                                    taxa1relativesd = taxa1relativesd,
+                                    taxa2relativesd = taxa2relativesd,
+                                    relativecovariance = relativecovariance
+                      )
+                    
+                    # Append the rpars to the file for this pair
+                    pair_file_name <- paste0("gridresults_taxa_", d1, "_", d2, ".txt")
+                    append_to_pair_file(rpars, pair_file_name, outputdirectory)
+                    
+                    # Filter rows where SPSD is >= 0
+                    rpars <- rpars %>%
+                      dplyr::filter(SPSD >= 0)
+                  
+                    
+                    if (nrow(rpars) == 0) {
                       # Return a data frame with NA values
                       res_min <- list(
                         objective = NA,
@@ -1191,19 +1191,19 @@ optimize_sigma <- function(algorithm, initialparameters, taxa1relativesd, taxa2r
                         iterations = NA
                       )
                     
-                      flog.info("No valid rows found for d1 %s : d2 %s for bootstrap %s | returning NA values", d1,d2,s)
+                      message(sprintf("No valid rows found for d1 %s : d2 %s for bootstrap %s | returning NA values", d1, d2, s))
                     
-                     } else {
+                    } else {
                       # Find min and max
                       min_sigma_row <- rpars[which.min(rpars$sigma), , drop = FALSE]
                       max_sigma_row <- rpars[which.max(rpars$sigma), , drop = FALSE]
                       
                       # Extract values from min_sigma_row
                       res_min <- list(
-                        objective = ifelse(is.null(min_sigma_row$sigma), {flog.info("min_sigma_row$sigma is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, min_sigma_row$sigma),
-                        solution = c(ifelse(is.null(min_sigma_row$rho1), {flog.info("min_sigma_row$rho1 is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, min_sigma_row$rho1),
-                                     ifelse(is.null(min_sigma_row$rho2), {flog.info("min_sigma_row$rho2 is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, min_sigma_row$rho2),
-                                     ifelse(is.null(min_sigma_row$scalestdevstep), {flog.info("min_sigma_row$scalestdevstep is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, min_sigma_row$scalestdevstep)),
+                        objective = ifelse(is.null(min_sigma_row$sigma), {message(sprintf("min_sigma_row$sigma is NULL for d1: %s d2: %s s: %s", d1, d2, s)); NA}, min_sigma_row$sigma),
+                        solution = c(ifelse(is.null(min_sigma_row$rho1), {message(sprintf("min_sigma_row$rho1 is NULL for d1: %s d2: %s s: %s", d1, d2, s)); NA}, min_sigma_row$rho1),
+                                     ifelse(is.null(min_sigma_row$rho2), {message(sprintf("min_sigma_row$rho2 is NULL for d1: %s d2: %s s: %s", d1, d2, s)); NA}, min_sigma_row$rho2),
+                                     ifelse(is.null(min_sigma_row$scalestdevstep), {message(sprintf("min_sigma_row$scalestdevstep is NULL for d1: %s d2: %s s: %s", d1, d2, s)); NA}, min_sigma_row$scalestdevstep)),
                         message = "GRIDSEARCH_SUCCESS",
                         status = "GRIDSEARCH_SUCCESS",
                         iterations = nrow(pars),
@@ -1212,21 +1212,21 @@ optimize_sigma <- function(algorithm, initialparameters, taxa1relativesd, taxa2r
                       
                       # Extract values from max_sigma_row
                       res_max <- list(
-                        objective = ifelse(is.null(max_sigma_row$sigma), {flog.info("max_sigma_row$sigma is NULL for d1 %s : d2 %s for bootstrap %s", d1,d2,s); NA}, -max_sigma_row$sigma),  # Negative for maximization
-                        solution = c(ifelse(is.null(max_sigma_row$rho1), {flog.info("max_sigma_row$rho1 is NULL for d1 %s : d2 %s for bootstrap %s", d1,d2,s); NA}, max_sigma_row$rho1),
-                                     ifelse(is.null(max_sigma_row$rho2), {flog.info("max_sigma_row$rho2 is NULL for d1 %s : d2 %s for bootstrap %s", d1,d2,s); NA}, max_sigma_row$rho2),
-                                     ifelse(is.null(max_sigma_row$scalestdevstep), {flog.info("max_sigma_row$scalestdevstep is NULL for d1 %s : d2 %s for bootstrap %s", d1,d2,s); NA}, max_sigma_row$scalestdevstep)),
+                        objective = ifelse(is.null(max_sigma_row$sigma), {message(sprintf("max_sigma_row$sigma is NULL for d1 %s : d2 %s for bootstrap %s", d1, d2, s)); NA}, -max_sigma_row$sigma),  # Negative for maximization
+                        solution = c(ifelse(is.null(max_sigma_row$rho1), {message(sprintf("max_sigma_row$rho1 is NULL for d1 %s : d2 %s for bootstrap %s", d1, d2, s)); NA}, max_sigma_row$rho1),
+                                     ifelse(is.null(max_sigma_row$rho2), {message(sprintf("max_sigma_row$rho2 is NULL for d1 %s : d2 %s for bootstrap %s", d1, d2, s)); NA}, max_sigma_row$rho2),
+                                     ifelse(is.null(max_sigma_row$scalestdevstep), {message(sprintf("max_sigma_row$scalestdevstep is NULL for d1 %s : d2 %s for bootstrap %s", d1, d2, s)); NA}, max_sigma_row$scalestdevstep)),
                         message = "GRIDSEARCH_SUCCESS",
                         status = "GRIDSEARCH_SUCCESS",
                         iterations = nrow(pars),
                         spsd = nrow(rpars)
                       )
                       
-                      flog.info("Valid rows found, returning min and max results for d1 %s : d2 %s for bootstrap %s", d1,d2,s)
-                     }
-                     list(res_min = res_min, res_max = res_max)
-                   },
-                   stop("Invalid algorithm selected: ", algorithm)  # Default case if no match is found
+                      message(sprintf("Valid rows found, returning min and max results for d1 %s : d2 %s for bootstrap %s", d1, d2, s))
+                    }
+                    list(res_min = res_min, res_max = res_max)
+                  },
+                  stop("Invalid algorithm selected: ", algorithm)  # Default case if no match is found
   )
   
   return(result)
