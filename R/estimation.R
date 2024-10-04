@@ -513,11 +513,11 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
 
       
       # Combine the results into a data.table
-      final_results <- rbindlist(lapply(results_list, function(x) x$results), use.names = TRUE, fill = TRUE)
+      final_results <- rbindlist(lapply(results_list, function(x) x$results))
       rownames(final_results) <- NULL
                                         
       # Combine all inner loop results into a data.table
-      all_inner_results <- rbindlist(lapply(results_list, function(x) x$resultsinner), use.names = TRUE, fill = TRUE)
+      all_inner_results <- rbindlist(lapply(results_list, function(x) x$resultsinner))
     
       if (pvalue) {
         final_results <- calculate_pval(final_results)
