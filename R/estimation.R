@@ -199,8 +199,12 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
           stop("Error: Mismatch in dimensions between external scale measurements and Y.")
       }
   } else {
-      flog.info("Using default Rho bounds %s ", paste0(lowerrhobound, ":", upperrhobound))
-      flog.info("Using default Scale standard deviation bounds %s ", paste0(lowerscalestdev, ":", upperscalestdev))
+      pbounds = paste0(lowerrhobound, ":", upperrhobound)
+      sdbounds = paste0(lowerscalestdev, ":", upperscalestdev)
+      flog.info("Using default Rho bounds: %s ", pbounds)
+      flog.info("Using default Scale standard deviation bounds %s ", sdbounds)
+      rm(pbounds)
+      rm(sdbounds)
   }
 
   flog.info("Input Y %s", head(Y))
