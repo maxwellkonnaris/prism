@@ -524,7 +524,7 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
       # Combine all inner loop results
       all_inner_results <- do.call(rbind, lapply(results_list, function(x) x$resultsinner))
       all_inner_results <- as.data.frame(all_inner_results)
-      all_inner_results$comparison <- paste(rownames(Y)[all_inner_results$d1], rownames(Y)[all_inner_results$d2], sep = ":")
+      #all_inner_results$comparison <- paste(rownames(Y)[all_inner_results$d1], rownames(Y)[all_inner_results$d2], sep = ":")
     
       # Calculate and print the total elapsed time
       end_time <- Sys.time()
