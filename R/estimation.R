@@ -460,9 +460,6 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
         lowerscalestdev <- results_inner$scalesdupperbound[min_index]
         upperscalestdev <- results_inner$scalesdlowerbound[min_index]
         
-        # Construct list of dataframes considering the inner results of each optimization and of the final estimates for each pair indices.
-        results_inner <- ifelse(is.null(results_inner), {message(sprintf("results_inner is NULL for d1 %s and d2 %s", d1, d2)); ""}, results_inner)
-        
         results_df <- data.table(
           comparison = ifelse(is.null(comparison), {message(sprintf("comparison is NULL for d1 %s and d2 %s", d1, d2)); NA}, comparison),
           taxa1 = ifelse(is.null(rownames(Y)[d1]), {message(sprintf("taxa1 is NULL for d1 %s and d2 %s", d1, d2)); NA}, rownames(Y)[d1]),
