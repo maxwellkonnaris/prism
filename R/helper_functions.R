@@ -636,7 +636,7 @@ prism.simulate_prepost <- function(
   post_scale_factor = 0.8,
   taxa_index = 8,
   total_abundance_scale = 1e7,
-  minimalsparsity = FALSE,
+  controlledcounts = FALSE,
   iterations = 1000,
   seed = NULL
 ) {
@@ -653,8 +653,10 @@ prism.simulate_prepost <- function(
   }
   
   ## 1. Assign Taxa Categories and use total abundance scale specified
-  if (minimalsparsity) {
-    taxa_means_pre <- rep(0, n_taxa)
+  if (controlledcounts) {
+    # Define the base vector d
+    d <- c(4000, 4000, 4000, 4000, 4000, 400, 400, 400, 400, 4000, 400, 500, 500, 500, 400, 400, 400, 400, 400, 400)
+    taxa_means_pre <- log(approx(x = seq_along(d), y = d, n = n_taxa)$y)
     log_scale_sds <- rep(0.01, n_taxa)
     cat("Adjust sequencing depth accordingly between ranges [100:5000]\n")
   } else {
