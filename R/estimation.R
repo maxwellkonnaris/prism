@@ -243,9 +243,7 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
   # ---- If you want to remove bootstrap and carry on then ---
   if (bootstrap) {
     ## calculate bootstrap resampling -- accounting for finite sampling
-    for (s in 1:S) {
-      bootstrap_samples[, s] <- sample(1:N, replace = TRUE)
-    }
+    bootstrap_samples <- data.table(replicate(S, sample(1:N, replace = TRUE)))
   } else {
     # Use the original indices (no bootstrap resampling)
     for (s in 1:S) {
@@ -354,6 +352,10 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
   flog.info("End SD and Rho estimation")                                   
   ## END ESTIMATING RHO AND SD ----------------------------------------------------------------------------------------------------------------------------
   ## ESTIMATING COVARIANCE --------------------------------------------------------------------------------------------------------------------------------
+
+  # Share large data objects with the cluster
+  parallel::clusterExport(cl, varlist = c("rWparaoriginal", "bootstrap_samples", "rhobounds", "scalestdev"))
+                                     
   flog.info("Running Sigma estimation")
   sigmastart = Sys.time()
   # Generate all pairs of indices
@@ -365,7 +367,7 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
   }
 
   # Outer loop is not parallelized
-  results_list <- foreach(pair = pair_indices, .packages = c('stats', 'MCMCpack', 'dplyr'), .options.snow = opts) %do% {
+  results_list <- foreach(pair = pair_indices, .packages = c('stats', 'MCMCpack', 'dplyr'), .options.snow = opts) %dopar% {
       
       d1 <- pair[1]
       d2 <- pair[2]
@@ -374,7 +376,7 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
       comparisonstart = Sys.time()
     
       # Use sequential foreach for the inner loop
-      results_inner <- foreach(s = 1:S, .combine = 'rbind', .packages = c('stats', 'MCMCpack', 'nloptr', 'dplyr')) %dopar% {
+      results_inner <- foreach(s = 1:S, .combine = 'rbind', .packages = c('stats', 'MCMCpack', 'nloptr', 'dplyr')) %do% {
         
         rWpara <- rWparaoriginal[c(d1, d2), bootstrap_samples[, s], s]
         taxa1relativesd <- sd(rWpara[1, ])
@@ -398,387 +400,15 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
         
         res_min <- NULL
         res_max <- NULL
-        
-        result <- switch(algorithm,
-                         
-                         "COBYLA" = {
-                           # Find the minimum sigma using nloptr with COBYLA
-                           res_min <- nloptr(
-                             x0 = initialparameters,
-                             eval_f = function(params) objective_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-                             eval_g_ineq = function(params) constraint_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-                             lb = c(rho_lower_bound_1, rho_lower_bound_2, lowerscalestdev),
-                             ub = c(rho_upper_bound_1, rho_upper_bound_2, upperscalestdev),
-                             opts = list("algorithm" = "NLOPT_LN_COBYLA", "maxeval" = 1000000, "xtol_rel" = 1e-5)
-                           )
-                           
-                           # Find the maximum sigma by negating the objective function using COBYLA
-                           res_max <- nloptr(
-                             x0 = initialparameters,
-                             eval_f = function(params) -objective_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-                             eval_g_ineq = function(params) constraint_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-                             lb = c(rho_lower_bound_1, rho_lower_bound_2, lowerscalestdev),
-                             ub = c(rho_upper_bound_1, rho_upper_bound_2, upperscalestdev),
-                             opts = list("algorithm" = "NLOPT_LN_COBYLA", "maxeval" = 1000000, "xtol_rel" = 1e-5)
-                           )
-                           
-                           list(res_min = res_min, res_max = res_max)
-                         },
-                                       
-                        "MMA" = {
-                          # Find the minimum sigma using nloptr with MMA
-                          res_min <- nloptr(
-                            x0 = initialparameters,
-                            eval_f = function(params) objective_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-                            eval_grad_f = function(params) gradient_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-                            eval_g_ineq = function(params) constraint_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-                            eval_jac_g_ineq = function(params) constraint_gradient_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-                            lb = c(rho_lower_bound_1, rho_lower_bound_2, lowerscalestdev),
-                            ub = c(rho_upper_bound_1, rho_upper_bound_2, upperscalestdev),
-                            opts = list("algorithm"="NLOPT_LD_MMA", "maxeval" = 10000, "ftol_rel" = 1e-4)
-                          )
-                          
-                          # Find the maximum sigma by negating the objective function using MMA
-                          res_max <- nloptr(
-                            x0 = initialparameters,
-                            eval_f = function(params) -objective_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-                            eval_grad_f = function(params) -gradient_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-                            eval_g_ineq = function(params) constraint_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-                            eval_jac_g_ineq = function(params) constraint_gradient_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-                            lb = c(rho_lower_bound_1, rho_lower_bound_2, lowerscalestdev),
-                            ub = c(rho_upper_bound_1, rho_upper_bound_2, upperscalestdev),
-                            opts = list("algorithm"="NLOPT_LD_MMA", "maxeval" = 10000, "ftol_rel" = 1e-4)
-                          )
-                          
-                          list(res_min = res_min, res_max = res_max)
-                        },
   
-                        "SLSQP" = {
-                          # Set optimization options
-                          opts <- list(
-                            "algorithm" = "NLOPT_LD_SLSQP",
-                            "xtol_rel" = 1e-4,
-                            "ftol_rel" = 1e-4,
-                            "maxeval" = 10000
-                          )
-                          
-                          # Perform the optimization to find the minimum sigma
-                          res_min <- nloptr(
-                            x0 = initialparameters,
-                            eval_f = function(params) objective_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-                            eval_grad_f = function(params) gradient_function_wrapper(params, taxa1relativesd, taxa2relativesd),
-                            eval_g_ineq = function(params) constraint_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-                            eval_jac_g_ineq = function(params) constraint_gradient_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-                            lb = c(rho_lower_bound_1, rho_lower_bound_2, lowerscalestdev),
-                            ub = c(rho_upper_bound_1, rho_upper_bound_2, upperscalestdev),
-                            opts = opts
-                          )
-                          
-                          # Perform the optimization to find the maximum sigma (negate the objective function)
-                          res_max <- nloptr(
-                            x0 = initialparameters,
-                            eval_f = function(params) -objective_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-                            eval_grad_f = function(params) -gradient_function_wrapper(params, taxa1relativesd, taxa2relativesd),
-                            eval_g_ineq = function(params) constraint_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-                            eval_jac_g_ineq = function(params) constraint_gradient_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-                            lb = c(rho_lower_bound_1, rho_lower_bound_2, lowerscalestdev),
-                            ub = c(rho_upper_bound_1, rho_upper_bound_2, upperscalestdev),
-                            opts = opts
-                          )
-                          list(res_min = res_min, res_max = res_max)
-                        },
-                         
-                        "AUGLAG_COBYLA" = {
-                          # Find the minimum sigma using AUGLAG with COBYLA as the inner algorithm
-                          res_min <- nloptr(
-                            x0 = initialparameters,
-                            eval_f = function(params) objective_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-                            eval_grad_f = function(params) gradient_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-                            eval_g_ineq = function(params) constraint_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-                            eval_jac_g_ineq = function(params) constraint_gradient_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-                            lb = c(rho_lower_bound_1, rho_lower_bound_2, lowerscalestdev),
-                            ub = c(rho_upper_bound_1, rho_upper_bound_2, upperscalestdev),
-                            opts = list(
-                              "algorithm" = "NLOPT_LD_AUGLAG",
-                              "local_opts" = list(
-                                "algorithm" = "NLOPT_LN_COBYLA",
-                                "xtol_rel" = 1e-4,
-                                "maxeval" = 10000
-                              ),
-                              "maxeval" = 10000,
-                              "ftol_rel" = 1e-4
-                            )
-                          )
-                          
-                          # Find the maximum sigma using AUGLAG with COBYLA as the inner algorithm
-                          res_max <- nloptr(
-                            x0 = initialparameters,
-                            eval_f = function(params) -objective_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-                            eval_grad_f = function(params) -gradient_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-                            eval_g_ineq = function(params) constraint_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-                            eval_jac_g_ineq = function(params) constraint_gradient_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-                            lb = c(rho_lower_bound_1, rho_lower_bound_2, lowerscalestdev),
-                            ub = c(rho_upper_bound_1, rho_upper_bound_2, upperscalestdev),
-                            opts = list(
-                              "algorithm" = "NLOPT_LD_AUGLAG",
-                              "local_opts" = list(
-                                "algorithm" = "NLOPT_LN_COBYLA",
-                                "xtol_rel" = 1e-4,
-                                "maxeval" = 10000
-                              ),
-                              "maxeval" = 10000,
-                              "ftol_rel" = 1e-4
-                            )
-                          )
-                          
-                          list(res_min = res_min, res_max = res_max)
-                        },
-                      
-                        "AUGLAG_MMA" = {
-                          # Find the minimum sigma using AUGLAG with MMA as the inner algorithm
-                          res_min <- nloptr(
-                            x0 = initialparameters,
-                            eval_f = function(params) objective_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-                            eval_grad_f = function(params) gradient_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-                            eval_g_ineq = function(params) constraint_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-                            eval_jac_g_ineq = function(params) constraint_gradient_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-                            lb = c(rho_lower_bound_1, rho_lower_bound_2, lowerscalestdev),
-                            ub = c(rho_upper_bound_1, rho_upper_bound_2, upperscalestdev),
-                            opts = list(
-                              "algorithm" = "NLOPT_LD_AUGLAG",
-                              "local_opts" = list(
-                                "algorithm" = "NLOPT_LD_MMA",
-                                "xtol_rel" = 1e-4,
-                                "maxeval" = 10000
-                              ),
-                              "maxeval" = 10000,
-                              "ftol_rel" = 1e-4
-                            )
-                          )
-                          
-                          # Find the maximum sigma using AUGLAG with MMA as the inner algorithm
-                          res_max <- nloptr(
-                            x0 = initialparameters,
-                            eval_f = function(params) -objective_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-                            eval_grad_f = function(params) -gradient_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-                            eval_g_ineq = function(params) constraint_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-                            eval_jac_g_ineq = function(params) constraint_gradient_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-                            lb = c(rho_lower_bound_1, rho_lower_bound_2, lowerscalestdev),
-                            ub = c(rho_upper_bound_1, rho_upper_bound_2, upperscalestdev),
-                            opts = list(
-                              "algorithm" = "NLOPT_LD_AUGLAG",
-                              "local_opts" = list(
-                                "algorithm" = "NLOPT_LD_MMA",
-                                "xtol_rel" = 1e-4,
-                                "maxeval" = 10000
-                              ),
-                              "maxeval" = 10000,
-                              "ftol_rel" = 1e-4
-                            )
-                          )
-                          
-                          list(res_min = res_min, res_max = res_max)
-                        },
-                      
-                        "AUGLAG_SLSQP" = {
-                          # Find the minimum sigma using AUGLAG with SLSQP as the inner algorithm
-                          res_min <- nloptr(
-                            x0 = initialparameters,
-                            eval_f = function(params) objective_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-                            eval_grad_f = function(params) gradient_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-                            eval_g_ineq = function(params) constraint_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-                            eval_jac_g_ineq = function(params) constraint_gradient_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-                            lb = c(rho_lower_bound_1, rho_lower_bound_2, lowerscalestdev),
-                            ub = c(rho_upper_bound_1, rho_upper_bound_2, upperscalestdev),
-                            opts = list(
-                              "algorithm" = "NLOPT_LD_AUGLAG",
-                              "local_opts" = list(
-                                "algorithm" = "NLOPT_LD_SLSQP",
-                                "xtol_rel" = 1e-4,
-                                "maxeval" = 10000
-                              ),
-                              "maxeval" = 10000,
-                              "ftol_rel" = 1e-4
-                            )
-                          )
-                          
-                          # Find the maximum sigma using AUGLAG with SLSQP as the inner algorithm
-                          res_max <- nloptr(
-                            x0 = initialparameters,
-                            eval_f = function(params) -objective_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-                            eval_grad_f = function(params) -gradient_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-                            eval_g_ineq = function(params) constraint_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-                            eval_jac_g_ineq = function(params) constraint_gradient_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-                            lb = c(rho_lower_bound_1, rho_lower_bound_2, lowerscalestdev),
-                            ub = c(rho_upper_bound_1, rho_upper_bound_2, upperscalestdev),
-                            opts = list(
-                              "algorithm" = "NLOPT_LD_AUGLAG",
-                              "local_opts" = list(
-                                "algorithm" = "NLOPT_LD_SLSQP",
-                                "xtol_rel" = 1e-4,
-                                "maxeval" = 10000
-                              ),
-                              "maxeval" = 10000,
-                              "ftol_rel" = 1e-4
-                            )
-                          )
-                          
-                          list(res_min = res_min, res_max = res_max)
-                        },
-                      
-                        "AUGLAG_LBFGS" = {
-                          # Find the minimum sigma using AUGLAG with LBFGS as the inner algorithm
-                          res_min <- nloptr(
-                            x0 = initialparameters,
-                            eval_f = function(params) objective_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-                            eval_grad_f = function(params) gradient_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-                            eval_g_ineq = function(params) constraint_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-                            eval_jac_g_ineq = function(params) constraint_gradient_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-                            lb = c(rho_lower_bound_1, rho_lower_bound_2, lowerscalestdev),
-                            ub = c(rho_upper_bound_1, rho_upper_bound_2, upperscalestdev),
-                            opts = list(
-                              "algorithm" = "NLOPT_LD_AUGLAG",
-                              "local_opts" = list(
-                                "algorithm" = "NLOPT_LD_LBFGS",
-                                "xtol_rel" = 1e-4,
-                                "maxeval" = 10000
-                              ),
-                              "maxeval" = 10000,
-                              "ftol_rel" = 1e-4
-                            )
-                          )
-                          
-                          # Find the maximum sigma using AUGLAG with LBFGS as the inner algorithm
-                          res_max <- nloptr(
-                            x0 = initialparameters,
-                            eval_f = function(params) -objective_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-                            eval_grad_f = function(params) -gradient_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-                            eval_g_ineq = function(params) constraint_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-                            eval_jac_g_ineq = function(params) constraint_gradient_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-                            lb = c(rho_lower_bound_1, rho_lower_bound_2, lowerscalestdev),
-                            ub = c(rho_upper_bound_1, rho_upper_bound_2, upperscalestdev),
-                            opts = list(
-                              "algorithm" = "NLOPT_LD_AUGLAG",
-                              "local_opts" = list(
-                                "algorithm" = "NLOPT_LD_LBFGS",
-                                "xtol_rel" = 1e-4,
-                                "maxeval" = 10000
-                              ),
-                              "maxeval" = 10000,
-                              "ftol_rel" = 1e-4
-                            )
-                          )
-                          
-                          list(res_min = res_min, res_max = res_max)
-                        },
-                         
-                         "GRID_SEARCH" = {
-                           
-                           # Define parameter steps
-                           scale <- (upperscalestdev - lowerscalestdev) / 5
-                           bound1 <- (rho_upper_bound_1 - rho_lower_bound_1) / 5
-                           bound2 <- (rho_upper_bound_2 - rho_lower_bound_2) / 5
-                           
-                           rho1 <- seq(rho_lower_bound_1, rho_upper_bound_1, by = bound1)
-                           rho2 <- seq(rho_lower_bound_2, rho_upper_bound_2, by = bound2)
-                           scalestdevstep <- seq(lowerscalestdev, upperscalestdev, by = scale)
-                           iterations <- length(rho1) * length(rho2) * length(scalestdevstep)
-                           
-                           # Create the grid of parameters
-                           pars <- expand.grid(rho1 = rho1, rho2 = rho2, scalestdevstep = scalestdevstep, iterations = iterations)
-                           
-                           # Calculate the constraint
-                           constraint_values <- vectorized_constraint_function(
-                             pars$rho1,
-                             pars$rho2,
-                             pars$scalestdevstep,
-                             taxa1relativesd,
-                             taxa2relativesd,
-                             relativecovariance
-                           )
-                           
-                           # Add the calculated constraint as a new column to 'pars'
-                           pars$SPSD <- constraint_values
-                           
-                           # Calculate rpars without filtering based on SPSD
-                           rpars <- pars %>%
-                             dplyr::mutate(sigma = relativecovariance + scalestdevstep * taxa1relativesd * rho1 + scalestdevstep * taxa2relativesd * rho2 + scalestdevstep^2,
-                                           s = s,
-                                           comparison = paste0(d1, ":", d2),
-                                           taxa1relativesd = taxa1relativesd,
-                                           taxa2relativesd = taxa2relativesd,
-                                           relativecovariance = relativecovariance
-                             )
-                           
-                           # Append the rpars to the file for this pair
-                           pair_file_name <- paste0("gridresults_taxa_", d1, "_", d2, ".txt")
-                           append_to_pair_file(rpars, pair_file_name, outputdirectory)
-                           
-                           # Filter rows where SPSD is >= 0
-                           rpars <- rpars %>%
-                             dplyr::filter(SPSD >= 0)
-    
-                           
-                           if (nrow(rpars) == 0) {
-                            # Return a data frame with NA values
-                            res_min <- list(
-                              objective = NA,
-                              solution = c(NA, NA, NA),
-                              message = "GRIDSEARCH_NO_VALID_ROWS",
-                              status = "GRIDSEARCH_NO_VALID_ROWS",
-                              iterations = NA
-                            )
-                            
-                            res_max <- list(
-                              objective = NA,
-                              solution = c(NA, NA, NA),
-                              message = "GRIDSEARCH_NO_VALID_ROWS",
-                              status = "GRIDSEARCH_NO_VALID_ROWS",
-                              iterations = NA
-                            )
-                          
-                            flog.info("No valid rows found for pair d1:", d1, "d2:", d2, "in iteration:", s, "| returning NA values.")
-                          
-                           } else {
-                            # Find min and max
-                            min_sigma_row <- rpars[which.min(rpars$sigma), , drop = FALSE]
-                            max_sigma_row <- rpars[which.max(rpars$sigma), , drop = FALSE]
-                            
-                            # Extract values from min_sigma_row
-                            res_min <- list(
-                              objective = ifelse(is.null(min_sigma_row$sigma), {flog.info("min_sigma_row$sigma is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, min_sigma_row$sigma),
-                              solution = c(ifelse(is.null(min_sigma_row$rho1), {flog.info("min_sigma_row$rho1 is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, min_sigma_row$rho1),
-                                           ifelse(is.null(min_sigma_row$rho2), {flog.info("min_sigma_row$rho2 is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, min_sigma_row$rho2),
-                                           ifelse(is.null(min_sigma_row$scalestdevstep), {flog.info("min_sigma_row$scalestdevstep is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, min_sigma_row$scalestdevstep)),
-                              message = "GRIDSEARCH_SUCCESS",
-                              status = "GRIDSEARCH_SUCCESS",
-                              iterations = nrow(pars),
-                              spsd = nrow(rpars)
-                            )
-                            
-                            # Extract values from max_sigma_row
-                            res_max <- list(
-                              objective = ifelse(is.null(max_sigma_row$sigma), {flog.info("max_sigma_row$sigma is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, -max_sigma_row$sigma),  # Negative for maximization
-                              solution = c(ifelse(is.null(max_sigma_row$rho1), {flog.info("max_sigma_row$rho1 is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, max_sigma_row$rho1),
-                                           ifelse(is.null(max_sigma_row$rho2), {flog.info("max_sigma_row$rho2 is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, max_sigma_row$rho2),
-                                           ifelse(is.null(max_sigma_row$scalestdevstep), {flog.info("max_sigma_row$scalestdevstep is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, max_sigma_row$scalestdevstep)),
-                              message = "GRIDSEARCH_SUCCESS",
-                              status = "GRIDSEARCH_SUCCESS",
-                              iterations = nrow(pars),
-                              spsd = nrow(rpars)
-                            )
-                            
-                            flog.info("Valid rows found, returning min and max results for d1:", d1, "d2:", d2, "s:", s)
-                           }
-                           list(res_min = res_min, res_max = res_max)
-                         },
-                         stop("Invalid algorithm selected") # Default case if no match is found
-        )
+        result_sigma = optimize_sigma(d1 = d1, d2 = d2, taxa1relativesd = taxa1relativesd, taxa2relativesd = taxa2relativesd, relativecovariance = relativecovariance, rho_lower_bound_1 = rho_lower_bound_1, 
+                                     rho_lower_bound_2 = rho_lower_bound_2, rho_upper_bound_1 = rho_upper_bound_1, rho_upper_bound_2 = rho_upper_bound_2, lowerscalestdev = lowerscalestdev, upperscalestdev = upperscalestdev, 
+                                     initialparameters = initialparameters, algorithm = algorithm, res_min = res_min, res_max = res_max, )
+  
+        res_min <- result_sigma$res_min
+        res_max <- result_sigma$res_max
         
-        res_min <- result$res_min
-        res_max <- result$res_max
-        
-        data.frame(
+        data.table(
           d1 = d1, 
           d2 = d2, 
           s = s,
@@ -789,7 +419,6 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
           minsigma_message = ifelse(is.null(res_min$message), {flog.info("res_min$message is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, res_min$message),
           minsigma_status = ifelse(is.null(res_min$status), {flog.info("res_min$status is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, res_min$status),
           minsigma_iterations = ifelse(is.null(res_min$iterations), {flog.info("res_min$iterations is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, res_min$iterations),
-          
           maxsigma_absolute_maximum_covariance = ifelse(is.null(res_max$objective), {flog.info("res_max$objective is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, -res_max$objective),
           maxsigma_correlation_relativetaxa1_scale = ifelse(is.null(res_max$solution[1]), {flog.info("res_max$solution[1] is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, res_max$solution[1]),
           maxsigma_correlation_relativetaxa2_scale = ifelse(is.null(res_max$solution[2]), {flog.info("res_max$solution[2] is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, res_max$solution[2]),
@@ -797,21 +426,18 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
           maxsigma_message = ifelse(is.null(res_max$message), {flog.info("res_max$message is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, res_max$message),
           maxsigma_status = ifelse(is.null(res_max$status), {flog.info("res_max$status is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, res_max$status),
           maxsigma_iterations = ifelse(is.null(res_max$iterations), {flog.info("res_max$iterations is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, res_max$iterations),
-          
           taxa1relativesd = ifelse(is.null(taxa1relativesd), {flog.info("taxa1relativesd is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, taxa1relativesd),
           taxa2relativesd = ifelse(is.null(taxa2relativesd), {flog.info("taxa2relativesd is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, taxa2relativesd),
           relativecorrelation = ifelse(is.null(relativecorrelation), {flog.info("relativecorrelation is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, relativecorrelation),
           relativecovariance = ifelse(is.null(relativecovariance), {flog.info("relativecovariance is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, relativecovariance),
-          
           d1lowerrhobound = ifelse(is.null(rho_lower_bound_1), {flog.info("rho_lower_bound_1 is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, rho_lower_bound_1),
           d1upperrhobound = ifelse(is.null(rho_upper_bound_1), {flog.info("rho_upper_bound_1 is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, rho_upper_bound_1),
           d2lowerrhobound = ifelse(is.null(rho_lower_bound_2), {flog.info("rho_lower_bound_2 is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, rho_lower_bound_2),
           d2upperrhobound = ifelse(is.null(rho_upper_bound_2), {flog.info("rho_upper_bound_2 is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, rho_upper_bound_2),
-          
           scalesdlowerbound = ifelse(is.null(lowerscalestdev), {flog.info("lowerscalestdev is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, lowerscalestdev),
           scalesdupperbound = ifelse(is.null(upperscalestdev), {flog.info("upperscalestdev is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, upperscalestdev)
         )
-      }
+    }
     comparisonend = Sys.time()
     elapsed_time = comparisonend - comparisonstart
     formatted_time <- format_elapsed_time(elapsed_time)
@@ -877,7 +503,7 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
     # Construct list of dataframes considering the inner results of each optimization and of the final estimates for each pair indices.
     results_inner <- ifelse(is.null(results_inner), {flog.info("results_inner is NULL for d1:", d1, "d2:", d2); ""}, results_inner)
     
-    results_df <- data.frame(
+    results_df <- data.table(
       comparison = ifelse(is.null(comparison), {flog.info("comparison is NULL for d1:", d1, "d2:", d2); NA}, comparison),
       taxa1 = ifelse(is.null(rownames(Y)[d1]), {flog.info("taxa1 is NULL for d1:", d1, "d2:", d2); NA}, rownames(Y)[d1]),
       taxa2 = ifelse(is.null(rownames(Y)[d2]), {flog.info("taxa2 is NULL for d1:", d1, "d2:", d2); NA}, rownames(Y)[d2]),
