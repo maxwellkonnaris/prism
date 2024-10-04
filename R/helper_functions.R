@@ -1192,6 +1192,71 @@ optimize_sigma <- function(algorithm, initialparameters, taxa1relativesd, taxa2r
   return(result)
 }
 
+estimate_rho_and_sd <- function(externalscalemeasurements, Y, S, D, rWparaoriginal, bootstrap_samples, alpha, prefix) {
+  if (!is.null(externalscalemeasurements) && is.matrix(externalscalemeasurements) && ncol(Y) == nrow(externalscalemeasurements)) {
+    
+    # Perform rho and SD estimation using parallel processing
+    rhoandsd_list <- foreach(s = 1:S, .packages = c('stats')) %dopar% {
+      n <- length(externalscalemeasurements)
+      sample_indices <- bootstrap_samples[, s]
+      
+      # Variance of the external scale measurements
+      S2 <- var(externalscalemeasurements[sample_indices])
+      chi2_lower <- qchisq(alpha / 2, df = n - 1)
+      chi2_upper <- qchisq(1 - alpha / 2, df = n - 1)
+      var_lower <- (n - 1) * S2 / chi2_upper
+      var_upper <- (n - 1) * S2 / chi2_lower
+      scalestdev_s <- c(sqrt(var_lower), sqrt(var_upper))
+      
+      # Initialize matrix for rhobounds for each taxa
+      rhobounds_s <- matrix(NA, nrow = D, ncol = 2)  # [D x 2]
+      z_critical <- qnorm(1 - alpha / 2)
+      
+      for (taxa in 1:D) {
+        # Compute correlation
+        r <- cor(rWparaoriginal[taxa, sample_indices, s], externalscalemeasurements[sample_indices])
+        # Fisher Z-transformation
+        z <- 0.5 * log((1 + r) / (1 - r))
+        # Standard error of z
+        se_z <- 1 / sqrt(n - 3)
+        
+        # Confidence intervals in Fisher Z-space
+        z_lower <- z - z_critical * se_z
+        z_upper <- z + z_critical * se_z
+        
+        # Inverse Fisher Z-transformation to get rho bounds
+        rho_lower <- (exp(2 * z_lower) - 1) / (exp(2 * z_lower) + 1)
+        rho_upper <- (exp(2 * z_upper) - 1) / (exp(2 * z_upper) + 1)
+        
+        rhobounds_s[taxa, 1] <- rho_lower
+        rhobounds_s[taxa, 2] <- rho_upper
+      }
+      
+      list(scalestdev_s = scalestdev_s, rhobounds_s = rhobounds_s)
+    }
+    
+    # scalestdev_matrix --------------------------------------------------- [S x 2] 
+    scalestdev <- do.call(rbind, lapply(rhoandsd_list, function(x) x$scalestdev_s))
+    
+    # rhobounds ---------------------------------------------------------------------- [D x 2 x S]
+    rhobounds <- array(unlist(lapply(rhoandsd_list, function(x) x$rhobounds_s)), dim = c(D, 2, S))
+    
+    # Clean up
+    rm(rhoandsd_list)
+    
+    # Plot the scale SD
+    prism.scalesdhistogram(scalestdev, S, filename = prefix)
+    
+    # Plot the rho
+    prism.rhoridges(rhobounds, D, S, filename = prefix)
+    
+    return(list(scalestdev = scalestdev, rhobounds = rhobounds))
+    
+  } else {
+    flog.info("External scale measurements are NULL or invalid. Skipping SD and Rho estimation.")
+    return(NULL)
+  }
+}
 
 
 
