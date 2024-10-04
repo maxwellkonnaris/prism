@@ -138,14 +138,15 @@
 #' @import ggridges
 #' @import fido
 #' @export
-prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinomialdirichlet", bootstrap = TRUE, externalscalemeasurements = NULL, lowerrhobound = rep(-1.0, nrow(Y)), upperrhobound = rep(1.0, nrow(Y)), S = 1000, lowerscalestdev = 0.450, upperscalestdev = 0.650, algorithm = "GRID_SEARCH", prefix="setprefix", pvalue=TRUE, outputdirectory = NULL, seed = NULL) {
+prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinomialdirichlet", bootstrap = TRUE, externalscalemeasurements = NULL, lowerrhobound = rep(-1.0, nrow(Y)), upperrhobound = rep(1.0, nrow(Y)), S = 1000, lowerscalestdev = 0.450, upperscalestdev = 0.650, algorithm = "GRID_SEARCH", prefix="setprefix", pvalue=TRUE, outputdirectory = NULL, logfile = "log_prismcovariance.txt", seed = NULL) {
   
   ## COMPUTATIONAL TIME -------------------------------------------------------------------------------------------------------------------------------------
   start_time <- Sys.time()
   ## END COMPUTATIONAL TIME SETUP ---------------------------------------------------------------------------------------------------------------------------
   ## START LOGGING ------------------------------------------------------------------------------------------------------------------------------------------
-  sink("log_prismcovariance.txt")
-  sink("log_prismcovariance.txt", type = "message")
+  log_connection <- file(logfile, open = "wt")
+  sink(log_connection)
+  sink(log_connection, type = "message")
   ## SETUP --------------------------------------------------------------------------------------------------------------------------------------------------
   # Check if Y is a matrix, dataframe, or tibble, and has appropriate dimensions
   if (!(is.matrix(Y) || is.data.frame(Y) || inherits(Y, "tbl_df")) || nrow(Y) < 2 || ncol(Y) < 2) {
