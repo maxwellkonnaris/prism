@@ -244,16 +244,16 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
   ## END PROGRESS BARS -------------------------------------------------------------------------------------------------------------------------------------
   
   ## ACCOUNTING FOR UNCERTAINTY IN FINITE SAMPLING ---------------------------------------------------------------------------------------------------------
-  bootstrap_samples <- matrix(NA, N, S)
-  # ---- If you want to remove bootstrap and carry on then ---
+  # Preallocate the matrix of bootstrap samples
+  bootstrap_samples <- matrix(NA, nrow = N, ncol = S)
+  
+  # Populate the bootstrap_samples matrix based on whether bootstrapping is needed
   if (bootstrap) {
-    ## calculate bootstrap resampling -- accounting for finite sampling
-    bootstrap_samples <- data.table(replicate(S, sample(1:N, replace = TRUE)))
+    # Generate the bootstrap resampling indices directly
+    bootstrap_samples <- replicate(S, sample(1:N, replace = TRUE))
   } else {
-    # Use the original indices (no bootstrap resampling)
-    for (s in 1:S) {
-      bootstrap_samples[, s] <- 1:N
-    }
+    # If no bootstrapping, use the original indices repeated S times
+    bootstrap_samples <- matrix(rep(1:N, S), nrow = N, ncol = S, byrow = FALSE)
   }
   ## END ACCOUNTING FOR UNCERTAINTY IN FINITE SAMPLING -----------------------------------------------------------------------------------------------------
   
