@@ -143,6 +143,9 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
   ## COMPUTATIONAL TIME -------------------------------------------------------------------------------------------------------------------------------------
   start_time <- Sys.time()
   ## END COMPUTATIONAL TIME SETUP ---------------------------------------------------------------------------------------------------------------------------
+  ## START LOGGING ------------------------------------------------------------------------------------------------------------------------------------------
+  sink("log_prismcovariance.txt", type = "message")
+  ## END LOGGING --------------------------------------------------------------------------------------------------------------------------------------------
   ## SETUP --------------------------------------------------------------------------------------------------------------------------------------------------
   # Check if Y is a matrix, dataframe, or tibble, and has appropriate dimensions
   if (!(is.matrix(Y) || is.data.frame(Y) || inherits(Y, "tbl_df")) || nrow(Y) < 2 || ncol(Y) < 2) {
@@ -377,6 +380,8 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
       d1 <- pair[1]
       d2 <- pair[2]
       comparison <- paste(rownames(Y)[d1], rownames(Y)[d2], sep = ":")
+
+      
       
       # Use sequential foreach for the inner loop
       results_inner <- foreach(s = 1:S, .combine = 'rbind', .packages = c('stats', 'MCMCpack', 'nloptr', 'dplyr')) %dopar% {
@@ -849,7 +854,7 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
     maxsigma <- max(sortedmax, na.rm = TRUE)
     cilower <- quantile(sortedmin, probs = 0.025, na.rm = TRUE)
     ciupper <- quantile(sortedmax, probs = 0.975, na.rm = TRUE)
-    range <- maxsigma - minsigma 
+    sigmarange <- maxsigma - minsigma 
     ciintervalrange <- ciupper - cilower
     
     # Obtain parameters for the minimum and maximum sigma values
@@ -889,7 +894,7 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
       ninetyfive_ci_upper = ifelse(is.null(ciupper), {message("ninetyfive_ci_upper is NULL for d1:", d1, "d2:", d2); NA}, ciupper),
       minsigma_absolute_minimum_covariance = ifelse(is.null(minsigma), {message("minsigma_absolute_minimum_covariance is NULL for d1:", d1, "d2:", d2); NA}, minsigma),
       maxsigma_absolute_maximum_covariance = ifelse(is.null(maxsigma), {message("maxsigma_absolute_maximum_covariance is NULL for d1:", d1, "d2:", d2); NA}, maxsigma),
-      range = ifelse(is.null(range), {message("range is NULL for d1:", d1, "d2:", d2); NA}, range),
+      sigmarange = ifelse(is.null(range), {message("range is NULL for d1:", d1, "d2:", d2); NA}, sigmarange),
       cirange = ifelse(is.null(ciintervalrange), {message("cirange is NULL for d1:", d1, "d2:", d2); NA}, ciintervalrange),
       minsigma_correlation_relativetaxa1_scale = ifelse(is.null(min_rho1), {message("minsigma_correlation_relativetaxa1_scale is NULL for d1:", d1, "d2:", d2); NA}, min_rho1),
       minsigma_correlation_relativetaxa2_scale = ifelse(is.null(min_rho2), {message("minsigma_correlation_relativetaxa2_scale is NULL for d1:", d1, "d2:", d2); NA}, min_rho2),
@@ -940,6 +945,9 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
   elapsed_time <- end_time - start_time
   formatted_time <- format_elapsed_time(elapsed_time)
   print(paste("Total time taken:", formatted_time))
+
+  sink()  
+  sink(type = "message") 
   
   return(list(final_results = final_results, all_inner_results = all_inner_results))
 }
