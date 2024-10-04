@@ -1101,12 +1101,21 @@ optimize_sigma <- function(algorithm, initialparameters, taxa1relativesd, taxa2r
                        "ftol_rel" = 1e-4,
                        "maxeval" = 10000
                      )
+
+                     # Define objective, gradient, and constraint functions
+                     objective_f <- function(params) objective_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance)
+                     gradient_f <- function(params) gradient_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance)
+                     constraint_f <- function(params) constraint_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance)
+                     constraint_grad_f <- function(params) constraint_gradient_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance)
+                     
                      
                      # Perform the optimization to find the minimum sigma
                      res_min <- run_optimization(
                        initialparameters,
-                       eval_f = function(params) objective_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-                       eval_g_ineq = function(params) constraint_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
+                       eval_f = objective_f,
+                       eval_g_ineq = constraint_f,
+                       eval_grad_f = gradient_f,
+                       eval_jac_g_ineq = constraint_grad_f,
                        lb = c(rho_lower_bound_1, rho_lower_bound_2, lowerscalestdev),
                        ub = c(rho_upper_bound_1, rho_upper_bound_2, upperscalestdev),
                        opts = opts
@@ -1115,8 +1124,10 @@ optimize_sigma <- function(algorithm, initialparameters, taxa1relativesd, taxa2r
                      # Optimization for maximum (negating the objective)
                      res_max <- run_optimization(
                        initialparameters,
-                       eval_f = function(params) -objective_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-                       eval_g_ineq = function(params) constraint_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
+                       eval_f = -objective_f,
+                       eval_g_ineq = -constraint_f,
+                       eval_grad_f = gradient_f,
+                       eval_jac_g_ineq = constraint_grad_f,
                        lb = c(rho_lower_bound_1, rho_lower_bound_2, lowerscalestdev),
                        ub = c(rho_upper_bound_1, rho_upper_bound_2, upperscalestdev),
                        opts = opts
@@ -1126,13 +1137,20 @@ optimize_sigma <- function(algorithm, initialparameters, taxa1relativesd, taxa2r
                    },
                    
                    "AUGLAG_SLSQP" = {
+
+                     # Define objective, gradient, and constraint functions
+                     objective_f <- function(params) objective_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance)
+                     gradient_f <- function(params) gradient_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance)
+                     constraint_f <- function(params) constraint_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance)
+                     constraint_grad_f <- function(params) constraint_gradient_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance)
+                     
                      # Find the minimum sigma using AUGLAG with SLSQP as the inner algorithm
                      res_min <- run_optimization(
                        initialparameters,
-                       eval_f = function(params) objective_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-                       eval_grad_f = function(params) gradient_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-                       eval_g_ineq = function(params) constraint_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-                       eval_jac_g_ineq = function(params) constraint_gradient_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
+                       eval_f = objective_f,
+                       eval_g_ineq = constraint_f,
+                       eval_grad_f = gradient_f,
+                       eval_jac_g_ineq = constraint_grad_f,
                        lb = c(rho_lower_bound_1, rho_lower_bound_2, lowerscalestdev),
                        ub = c(rho_upper_bound_1, rho_upper_bound_2, upperscalestdev),
                        opts = list(
@@ -1150,10 +1168,10 @@ optimize_sigma <- function(algorithm, initialparameters, taxa1relativesd, taxa2r
                      # Find the maximum sigma using AUGLAG with SLSQP as the inner algorithm
                      res_max <- run_optimization(
                        initialparameters,
-                       eval_f = function(params) -objective_function_wrapper(params),
-                       eval_grad_f = function(params) -gradient_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-                       eval_g_ineq = function(params) constraint_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-                       eval_jac_g_ineq = function(params) constraint_gradient_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
+                       eval_f = -objective_f,
+                       eval_g_ineq = -constraint_f,
+                       eval_grad_f = gradient_f,
+                       eval_jac_g_ineq = constraint_grad_f,
                        lb = c(rho_lower_bound_1, rho_lower_bound_2, lowerscalestdev),
                        ub = c(rho_upper_bound_1, rho_upper_bound_2, upperscalestdev),
                        opts = list(
@@ -1172,13 +1190,20 @@ optimize_sigma <- function(algorithm, initialparameters, taxa1relativesd, taxa2r
                    },
                    
                    "AUGLAG_LBFGS" = {
+
+                     # Define objective, gradient, and constraint functions
+                     objective_f <- function(params) objective_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance)
+                     gradient_f <- function(params) gradient_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance)
+                     constraint_f <- function(params) constraint_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance)
+                     constraint_grad_f <- function(params) constraint_gradient_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance)
+                     
                      # Find the minimum sigma using AUGLAG with LBFGS as the inner algorithm
                      res_min <- run_optimization(
                        initialparameters,
-                       eval_f = function(params) objective_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-                       eval_grad_f = function(params) gradient_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-                       eval_g_ineq = function(params) constraint_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-                       eval_jac_g_ineq = function(params) constraint_gradient_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
+                       eval_f = objective_f,
+                       eval_g_ineq = constraint_f,
+                       eval_grad_f = gradient_f,
+                       eval_jac_g_ineq = constraint_grad_f,
                        lb = c(rho_lower_bound_1, rho_lower_bound_2, lowerscalestdev),
                        ub = c(rho_upper_bound_1, rho_upper_bound_2, upperscalestdev),
                        opts = list(
@@ -1196,10 +1221,10 @@ optimize_sigma <- function(algorithm, initialparameters, taxa1relativesd, taxa2r
                      # Find the maximum sigma using AUGLAG with LBFGS as the inner algorithm
                      res_max <- run_optimization(
                        initialparameters,
-                       eval_f = function(params) -objective_function_wrapper(params),
-                       eval_grad_f = function(params) -gradient_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-                       eval_g_ineq = function(params) constraint_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
-                       eval_jac_g_ineq = function(params) constraint_gradient_function_wrapper(params, taxa1relativesd, taxa2relativesd, relativecovariance),
+                       eval_f = -objective_f,
+                       eval_g_ineq = -constraint_f,
+                       eval_grad_f = gradient_f,
+                       eval_jac_g_ineq = constraint_grad_f,
                        lb = c(rho_lower_bound_1, rho_lower_bound_2, lowerscalestdev),
                        ub = c(rho_upper_bound_1, rho_upper_bound_2, upperscalestdev),
                        opts = list(
