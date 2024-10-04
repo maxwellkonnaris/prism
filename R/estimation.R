@@ -192,15 +192,15 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
           flog.info("External scale measurements were provided.")
           replicates <- ncol(externalscalemeasurements)
           sampletotals <- nrow(externalscalemeasurements)
-          flog.info("Dimensions of supplied external scale measurements matrix: Number of Sample-scale Measurement Pairs: ", sampletotals, ", Number of Replicates: ", replicates)
+          flog.info("Dimensions of supplied external scale measurements matrix: Number of Sample-scale Measurement Pairs %s and Number of Replicates %s", sampletotals, replicates)
           flog.info("Estimating Rho bounds and scale SD from the external scale measurements.")
           externalscalemeasurements <- log(externalscalemeasurements)
       } else {
           stop("Error: Mismatch in dimensions between external scale measurements and Y.")
       }
   } else {
-      flog.info("Using default Rho bounds: ", paste0(lowerrhobound, ":", upperrhobound))
-      flog.info("Using default Scale standard deviation bounds: ", paste0(lowerscalestdev, ":", upperscalestdev))
+      flog.info("Using default Rho bounds %s ", paste0(lowerrhobound, ":", upperrhobound))
+      flog.info("Using default Scale standard deviation bounds %s ", paste0(lowerscalestdev, ":", upperscalestdev))
   }
 
   flog.info("Input Y:", head(Y))
@@ -217,7 +217,7 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
       stop("Parallel backend is not registered.")
   } else {
       # Check the number of workers
-      flog.info("Number of workers/cpus: ", foreach::getDoParWorkers())
+      flog.info("Number of workers/cpus %s ", foreach::getDoParWorkers())
   }
   ## END CLUSTER RESOURCES ----------------------------------------------------------------------------------------------------------------------------------
   
@@ -335,7 +335,7 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
       d1 <- pair[1]
       d2 <- pair[2]
       comparison <- paste(rownames(Y)[d1], rownames(Y)[d2], sep = ":")
-      flog.info("Start Current Comparison: ", comparison)
+      flog.info("Start Current Comparison %s", comparison)
       comparisonstart = Sys.time()
     
       # Use sequential foreach for the inner loop
@@ -374,37 +374,37 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
           d1 = d1, 
           d2 = d2, 
           s = s,
-          minsigma_absolute_minimum_covariance = ifelse(is.null(res_min$objective), {flog.info("res_min$objective is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, res_min$objective),
-          minsigma_correlation_relativetaxa1_scale = ifelse(is.null(res_min$solution[1]), {flog.info("res_min$solution[1] is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, res_min$solution[1]),
-          minsigma_correlation_relativetaxa2_scale = ifelse(is.null(res_min$solution[2]), {flog.info("res_min$solution[2] is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, res_min$solution[2]),
-          minsigma_scale_sd = ifelse(is.null(res_min$solution[3]), {flog.info("res_min$solution[3] is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, res_min$solution[3]),
-          minsigma_message = ifelse(is.null(res_min$message), {flog.info("res_min$message is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, res_min$message),
-          minsigma_status = ifelse(is.null(res_min$status), {flog.info("res_min$status is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, res_min$status),
-          minsigma_iterations = ifelse(is.null(res_min$iterations), {flog.info("res_min$iterations is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, res_min$iterations),
-          maxsigma_absolute_maximum_covariance = ifelse(is.null(res_max$objective), {flog.info("res_max$objective is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, -res_max$objective),
-          maxsigma_correlation_relativetaxa1_scale = ifelse(is.null(res_max$solution[1]), {flog.info("res_max$solution[1] is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, res_max$solution[1]),
-          maxsigma_correlation_relativetaxa2_scale = ifelse(is.null(res_max$solution[2]), {flog.info("res_max$solution[2] is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, res_max$solution[2]),
-          maxsigma_scale_sd = ifelse(is.null(res_max$solution[3]), {flog.info("res_max$solution[3] is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, res_max$solution[3]),
-          maxsigma_message = ifelse(is.null(res_max$message), {flog.info("res_max$message is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, res_max$message),
-          maxsigma_status = ifelse(is.null(res_max$status), {flog.info("res_max$status is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, res_max$status),
-          maxsigma_iterations = ifelse(is.null(res_max$iterations), {flog.info("res_max$iterations is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, res_max$iterations),
-          taxa1relativesd = ifelse(is.null(taxa1relativesd), {flog.info("taxa1relativesd is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, taxa1relativesd),
-          taxa2relativesd = ifelse(is.null(taxa2relativesd), {flog.info("taxa2relativesd is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, taxa2relativesd),
-          relativecorrelation = ifelse(is.null(relativecorrelation), {flog.info("relativecorrelation is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, relativecorrelation),
-          relativecovariance = ifelse(is.null(relativecovariance), {flog.info("relativecovariance is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, relativecovariance),
-          d1lowerrhobound = ifelse(is.null(rho_lower_bound_1), {flog.info("rho_lower_bound_1 is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, rho_lower_bound_1),
-          d1upperrhobound = ifelse(is.null(rho_upper_bound_1), {flog.info("rho_upper_bound_1 is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, rho_upper_bound_1),
-          d2lowerrhobound = ifelse(is.null(rho_lower_bound_2), {flog.info("rho_lower_bound_2 is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, rho_lower_bound_2),
-          d2upperrhobound = ifelse(is.null(rho_upper_bound_2), {flog.info("rho_upper_bound_2 is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, rho_upper_bound_2),
-          scalesdlowerbound = ifelse(is.null(lowerscalestdev), {flog.info("lowerscalestdev is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, lowerscalestdev),
-          scalesdupperbound = ifelse(is.null(upperscalestdev), {flog.info("upperscalestdev is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, upperscalestdev)
+          minsigma_absolute_minimum_covariance = ifelse(is.null(res_min$objective), {flog.info("res_min$objective is NULL for d1 %s and d2 %s in bootstrap %s", d1, d2, s); NA}, res_min$objective),
+          minsigma_correlation_relativetaxa1_scale = ifelse(is.null(res_min$solution[1]), {flog.info("res_min$solution[1] is NULL for d1 %s and d2 %s in bootstrap %s", d1, d2, s); NA}, res_min$solution[1]),
+          minsigma_correlation_relativetaxa2_scale = ifelse(is.null(res_min$solution[2]), {flog.info("res_min$solution[2] is NULL for d1 %s and d2 %s in bootstrap %s", d1, d2, s); NA}, res_min$solution[2]),
+          minsigma_scale_sd = ifelse(is.null(res_min$solution[3]), {flog.info("res_min$solution[3] is NULL for d1 %s and d2 %s in bootstrap %s", d1, d2, s); NA}, res_min$solution[3]),
+          minsigma_message = ifelse(is.null(res_min$message), {flog.info("res_min$message is NULL for d1 %s and d2 %s in bootstrap %s", d1, d2, s); NA}, res_min$message),
+          minsigma_status = ifelse(is.null(res_min$status), {flog.info("res_min$status is NULL for d1 %s and d2 %s in bootstrap %s", d1, d2, s); NA}, res_min$status),
+          minsigma_iterations = ifelse(is.null(res_min$iterations), {flog.info("res_min$iterations is NULL for d1 %s and d2 %s in bootstrap %s", d1, d2, s); NA}, res_min$iterations),
+          maxsigma_absolute_maximum_covariance = ifelse(is.null(res_max$objective), {flog.info("res_max$objective is NULL for d1 %s and d2 %s in bootstrap %s", d1, d2, s); NA}, -res_max$objective),
+          maxsigma_correlation_relativetaxa1_scale = ifelse(is.null(res_max$solution[1]), {flog.info("res_max$solution[1] is NULL for d1 %s and d2 %s in bootstrap %s", d1, d2, s); NA}, res_max$solution[1]),
+          maxsigma_correlation_relativetaxa2_scale = ifelse(is.null(res_max$solution[2]), {flog.info("res_max$solution[2] is NULL for d1 %s and d2 %s in bootstrap %s", d1, d2, s); NA}, res_max$solution[2]),
+          maxsigma_scale_sd = ifelse(is.null(res_max$solution[3]), {flog.info("res_max$solution[3] is NULL for d1 %s and d2 %s in bootstrap %s", d1, d2, s); NA}, res_max$solution[3]),
+          maxsigma_message = ifelse(is.null(res_max$message), {flog.info("res_max$message is NULL for d1 %s and d2 %s in bootstrap %s", d1, d2, s); NA}, res_max$message),
+          maxsigma_status = ifelse(is.null(res_max$status), {flog.info("res_max$status is NULL for d1 %s and d2 %s in bootstrap %s", d1, d2, s); NA}, res_max$status),
+          maxsigma_iterations = ifelse(is.null(res_max$iterations), {flog.info("res_max$iterations is NULL for d1 %s and d2 %s in bootstrap %s", d1, d2, s); NA}, res_max$iterations),
+          taxa1relativesd = ifelse(is.null(taxa1relativesd), {flog.info("taxa1relativesd is NULL for d1 %s and d2 %s in bootstrap %s", d1, d2, s); NA}, taxa1relativesd),
+          taxa2relativesd = ifelse(is.null(taxa2relativesd), {flog.info("taxa2relativesd is NULL for d1 %s and d2 %s in bootstrap %s", d1, d2, s); NA}, taxa2relativesd),
+          relativecorrelation = ifelse(is.null(relativecorrelation), {flog.info("relativecorrelation is NULL for d1 %s and d2 %s in bootstrap %s", d1, d2, s); NA}, relativecorrelation),
+          relativecovariance = ifelse(is.null(relativecovariance), {flog.info("relativecovariance is NULL for d1 %s and d2 %s in bootstrap %s", d1, d2, s); NA}, relativecovariance),
+          d1lowerrhobound = ifelse(is.null(rho_lower_bound_1), {flog.info("rho_lower_bound_1 is NULL for d1 %s and d2 %s in bootstrap %s", d1, d2, s); NA}, rho_lower_bound_1),
+          d1upperrhobound = ifelse(is.null(rho_upper_bound_1), {flog.info("rho_upper_bound_1 is NULL for d1 %s and d2 %s in bootstrap %s", d1, d2, s); NA}, rho_upper_bound_1),
+          d2lowerrhobound = ifelse(is.null(rho_lower_bound_2), {flog.info("rho_lower_bound_2 is NULL for d1 %s and d2 %s in bootstrap %s", d1, d2, s); NA}, rho_lower_bound_2),
+          d2upperrhobound = ifelse(is.null(rho_upper_bound_2), {flog.info("rho_upper_bound_2 is NULL for d1 %s and d2 %s in bootstrap %s", d1, d2, s); NA}, rho_upper_bound_2),
+          scalesdlowerbound = ifelse(is.null(lowerscalestdev), {flog.info("lowerscalestdev is NULL for d1 %s and d2 %s in bootstrap %s", d1, d2, s); NA}, lowerscalestdev),
+          scalesdupperbound = ifelse(is.null(upperscalestdev), {flog.info("upperscalestdev is NULL for d1 %s and d2 %s in bootstrap %s", d1, d2, s); NA}, upperscalestdev)
         )
     }
     comparisonend = Sys.time()
     elapsed_time = comparisonend - comparisonstart
     formatted_time <- format_elapsed_time(elapsed_time)
-    flog.info("Comparison %s Total time taken %s", comparison, formatted_time)
-    flog.info("End Comparison: ", comparison)
+    flog.info("Comparison %s --- Total time taken %s", comparison, formatted_time)
+    flog.info("End Comparison %s ", comparison)
     
     if (nrow(results_inner) == 0) {
       stop("Error: No valid inner results generated")
@@ -463,38 +463,38 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
     upperscalestdev <- results_inner$scalesdlowerbound[min_index]
     
     # Construct list of dataframes considering the inner results of each optimization and of the final estimates for each pair indices.
-    results_inner <- ifelse(is.null(results_inner), {flog.info("results_inner is NULL for d1:", d1, "d2:", d2); ""}, results_inner)
+    results_inner <- ifelse(is.null(results_inner), {flog.info("results_inner is NULL for d1 %s and d2 %s", d1, d2); ""}, results_inner)
     
     results_df <- data.table(
-      comparison = ifelse(is.null(comparison), {flog.info("comparison is NULL for d1:", d1, "d2:", d2); NA}, comparison),
-      taxa1 = ifelse(is.null(rownames(Y)[d1]), {flog.info("taxa1 is NULL for d1:", d1, "d2:", d2); NA}, rownames(Y)[d1]),
-      taxa2 = ifelse(is.null(rownames(Y)[d2]), {flog.info("taxa2 is NULL for d1:", d1, "d2:", d2); NA}, rownames(Y)[d2]),
-      proportion_intervals_dontcoverzero = ifelse(is.null(proportion_intervals_dontcoverzero), {flog.info("proportion_intervals_dontcoverzero is NULL for d1:", d1, "d2:", d2); NA}, proportion_intervals_dontcoverzero),
-      proportion_positiveintervals_dontcoverzero = ifelse(is.null(proportion_positiveintervals_dontcoverzero), {flog.info("proportion_positiveintervals_dontcoverzero is NULL for d1:", d1, "d2:", d2); NA}, proportion_positiveintervals_dontcoverzero),
-      proportion_negativeintervals_dontcoverzero = ifelse(is.null(proportion_negativeintervals_dontcoverzero), {flog.info("proportion_negativeintervals_dontcoverzero is NULL for d1:", d1, "d2:", d2); NA}, proportion_negativeintervals_dontcoverzero),
-      numbootstrapsfailedspsd = ifelse(is.null(numbootstrapsfailedspsd), {flog.info("numbootstrapsfailedspsd is NULL for d1:", d1, "d2:", d2); NA}, numbootstrapsfailedspsd),
-      ninetyfive_ci_lower = ifelse(is.null(cilower), {flog.info("ninetyfive_ci_lower is NULL for d1:", d1, "d2:", d2); NA}, cilower),
-      ninetyfive_ci_upper = ifelse(is.null(ciupper), {flog.info("ninetyfive_ci_upper is NULL for d1:", d1, "d2:", d2); NA}, ciupper),
-      minsigma_absolute_minimum_covariance = ifelse(is.null(minsigma), {flog.info("minsigma_absolute_minimum_covariance is NULL for d1:", d1, "d2:", d2); NA}, minsigma),
-      maxsigma_absolute_maximum_covariance = ifelse(is.null(maxsigma), {flog.info("maxsigma_absolute_maximum_covariance is NULL for d1:", d1, "d2:", d2); NA}, maxsigma),
-      sigmarange = ifelse(is.null(sigmarange), {flog.info("range is NULL for d1:", d1, "d2:", d2); NA}, sigmarange),
-      cirange = ifelse(is.null(ciintervalrange), {flog.info("cirange is NULL for d1:", d1, "d2:", d2); NA}, ciintervalrange),
-      minsigma_correlation_relativetaxa1_scale = ifelse(is.null(min_rho1), {flog.info("minsigma_correlation_relativetaxa1_scale is NULL for d1:", d1, "d2:", d2); NA}, min_rho1),
-      minsigma_correlation_relativetaxa2_scale = ifelse(is.null(min_rho2), {flog.info("minsigma_correlation_relativetaxa2_scale is NULL for d1:", d1, "d2:", d2); NA}, min_rho2),
+      comparison = ifelse(is.null(comparison), {flog.info("comparison is NULL for d1 %s and d2 %s", d1, d2); NA}, comparison),
+      taxa1 = ifelse(is.null(rownames(Y)[d1]), {flog.info("taxa1 is NULL for d1 %s and d2 %s", d1, d2); NA}, rownames(Y)[d1]),
+      taxa2 = ifelse(is.null(rownames(Y)[d2]), {flog.info("taxa2 is NULL for d1 %s and d2 %s", d1, d2); NA}, rownames(Y)[d2]),
+      proportion_intervals_dontcoverzero = ifelse(is.null(proportion_intervals_dontcoverzero), {flog.info("proportion_intervals_dontcoverzero is NULL for d1 %s and d2 %s", d1, d2); NA}, proportion_intervals_dontcoverzero),
+      proportion_positiveintervals_dontcoverzero = ifelse(is.null(proportion_positiveintervals_dontcoverzero), {flog.info("proportion_positiveintervals_dontcoverzero is NULL for d1 %s and d2 %s", d1, d2); NA}, proportion_positiveintervals_dontcoverzero),
+      proportion_negativeintervals_dontcoverzero = ifelse(is.null(proportion_negativeintervals_dontcoverzero), {flog.info("proportion_negativeintervals_dontcoverzero is NULL for d1 %s and d2 %s", d1, d2); NA}, proportion_negativeintervals_dontcoverzero),
+      numbootstrapsfailedspsd = ifelse(is.null(numbootstrapsfailedspsd), {flog.info("numbootstrapsfailedspsd is NULL for d1 %s and d2 %s", d1, d2); NA}, numbootstrapsfailedspsd),
+      ninetyfive_ci_lower = ifelse(is.null(cilower), {flog.info("ninetyfive_ci_lower is NULL for d1 %s and d2 %s", d1, d2); NA}, cilower),
+      ninetyfive_ci_upper = ifelse(is.null(ciupper), {flog.info("ninetyfive_ci_upper is NULL for d1 %s and d2 %s", d1, d2); NA}, ciupper),
+      minsigma_absolute_minimum_covariance = ifelse(is.null(minsigma), {flog.info("minsigma_absolute_minimum_covariance is NULL for d1 %s and d2 %s", d1, d2); NA}, minsigma),
+      maxsigma_absolute_maximum_covariance = ifelse(is.null(maxsigma), {flog.info("maxsigma_absolute_maximum_covariance is NULL for d1 %s and d2 %s", d1, d2); NA}, maxsigma),
+      sigmarange = ifelse(is.null(sigmarange), {flog.info("range is NULL for d1 %s and d2 %s", d1, d2); NA}, sigmarange),
+      cirange = ifelse(is.null(ciintervalrange), {flog.info("cirange is NULL for d1 %s and d2 %s", d1, d2); NA}, ciintervalrange),
+      minsigma_correlation_relativetaxa1_scale = ifelse(is.null(min_rho1), {flog.info("minsigma_correlation_relativetaxa1_scale is NULL for d1 %s and d2 %s", d1, d2); NA}, min_rho1),
+      minsigma_correlation_relativetaxa2_scale = ifelse(is.null(min_rho2), {flog.info("minsigma_correlation_relativetaxa2_scale is NULL for d1 %s and d2 %s", d1, d2); NA}, min_rho2),
       minsigma_scale_sd = ifelse(is.null(min_x), {flog.info("minsigma_scale_sd is NULL for d1:", d1, "d2:", d2); NA}, min_x),
-      maxsigma_correlation_relativetaxa1_scale = ifelse(is.null(max_rho1), {flog.info("maxsigma_correlation_relativetaxa1_scale is NULL for d1:", d1, "d2:", d2); NA}, max_rho1),
-      maxsigma_correlation_relativetaxa2_scale = ifelse(is.null(max_rho2), {flog.info("maxsigma_correlation_relativetaxa2_scale is NULL for d1:", d1, "d2:", d2); NA}, max_rho2),
+      maxsigma_correlation_relativetaxa1_scale = ifelse(is.null(max_rho1), {flog.info("maxsigma_correlation_relativetaxa1_scale is NULL for d1 %s and d2 %s", d1, d2); NA}, max_rho1),
+      maxsigma_correlation_relativetaxa2_scale = ifelse(is.null(max_rho2), {flog.info("maxsigma_correlation_relativetaxa2_scale is NULL for d1 %s and d2 %s", d1, d2); NA}, max_rho2),
       maxsigma_scale_sd = ifelse(is.null(max_x), {flog.info("maxsigma_scale_sd is NULL for d1:", d1, "d2:", d2); NA}, max_x),
-      relative_standard_dev_taxa1 = ifelse(is.null(taxa1relativesd), {flog.info("relative_standard_dev_taxa1 is NULL for d1:", d1, "d2:", d2); NA}, taxa1relativesd),
-      relative_standard_dev_taxa2 = ifelse(is.null(taxa2relativesd), {flog.info("relative_standard_dev_taxa2 is NULL for d1:", d1, "d2:", d2); NA}, taxa2relativesd),
-      relative_correlation = ifelse(is.null(relativecorrelation), {flog.info("relative_correlation is NULL for d1:", d1, "d2:", d2); NA}, relativecorrelation),
-      relative_covariance = ifelse(is.null(relativecovariance), {flog.info("relative_covariance is NULL for d1:", d1, "d2:", d2); NA}, relativecovariance),
-      d1lowerrhobound = ifelse(is.null(rho_lower_bound_1), {flog.info("d1lowerrhobound is NULL for d1:", d1, "d2:", d2); NA}, rho_lower_bound_1),
-      d1upperrhobound = ifelse(is.null(rho_upper_bound_1), {flog.info("d1upperrhobound is NULL for d1:", d1, "d2:", d2); NA}, rho_upper_bound_1),
-      d2lowerrhobound = ifelse(is.null(rho_lower_bound_2), {flog.info("d2lowerrhobound is NULL for d1:", d1, "d2:", d2); NA}, rho_lower_bound_2),
-      d2upperrhobound = ifelse(is.null(rho_upper_bound_2), {flog.info("d2upperrhobound is NULL for d1:", d1, "d2:", d2); NA}, rho_upper_bound_2),
-      scalesdlowerbound = ifelse(is.null(lowerscalestdev), {flog.info("scalesdlowerbound is NULL for d1:", d1, "d2:", d2); NA}, lowerscalestdev),
-      scalesdupperbound = ifelse(is.null(upperscalestdev), {flog.info("scalesdupperbound is NULL for d1:", d1, "d2:", d2); NA}, upperscalestdev),
+      relative_standard_dev_taxa1 = ifelse(is.null(taxa1relativesd), {flog.info("relative_standard_dev_taxa1 is NULL for d1 %s and d2 %s", d1, d2); NA}, taxa1relativesd),
+      relative_standard_dev_taxa2 = ifelse(is.null(taxa2relativesd), {flog.info("relative_standard_dev_taxa2 is NULL for d1 %s and d2 %s", d1, d2); NA}, taxa2relativesd),
+      relative_correlation = ifelse(is.null(relativecorrelation), {flog.info("relative_correlation is NULL for d1 %s and d2 %s", d1, d2); NA}, relativecorrelation),
+      relative_covariance = ifelse(is.null(relativecovariance), {flog.info("relative_covariance is NULL for d1 %s and d2 %s", d1, d2); NA}, relativecovariance),
+      d1lowerrhobound = ifelse(is.null(rho_lower_bound_1), {flog.info("d1lowerrhobound is NULL for d1 %s and d2 %s", d1, d2); NA}, rho_lower_bound_1),
+      d1upperrhobound = ifelse(is.null(rho_upper_bound_1), {flog.info("d1upperrhobound is NULL for d1 %s and d2 %s", d1, d2); NA}, rho_upper_bound_1),
+      d2lowerrhobound = ifelse(is.null(rho_lower_bound_2), {flog.info("d2lowerrhobound is NULL for d1 %s and d2 %s", d1, d2); NA}, rho_lower_bound_2),
+      d2upperrhobound = ifelse(is.null(rho_upper_bound_2), {flog.info("d2upperrhobound is NULL for d1 %s and d2 %s", d1, d2); NA}, rho_upper_bound_2),
+      scalesdlowerbound = ifelse(is.null(lowerscalestdev), {flog.info("scalesdlowerbound is NULL for d1 %s and d2 %s", d1, d2); NA}, lowerscalestdev),
+      scalesdupperbound = ifelse(is.null(upperscalestdev), {flog.info("scalesdupperbound is NULL for d1 %s and d2 %s", d1, d2); NA}, upperscalestdev),
       stringsAsFactors = FALSE
     )
 
