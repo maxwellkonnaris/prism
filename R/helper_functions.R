@@ -467,6 +467,96 @@ constraint_gradient_function <- function(params, taxa1relativesd, taxa2relatives
   return(c(grad_taxa1scalecorrelation, grad_taxa2scalecorrelation, grad_scalestdev))
 }
 
+                              #' Wrapper function for the objective function
+#'
+#' This function calls the objective_function with the provided parameters.
+#'
+#' @param params A numeric vector with correlation and standard deviation parameters.
+#' @param taxa1relativesd Relative standard deviation for Taxa 1.
+#' @param taxa2relativesd Relative standard deviation for Taxa 2.
+#' @param relativecovariance The relative covariance.
+#' @return A numeric value representing the covariance.
+objective_function_wrapper <- function(params, taxa1relativesd, taxa2relativesd, relativecovariance) {
+  # Check if parameters are valid
+  if (length(params) != 3) stop("params must be a numeric vector of length 3.")
+  
+  # Call the original objective function
+  result <- objective_function(params, taxa1relativesd, taxa2relativesd, relativecovariance)
+  return(result)
+}
+
+#' Wrapper function for the gradient function
+#'
+#' This function calls the gradient_function with the provided parameters.
+#'
+#' @param params A numeric vector with correlation and standard deviation parameters.
+#' @param taxa1relativesd Relative standard deviation for Taxa 1.
+#' @param taxa2relativesd Relative standard deviation for Taxa 2.
+#' @param relativecovariance The relative covariance.
+#' @return A numeric vector representing the gradient.
+gradient_function_wrapper <- function(params, taxa1relativesd, taxa2relativesd, relativecovariance) {
+  # Check if parameters are valid
+  if (length(params) != 3) stop("params must be a numeric vector of length 3.")
+  
+  # Call the original gradient function
+  result <- gradient_function(params, taxa1relativesd, taxa2relativesd, relativecovariance)
+  return(result)
+}
+
+#' Wrapper function for the constraint function
+#'
+#' This function calls the constraint_function with the provided parameters.
+#'
+#' @param params A numeric vector with correlation and standard deviation parameters.
+#' @param taxa1relativesd Relative standard deviation for Taxa 1.
+#' @param taxa2relativesd Relative standard deviation for Taxa 2.
+#' @param relativecovariance The relative covariance.
+#' @return A numeric value representing the constraint evaluation.
+constraint_function_wrapper <- function(params, taxa1relativesd, taxa2relativesd, relativecovariance) {
+  # Check if parameters are valid
+  if (length(params) != 3) stop("params must be a numeric vector of length 3.")
+  
+  # Call the original constraint function
+  result <- constraint_function(params, taxa1relativesd, taxa2relativesd, relativecovariance)
+  return(result)
+}
+
+#' Wrapper function for the vectorized constraint function
+#'
+#' This function calls the vectorized_constraint_function with the provided parameters.
+#'
+#' @param rho1 A numeric vector for correlation values for Taxa 1.
+#' @param rho2 A numeric vector for correlation values for Taxa 2.
+#' @param scalestdevstep A numeric vector for standard deviation steps.
+#' @param taxa1relativesd Relative standard deviation for Taxa 1.
+#' @param taxa2relativesd Relative standard deviation for Taxa 2.
+#' @param relativecovariance The relative covariance.
+#' @return A numeric vector representing the constraint evaluation for each set of parameters.
+vectorized_constraint_function_wrapper <- function(rho1, rho2, scalestdevstep, taxa1relativesd, taxa2relativesd, relativecovariance) {
+  # Call the original vectorized constraint function
+  result <- vectorized_constraint_function(rho1, rho2, scalestdevstep, taxa1relativesd, taxa2relativesd, relativecovariance)
+  return(result)
+}
+
+#' Wrapper function for the constraint gradient function
+#'
+#' This function calls the constraint_gradient_function with the provided parameters.
+#'
+#' @param params A numeric vector with correlation and standard deviation parameters.
+#' @param taxa1relativesd Relative standard deviation for Taxa 1.
+#' @param taxa2relativesd Relative standard deviation for Taxa 2.
+#' @param relativecovariance The relative covariance.
+#' @return A numeric vector representing the gradient of the constraint function.
+constraint_gradient_function_wrapper <- function(params, taxa1relativesd, taxa2relativesd, relativecovariance) {
+  # Check if parameters are valid
+  if (length(params) != 3) stop("params must be a numeric vector of length 3.")
+  
+  # Call the original constraint gradient function
+  result <- constraint_gradient_function(params, taxa1relativesd, taxa2relativesd, relativecovariance)
+  return(result)
+}
+
+
 #' Custom Cumulative Variance Function
 #'
 #' This function calculates the cumulative variance for a vector of data.
