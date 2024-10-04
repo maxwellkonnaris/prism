@@ -143,6 +143,7 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
                              algorithm = "GRID_SEARCH", prefix="setprefix", pvalue=TRUE, outputdirectory = NULL, logfile = "log_prismcovariance.txt", seed = NULL) {
       
       ## START LOGGING -----------------------------------------------------------------------------------------------------------------------------------------
+      logfile <- file(logfile, open = "a")
       sink(logfile, append = TRUE, type = "message")
       ## END LOGGING --------------------------------------------------------------------------------------------------------------------------------------------
       
@@ -536,7 +537,7 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
     
       message(sprintf("Total time taken: %s", format_elapsed_time(elapsed_time)))
       sink(type = "message")
-                               
+      close(logfile) 
       ## END LOGGING --------------------------------------------------------------------------------------------------------------------------------------------
       return(list(final_results = final_results, all_inner_results = all_inner_results))
     }
