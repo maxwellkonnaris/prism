@@ -1435,5 +1435,151 @@ estimate_rho_and_sd <- function(externalscalemeasurements, Y, S, D, rWparaorigin
   }
 }
 
+#' Compare True Correlations with Confidence Intervals
+#'
+#' This function compares true correlations (or covariances) from a provided
+#' correlation matrix with the confidence intervals from multiple data tables.
+#' It constructs confusion matrices to determine if the true correlations lie
+#' within the specified confidence intervals and evaluates the sign correctness.
+#'
+#' @param data_list A list of data.tables, each containing columns for comparison,
+#' taxa1, taxa2, lower95CI, and upper95CI.
+#' @param cov_matrix A square matrix of true correlations or covariances.
+#' @param output_dir A character string specifying the output directory for the plots.
+#' Defaults to "./plots/".
+#'
+#' @return A data.table containing combined confusion matrices from all methods.
+#' Each row represents a comparison and includes columns for true correlation,
+#' whether it is within the confidence interval, and whether the sign is correct.
+#'
+#' @examples
+#' # Example usage
+#' method1_data <- data.table(comparison = c("A vs B", "B vs C"),
+#'                             taxa1 = c("A", "B"),
+#'                             taxa2 = c("B", "C"),
+#'                             lower95CI = c(0.2, 0.1),
+#'                             upper95CI = c(0.6, 0.4))
+#' method2_data <- data.table(comparison = c("A vs B", "B vs C"),
+#'                             taxa1 = c("A", "B"),
+#'                             taxa2 = c("B", "C"),
+#'                             lower95CI = c(0.3, 0.2),
+#'                             upper95CI = c(0.5, 0.5))
+#' correlation_matrix <- matrix(c(1, 0.5, 0.3,
+#'                                 0.5, 1, 0.4,
+#'                                 0.3, 0.4, 1), 
+#'                               nrow = 3, byrow = TRUE,
+#'                               dimnames = list(c("A", "B", "C"), c("A", "B", "C")))
+#' results <- compare_correlations(list(Method1 = method1_data, Method2 = method2_data), correlation_matrix)
+#' print(results)
+#' 
+compare_correlations <- function(data_list, cov_matrix, output_dir = "./plots/") {
+  
+  # Create output directory if it does not exist
+  if (!dir.exists(output_dir)) {
+    dir.create(output_dir, recursive = TRUE)
+  }
+  
+  # Function to extract off-diagonal values from a covariance/correlation matrix
+  extract_off_diagonals <- function(mat) {
+    return(mat[upper.tri(mat)])
+  }
+  
+  # Initialize a list to store confusion matrices for each method
+  confusion_matrices <- list()
+  
+  # Extract true correlations
+  true_correlations <- extract_off_diagonals(cov_matrix)
+
+  # Loop through each data.table in the input list
+  for (method_name in names(data_list)) {
+    data <- data_list[[method_name]]
+    
+    # Check if required columns exist
+    if (!all(c("comparison", "taxa1", "taxa2", "ninetyfive_ci_lower", "ninetyfive_ci_upper") %in% colnames(data))) {
+      stop("The data.table must contain comparison, taxa1, taxa2, ninetyfive_ci_lower, and ninetyfive_ci_upper columns.")
+    }
+    
+    # Initialize a confusion matrix
+    confusion <- data.table(
+      Comparison = data$comparison,
+      True_Correlation = NA,
+      Within_CI = NA,
+      Sign_Correct = NA
+    )
+    
+    # Populate the confusion matrix
+    for (i in 1:nrow(data)) {
+      true_cor <- cov_matrix[data$taxa1[i], data$taxa2[i]] # Directly access true correlation
+      
+      # Check if the true correlation is within the CI
+      within_ci <- ifelse(true_cor >= data$ninetyfive_ci_lower[i] & true_cor <= data$ninetyfive_ci_upper[i], TRUE, FALSE)
+
+      # Determine if the sign is correct (non-zero and sign matches)
+      sign_correct <- ifelse(data$ninetyfive_ci_lower[i] > 0 & true_cor > 0 |
+                             data$ninetyfive_ci_lower[i] < 0 & true_cor < 0, TRUE, FALSE)
+      
+      # If CI does not cover zero and true correlation is not zero, it can be correct
+      if (data$ninetyfive_ci_lower[i] * data$ninetyfive_ci_upper[i] > 0 && true_cor != 0) {
+        sign_correct <- ifelse(sign_correct, TRUE, FALSE)
+      } else {
+        sign_correct <- FALSE
+      }
+      
+      confusion[i] <- list(Comparison = data$comparison[i], True_Correlation = true_cor, Within_CI = within_ci, Sign_Correct = sign_correct)
+    }
+    
+    confusion_matrices[[method_name]] <- confusion
+  }
+  
+  # Combine confusion matrices from different methods
+  combined_confusion <- rbindlist(confusion_matrices, idcol = "Method")
+  
+  # Plotting the confusion matrix
+  plot_confusion_matrix(combined_confusion, output_dir)
+  
+  return(combined_confusion)
+}
+
+#' Plot Confusion Matrix
+#'
+#' This function plots the confusion matrix showing the true correlations 
+#' against the 95% confidence intervals. It saves the plot as a PNG file.
+#'
+#' @param confusion_data A data.table containing the confusion matrix data.
+#' @param output_dir A character string specifying the output directory for the plots.
+#'
+#' @return NULL
+#' 
+#' @examples
+#' # Assuming 'confusion_data' is a data.table from 'compare_correlations'
+#' plot_confusion_matrix(confusion_data, output_dir = "./my_plots/")
+#' 
+plot_confusion_matrix <- function(confusion_data, output_dir) {
+  p <- ggplot(confusion_data, aes(x = Comparison, fill = factor(Within_CI))) +
+    geom_bar(position = "dodge") +
+    scale_fill_manual(values = c("0" = "red", "1" = "green"), 
+                      labels = c("0" = "Outside CI", "1" = "Within CI")) +
+    labs(title = "Confusion Matrix: True Correlations vs 95% CI",
+         x = "Comparison",
+         y = "Count",
+         fill = "CI Status") +
+    theme_minimal(base_size = 15) +
+    theme(
+      text = element_text(size = 12, family = "Arial"),
+      plot.title = element_text(hjust = 0.5, face = "bold", size = 16),
+      axis.title.x = element_text(face = "bold"),
+      axis.title.y = element_text(face = "bold"),
+      legend.position = "top",
+      panel.grid.major = element_line(color = "grey80"),
+      panel.grid.minor = element_blank()
+    ) +
+    facet_wrap(~ Method, scales = "free_x", ncol = 1) # Creates a grid layout
+
+  # Save the plot as a PNG file
+  ggsave(filename = paste0(output_dir, "confusion_matrix.png"), plot = p, dpi = 300, width = 10, height = 8)
+  
+  # Display the plot
+  print(p)
+}
 
 
