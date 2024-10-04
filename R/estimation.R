@@ -145,10 +145,12 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
   logfile <- "log_prismcovariance.txt"
   flog.appender(appender.file(logfile))
   flog.threshold(INFO)
-  ## COMPUTATIONAL TIME -----------------------------------------------------------------------------------------------------------------------------------
+  
+  ## COMPUTATIONAL TIME -------------------------------------------------------------------------------------------------------------------------------------
   start_time_total <- Sys.time()  # Start time for the entire function
   flog.info("Start time: %s", start_time_total)
   ## END COMPUTATIONAL TIME SETUP ---------------------------------------------------------------------------------------------------------------------------
+  
   ## SETUP --------------------------------------------------------------------------------------------------------------------------------------------------
   # Check if Y is a matrix, dataframe, or tibble, and has appropriate dimensions
   if (!(is.matrix(Y) || is.data.frame(Y) || inherits(Y, "tbl_df")) || nrow(Y) < 2 || ncol(Y) < 2) {
@@ -203,6 +205,7 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
 
   flog.info("Input Y:", head(Y))
   ## END SETUP ----------------------------------------------------------------------------------------------------------------------------------------------
+  
   ## CLUSTER RESOURCES --------------------------------------------------------------------------------------------------------------------------------------
   num_cores <- parallel::detectCores() - 1
   cl <- parallel::makeCluster(num_cores)
@@ -217,6 +220,7 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
       flog.info("Number of workers/cpus: ", foreach::getDoParWorkers())
   }
   ## END CLUSTER RESOURCES ----------------------------------------------------------------------------------------------------------------------------------
+  
   ## PROGRESS BARS ------------------------------------------------------------------------------------------------------------------------------------------
   progressr::handlers(global = TRUE)
 
@@ -238,6 +242,7 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
   opts <- list(progress = progress)
   opts_rhosd <- list(progress = progress_rhosd)
   ## END PROGRESS BARS -------------------------------------------------------------------------------------------------------------------------------------
+  
   ## ACCOUNTING FOR UNCERTAINTY IN FINITE SAMPLING ---------------------------------------------------------------------------------------------------------
   bootstrap_samples <- matrix(NA, N, S)
   # ---- If you want to remove bootstrap and carry on then ---
@@ -251,6 +256,7 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
     }
   }
   ## END ACCOUNTING FOR UNCERTAINTY IN FINITE SAMPLING -----------------------------------------------------------------------------------------------------
+  
   ## ACCOUNTING FOR UNCERTAINTY IN OBSERVED RELATIVE ABUNDANCES --------------------------------------------------------------------------------------------
   # Dimensions: (n_taxa, n_samples, n_iter) -- populate matrix of NAs
   rWparaoriginal <- array(NA, dim = c(D, N, S))
@@ -291,66 +297,23 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
 
   prism.posteriorsamples(rWparaoriginal, filename = prefix)
   ## END ACCOUNTING FOR UNCERTAINTY IN OBSERVED RELATIVE ABUNDANCES ---------------------------------------------------------------------------------------
+  
   ## ESTIMATING RHO AND SD --------------------------------------------------------------------------------------------------------------------------------
   flog.info("Start SD and Rho estimation")  
 
-  if (!is.null(externalscalemeasurements) && is.matrix(externalscalemeasurements) && ncol(Y) == nrow(externalscalemeasurements)) {
-    rhoandsd_list <- foreach(s = 1:S, .packages = c('stats')) %dopar% {
-        n <- length(externalscalemeasurements)
-        sample_indices <- bootstrap_samples[, s]
-        S2 <- var(externalscalemeasurements[sample_indices])
-        chi2_lower <- qchisq(alpha / 2, df = n - 1)
-        chi2_upper <- qchisq(1 - alpha / 2, df = n - 1)
-        var_lower <- (n - 1) * S2 / chi2_upper
-        var_upper <- (n - 1) * S2 / chi2_lower
-        scalestdev_s <- c(sqrt(var_lower), sqrt(var_upper))
-      
-        # Initialize matrix for rhobounds for each taxa
-        rhobounds_s <- matrix(NA, nrow = D, ncol = 2)  # [D x 2]
-        z_critical <- qnorm(1 - alpha / 2)
-        for (taxa in 1:D) {
+  result_rho_sd <- estimate_rho_and_sd(externalscalemeasurements = externalscalemeasurements, Y = Y, S = S, D = D, rWparaoriginal = rWparaoriginal,
+                                       bootstrap_samples = bootstrap_samples, alpha = alpha, prefix = prefix)
 
-            # Compute correlation
-            r <- cor(rWparaoriginal[taxa, sample_indices, s], externalscalemeasurements[sample_indices])
-            # Fisher Z-transformation
-            z <- 0.5 * log((1 + r) / (1 - r))
-            # Standard error of z
-            se_z <- 1 / sqrt(n - 3)
-            
-            # Confidence intervals in Fisher Z-space
-            z_lower <- z - z_critical * se_z
-            z_upper <- z + z_critical * se_z
-            
-            # Inverse Fisher Z-transformation to get rho bounds
-            rho_lower <- (exp(2 * z_lower) - 1) / (exp(2 * z_lower) + 1)
-            rho_upper <- (exp(2 * z_upper) - 1) / (exp(2 * z_upper) + 1)
-            
-            rhobounds_s[taxa, 1] <- rho_lower
-            rhobounds_s[taxa, 2] <- rho_upper
-        }
-        
-        list(scalestdev_s = scalestdev_s, rhobounds_s = rhobounds_s)
-    }
-    # scalestdev_matrix --------------------------------------------------- [S x 2] 
-    scalestdev <- do.call(rbind, lapply(rhoandsd_list, function(x) x$scalestdev_s))
-    
-    # rhobounds ---------------------------------------------------------------------- [D x 2 x S]
-    rhobounds <- array(unlist(lapply(rhoandsd_list, function(x) x$rhobounds_s)), dim = c(D, 2, S))
-  
-    # remove any unneeded space
-    rm(rhoandsd_list)
-
-    # plot the scale SD
-    prism.scalesdhistogram(scalestdev, S, filename=prefix)
-                                     
-    # plot the rho
-    prism.rhoridges(rhobounds, D, S, filename=prefix)
-
+  # Access the results if the function did not return NULL
+  if (!is.null(result_rho_sd)) {
+    scalestdev <- result_rho_sd$scalestdev
+    rhobounds <- result_rho_sd$rhobounds
+    flog.info("End SD and Rho estimation") 
   } else {
-    rhobounds = NULL
-  }
-  flog.info("End SD and Rho estimation")                                   
+    print("SD and Rho estimation was incorrectly performed, returned NULL.")
+  }           
   ## END ESTIMATING RHO AND SD ----------------------------------------------------------------------------------------------------------------------------
+  
   ## ESTIMATING COVARIANCE --------------------------------------------------------------------------------------------------------------------------------
 
   # Share large data objects with the cluster
@@ -396,14 +359,13 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
           upperscalestdev = scalestdev[s,2]
           lowerscalestdev = scalestdev[s,1]
         }
+        # Define initial parameters for optimization
         initialparameters <- c(((rho_upper_bound_1+rho_lower_bound_1) / 2), ((rho_upper_bound_2+rho_lower_bound_2) / 2), ((upperscalestdev + lowerscalestdev) / 2))
-        
-        res_min <- NULL
-        res_max <- NULL
-  
-        result_sigma = optimize_sigma(d1 = d1, d2 = d2, taxa1relativesd = taxa1relativesd, taxa2relativesd = taxa2relativesd, relativecovariance = relativecovariance, rho_lower_bound_1 = rho_lower_bound_1, 
+
+        # Function for optimizations (See helper_functions)
+        result_sigma = optimize_sigma(d1 = d1, d2 = d2, s = s, taxa1relativesd = taxa1relativesd, taxa2relativesd = taxa2relativesd, relativecovariance = relativecovariance, rho_lower_bound_1 = rho_lower_bound_1, 
                                      rho_lower_bound_2 = rho_lower_bound_2, rho_upper_bound_1 = rho_upper_bound_1, rho_upper_bound_2 = rho_upper_bound_2, lowerscalestdev = lowerscalestdev, upperscalestdev = upperscalestdev, 
-                                     initialparameters = initialparameters, algorithm = algorithm, res_min = res_min, res_max = res_max, )
+                                     initialparameters = initialparameters, algorithm = algorithm, outputdirectory = outputdirectory)
   
         res_min <- result_sigma$res_min
         res_max <- result_sigma$res_max
@@ -578,327 +540,3 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
   return(list(final_results = final_results, all_inner_results = all_inner_results))
 }
 
-
-
-
-
-
-#' Run Analysis on All Pairwise Taxa with Bootstrap Convergence Diagnostics
-#'
-#' This function runs a bootstrapped analysis on the input data matrix \code{Y}, estimating covariance for all pairwise comparisons of taxa. It includes convergence diagnostics by incrementally increasing the number of bootstrap samples.
-#'
-#' @param Y A matrix of data with observations in columns and variables in rows.
-#' @param alpha A numeric vector of priors for the Dirichlet distribution. Defaults to a vector of zeros.
-#' @param lowerrhobound A numeric value specifying the lower bound for the \code{lowerrhobound} parameter. Defaults to -1.0.
-#' @param upperrhobound A numeric value specifying the upper bound for the \code{upperrhobound} parameter. Defaults to 0.6.
-#' @param S A vector of numeric integers specifying the number of bootstrap samples to be iterated across. Increase to reduce Monte Carlo error. Defaults to \code{c(100, 500, 1000, 2000, 5000, 10000)}.
-#' @param lowerscalestdev A numeric value specifying the lower bound of the variance of the scale. Defaults to 0.475.
-#' @param upperscalestdev A numeric value specifying the upper bound of the variance of the scale. Defaults to 0.525.
-#' @return A list containing:
-#' \item{convergence_results}{A list of results for each incrementally increased number of bootstrap samples (100, 500, 1000, 2000, 5000, 10000), including estimated 95% confidence intervals, minimum and maximum values for estimated absolute covariance, and parameters.}
-#' \item{combined_results}{A dataframe combining the results from all the incremental bootstrap samples, used for plotting convergence diagnostics.}
-#' @details
-#' The function performs the following steps:
-#' \enumerate{
-#'   \item Checks the input matrix \code{Y} for appropriate dimensions.
-#'   \item Defines the sequence for \code{rho1}, \code{rho2}, and scale variance based on the specified bounds.
-#'   \item Registers a parallel backend to utilize multiple cores for computation.
-#'   \item Runs bootstrap analysis for the specified number of samples (\code{S}), generating bootstrap samples and calculating pairwise covariances.
-#'   \item Repeats the bootstrap analysis for incremental sample sizes (100, 500, 1000, 2000, 5000, 10000) to perform convergence diagnostics.
-#'   \item Combines the results from all increments into a single dataframe for plotting.
-#'   \item Plots the convergence diagnostics to visualize the stability of the estimates as the number of bootstrap samples increases.
-#' }
-#' @import progress
-#' @import progressr
-#' @import foreach
-#' @import doSNOW
-#' @import parallel
-#' @import MCMCpack
-#' @import stats
-#' @import utils
-#' @import ggplot2
-#' @examples
-#' # Example usage (You could also use the simulation function provided to generate sample data):
-#' set.seed(123)
-#' Y <- matrix(rnorm(1000), nrow = 10)
-#' results <- prism.covariance_convergence(Y)
-#' @export
-prism.covariance_convergence <- function(Y, S=c(100, 500, 1000, 2000, 5000, 10000), alpha = 0.5, lowerrhobound = -1.0, upperrhobound = 0.6, lowerscalestdev = .475, upperscalestdev = .525) {
-  # Record the start time for profiling
-  start_time <- Sys.time()
-
-  # Record the times for the increments of bootstrap sample sizes
-  bootstrap_times <- data.frame(S = numeric(), Time = numeric())
-
-  # Function to format elapsed time in a user-friendly format
-  format_elapsed_time <- function(elapsed_time) {
-    total_seconds <- as.numeric(elapsed_time, units = "secs")
-    seconds <- total_seconds %% 60
-    minutes <- (total_seconds %/% 60) %% 60
-    hours <- (total_seconds %/% 3600) %% 24
-    days <- total_seconds %/% 86400
-    result <- c()
-    if (days > 0) result <- c(result, paste(days, "days"))
-    if (hours > 0) result <- c(result, paste(hours, "hours"))
-    if (minutes > 0) result <- c(result, paste(minutes, "minutes"))
-    if (seconds > 0 || length(result) == 0) result <- c(result, paste(round(seconds, 2), "seconds"))
-    return(paste(result, collapse = ", "))
-  }
-
-  # Define global handlers for progress bars
-  handlers(global = TRUE)
-
-  # Check if Y is a matrix, dataframe, or tibble, and has appropriate dimensions
-  if (!(is.matrix(Y) || is.data.frame(Y) || inherits(Y, "tbl_df")) || nrow(Y) < 2 || ncol(Y) < 2) {
-    stop("Y must be a matrix, dataframe, or tibble with at least 2 rows and 2 columns.")
-  }
-
-  # Get the number of columns (N) and rows (D) in the input matrix Y
-  N <- ncol(Y)
-  D <- nrow(Y)
-
-  # Print priors
-  cat("Priors used for the analysis:\n")
-  cat("Alpha:\n")
-  print(alpha)
-  cat("Rho bounds:\n")
-  print(paste0(lowerrhobound,":",upperrhobound))
-  cat("Scale standard deviation bounds:\n")
-  print(paste0(lowerscalestdev,":",upperscalestdev))
-  cat("Dimensions of supplied matrix:\n")
-  print(dim(Y))
-  cat("Bootstrap sample size (S):\n")
-  print(S)
-
-  # Register the parallel backend
-  num_cores <- parallel::detectCores() - 1
-  cl <- parallel::makeCluster(num_cores)
-  doSNOW::registerDoSNOW(cl)
-  
-  # Ensure the cluster is stopped after the function exits
-  on.exit(parallel::stopCluster(cl), add = TRUE)
-  
-  # Verify cluster registration
-  if (!foreach::getDoParRegistered()) {
-    stop("Parallel backend is not registered.")
-  } else {
-    # Check the number of workers
-    cat("Number of workers/cpus: ", foreach::getDoParWorkers(), "\n")
-  }
-
-  # Function to run bootstrap analysis for a given number of samples
-  run_bootstrap_analysis <- function(S, Y, N, D, alpha, lowerrhobound, upperrhobound, lowerscalestdev, upperscalestdev) {
-
-    # Define the objective function used in the optimization
-    objective_function <- function(params, taxa1relativesd, taxa2relativesd, relativecorrelation) {
-      taxa1scalecorrelation <- params[1]
-      taxa2scalecorrelation <- params[2]
-      scalestdev <- params[3]
-      sigma <- taxa1relativesd * taxa2relativesd * relativecorrelation + taxa1relativesd * scalestdev * taxa1scalecorrelation + taxa2relativesd * scalestdev * taxa2scalecorrelation + scalestdev^2
-      return(sigma)
-    }
-
-    # Initialize a results matrix to store the results for each pair
-    results <- matrix(list(), D, D)
-    
-    # Run the analysis
-    cat("Running sigma estimation for bootstrap sample size (S):",S,"\n")
-    
-    # Start timing
-    bootstrap_start_time <- Sys.time()
-
-    # Initialize progress bars
-    total_pairs <- D * (D - 1) / 2
-    pb_precomp <- progress::progress_bar$new(total = S, format = "  Precomputing bootstrap samples [:bar] :percent in :elapsed | eta: :eta", clear = FALSE, width = 100)
-    pb <- progress::progress_bar$new(total = total_pairs, format = " Generating Sigmas [:bar] :percent in :elapsed | eta: :eta", clear = FALSE, width = 100)
-    
-    # Function to update progress bar
-    progress_precomp <- function(n) {
-      pb_precomp$tick()
-    }
-    
-    progress <- function(n) {
-      pb$tick()
-    }
-    
-    # Options for foreach to include progress updates
-    opts_precomp <- list(progress = progress_precomp)
-    opts <- list(progress = progress)
-    
-    # Parallelize bootstrap precomputation
-    bootstrap_samples <- foreach(s = 1:S, .combine = 'c', .options.snow = opts_precomp) %dopar% {
-      sample(1:N, replace = TRUE)
-    }
-    bootstrap_samples <- split(bootstrap_samples, rep(1:S, each = N))
-    
-    pair_indices <- combn(D, 2, simplify = FALSE)
-    if (length(pair_indices) == 0) stop("Error: pair_indices is not populated correctly. Aborting analysis.")
-    
-    results_list <- foreach(pair = pair_indices, .packages = c('stats', 'MCMCpack'), .options.snow = opts) %dopar% {
-      d1 <- pair[1]
-      d2 <- pair[2]
-      comparison <- paste(rownames(Y)[d1], rownames(Y)[d2], sep = ":")
-    
-      minsigma_values <- numeric(S)
-      maxsigma_values <- numeric(S)
-      
-      results_inner <- foreach(s = 1:S, .combine = 'rbind', .packages = c('stats', 'MCMCpack'), .options.snow = opts) %dopar% {
-        Yboot <- Y[, bootstrap_samples[[s]]]
-        rWpara <- matrix(NA, D, N)
-        for (n in 1:N) {
-          rWpara[, n] <- MCMCpack::rdirichlet(1, Yboot[, n] + alpha)
-        }
-        rWpara <- log(rWpara)
-    
-        taxa1relativesd <- sd(rWpara[d1, ])
-        taxa2relativesd <- sd(rWpara[d2, ])
-        relativecorrelation <- cor(rWpara[d1, ], rWpara[d2, ])
-        relativecovariance <- cov(rWpara[d1, ], rWpara[d2, ])
-        
-        res_min <- optim(par = c(0, 0, 0.15), taxa1relativesd = taxa1relativesd, taxa2relativesd = taxa2relativesd, relativecorrelation = relativecorrelation, fn = objective_function, method = "L-BFGS-B", lower = c(lowerrhobound, lowerrhobound, lowerscalestdev), upper = c(upperrhobound, upperrhobound, upperscalestdev))
-        res_max <- optim(par = c(0, 0, 0.15), taxa1relativesd = taxa1relativesd, taxa2relativesd = taxa2relativesd, relativecorrelation = relativecorrelation, fn = function(params, taxa1relativesd, taxa2relativesd, relativecorrelation) {-objective_function(params, taxa1relativesd, taxa2relativesd, relativecorrelation)}, method = "L-BFGS-B", lower = c(lowerrhobound, lowerrhobound, lowerscalestdev), upper = c(upperrhobound, upperrhobound, upperscalestdev))
-        
-        data.frame(
-          d1 = d1,
-          d2 = d2,
-          s = s,
-          minsigma_absolute_minimum_covariance = res_min$value,
-          maxsigma_absolute_maximum_covariance = -res_max$value,
-          minsigma_correlation_relativetaxa1_scale = res_min$par[1],
-          minsigma_correlation_relativetaxa2_scale = res_min$par[2],
-          minsigma_scale_sd = res_min$par[3],
-          maxsigma_correlation_relativetaxa1_scale = res_max$par[1],
-          maxsigma_correlation_relativetaxa2_scale = res_max$par[2],
-          maxsigma_scale_sd = res_max$par[3],
-          taxa1relativesd = taxa1relativesd,
-          taxa2relativesd = taxa2relativesd,
-          relativecorrelation = relativecorrelation,
-          relativecovariance = relativecovariance
-        )
-      }
-      
-      minsigma_values <- results_inner$minsigma_absolute_minimum_covariance
-      maxsigma_values <- results_inner$maxsigma_absolute_maximum_covariance
-      sortedmin <- sort(minsigma_values)
-      sortedmax <- sort(maxsigma_values)
-      minsigma <- min(sortedmin, na.rm = TRUE)
-      maxsigma <- max(sortedmax, na.rm = TRUE)
-      cilower <- quantile(sortedmin, probs = 0.025, na.rm = TRUE)
-      ciupper <- quantile(sortedmax, probs = 0.975, na.rm = TRUE)
-      
-      min_index <- which.min(minsigma_values)
-      max_index <- which.max(maxsigma_values)
-      
-      min_rho1 <- results_inner$minsigma_correlation_relativetaxa1_scale[min_index]
-      min_rho2 <- results_inner$minsigma_correlation_relativetaxa2_scale[min_index]
-      min_x <- results_inner$minsigma_scale_sd[min_index]
-      
-      max_rho1 <- results_inner$maxsigma_correlation_relativetaxa1_scale[max_index]
-      max_rho2 <- results_inner$maxsigma_correlation_relativetaxa2_scale[max_index]
-      max_x <- results_inner$maxsigma_scale_sd[max_index]
-      
-      taxa1relativesd <- results_inner$taxa1relativesd[min_index]
-      taxa2relativesd <- results_inner$taxa2relativesd[min_index]
-      relativecorrelation <- results_inner$relativecorrelation[min_index]
-      relativecovariance <- results_inner$relativecovariance[min_index]
-  
-      list(
-        resultsinner = results_inner,
-        results = data.frame(
-          comparison = comparison,
-          taxa1 = rownames(Y)[d1],
-          taxa2 = rownames(Y)[d2],
-          ninetyfive_ci_lower = cilower,
-          ninetyfive_ci_upper = ciupper,
-          minsigma_absolute_minimum_covariance = minsigma,
-          maxsigma_absolute_maximum_covariance = maxsigma,
-          minsigma_correlation_relativetaxa1_scale = min_rho1,
-          minsigma_correlation_relativetaxa2_scale = min_rho2,
-          minsigma_scale_sd = min_x,
-          maxsigma_correlation_relativetaxa1_scale = max_rho1,
-          maxsigma_correlation_relativetaxa2_scale = max_rho2,
-          maxsigma_scale_sd = max_x,
-          relative_standard_dev_taxa1 = taxa1relativesd,
-          relative_standard_dev_taxa2 = taxa2relativesd,
-          relative_correlation = relativecorrelation,
-          relative_covariance = relativecovariance,
-          stringsAsFactors = FALSE
-        )
-      )
-    }
-  
-    final_results <- do.call(rbind, lapply(results_list, function(x) x$results))
-    final_results <- as.data.frame(final_results, stringsAsFactors = FALSE)
-    rownames(final_results) <- NULL
-    
-    all_inner_results <- do.call(rbind, lapply(results_list, function(x) x$resultsinner))
-    all_inner_results <- as.data.frame(all_inner_results)
-    all_inner_results$comparison <- paste(rownames(Y)[all_inner_results$d1], rownames(Y)[all_inner_results$d2], sep = ":")
-
-    # End bootstrap timing
-    bootstrap_end_time <- Sys.time()
-    bootstrap_elapsed_time <- as.numeric(difftime(bootstrap_end_time, bootstrap_start_time, units = "secs"))
-    
-    # Record the time taken
-    bootstrap_times <<- rbind(bootstrap_times, data.frame(S = S, Time = bootstrap_elapsed_time))
-    
-    return(list(final_results = final_results, all_inner_results = all_inner_results))
-  }
-  
-  # Run bootstrap analysis for different sample sizes and store results
-  convergence_results <- lapply(S, function(SS) {
-    run_bootstrap_analysis(SS, Y, N, D, alpha, lowerrhobound, upperrhobound, lowerscalestdev, upperscalestdev)
-  })
-  
-  # Combine results for plotting
-  combined_results <- do.call(rbind, lapply(1:length(S), function(i) {
-    data.frame(S = S[i], convergence_results[[i]]$final_results)
-  }))
-
-  # Plot the time taken for each bootstrap sample size
-  bootstrapcomputationtime_plot = ggplot(bootstrap_times, aes(x = S, y = Time)) +
-                                    geom_line(color = "blue") +
-                                    geom_point(color = "red") +
-                                    labs(title = "Time Increase with Bootstrap Sample Size",
-                                         x = "Number of Bootstrap Samples",
-                                         y = "Time (seconds)") +
-                                    theme_bw() +
-                                    theme(plot.background = element_rect(fill = "white"))
-
-  # Save the plot as JPG
-  ggsave(bootstrapcomputationtime_plot, filename = "bootstrap_timeefficiency.jpg", width = 5, height = 5)
-  
-  # Modify the first plot to show ranges and add CI, grouped by comparison with flipped axes and categorical bootstrap samples
-  convergencediagnostics_plot <- ggplot(combined_results, aes(y = factor(S))) +
-    geom_errorbarh(aes(xmin = minsigma_absolute_minimum_covariance, xmax = maxsigma_absolute_maximum_covariance, color = "Covariance Range"), height = 0.2) +
-    geom_errorbarh(aes(xmin = ninetyfive_ci_lower, xmax = ninetyfive_ci_upper, color = ifelse(ninetyfive_ci_lower <= 0 & ninetyfive_ci_upper >= 0, "95% CI Covers Zero", "95% CI Does Not Covers Zero")), height = 0.2) +
-    facet_wrap(~ comparison, scales = "free_x") +
-    labs(title = "Bootstrap Convergence Diagnostics",
-         y = "Number of Bootstrap Samples",
-         x = "Covariance Set Estimate (with Confidence Interval)") +
-    scale_color_manual(values = c("Covariance Range" = "black", 
-                                  "95% CI Covers Zero" = "red",
-                                  "95% CI Does Not Cover Zero" = "green"),
-                       name = "Legend") +
-    theme_bw() +
-    theme(plot.background = element_rect(fill = "white"),
-          strip.text = element_text(size = 6))  # Adjust facet label size for readability
-  
-  # Save the plot as JPG
-  ggsave(convergencediagnostics_plot, filename = "convergence_diagnostics_facet.jpg", width = 30, height = 20)
-  
-  # Print the plot
-  print(convergencediagnostics_plot)
-  
-  # Calculate and print the total elapsed time
-  end_time <- Sys.time()
-  elapsed_time <- end_time - start_time
-  formatted_time <- format_elapsed_time(elapsed_time)
-  print(paste("Total time taken:", formatted_time))
-  
-  return(list(convergence_results = convergence_results, combined_results = combined_results))
-}
-
-
-
-      
