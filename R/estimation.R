@@ -138,14 +138,14 @@
 #' @import ggridges
 #' @import fido
 #' @export
-prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinomialdirichlet", bootstrap = TRUE, externalscalemeasurements = NULL, lowerrhobound = rep(-1.0, nrow(Y)), upperrhobound = rep(1.0, nrow(Y)), S = 1000, lowerscalestdev = 0.450, upperscalestdev = 0.650, algorithm = "GRID_SEARCH", prefix="setprefix", outputdirectory = NULL, seed = NULL) {
+prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinomialdirichlet", bootstrap = TRUE, externalscalemeasurements = NULL, lowerrhobound = rep(-1.0, nrow(Y)), upperrhobound = rep(1.0, nrow(Y)), S = 1000, lowerscalestdev = 0.450, upperscalestdev = 0.650, algorithm = "GRID_SEARCH", prefix="setprefix", pvalue=TRUE, outputdirectory = NULL, seed = NULL) {
   
   ## COMPUTATIONAL TIME -------------------------------------------------------------------------------------------------------------------------------------
   start_time <- Sys.time()
   ## END COMPUTATIONAL TIME SETUP ---------------------------------------------------------------------------------------------------------------------------
   ## START LOGGING ------------------------------------------------------------------------------------------------------------------------------------------
+  sink("log_prismcovariance.txt")
   sink("log_prismcovariance.txt", type = "message")
-  ## END LOGGING --------------------------------------------------------------------------------------------------------------------------------------------
   ## SETUP --------------------------------------------------------------------------------------------------------------------------------------------------
   # Check if Y is a matrix, dataframe, or tibble, and has appropriate dimensions
   if (!(is.matrix(Y) || is.data.frame(Y) || inherits(Y, "tbl_df")) || nrow(Y) < 2 || ncol(Y) < 2) {
@@ -167,19 +167,15 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
     rownames(Y) <- paste0("Taxa", 1:D)
   }
 
-  cat("Priors used for the analysis:\n")
-  cat("Alpha:\n")
-  print(alpha)
-  cat("Dimensions of supplied Y matrix:\n")
-  print(paste0("Number of Taxa: ", D))
-  print(paste0("Number of Samples: ", N))
-  cat("Approximating relative counts with the:\n") 
-  print(paste0(uncertaintydistribution))  
-  cat("Bootstrap sample size (S):\n")
-  print(S)
-  cat("Algorithm selected:\n")
-  print(algorithm)
-
+  message("Priors used for the analysis:")
+  message("Alpha: ", alpha)
+  message("Dimensions of supplied Y matrix:")
+  message("Number of Taxa: ", D)
+  message("Number of Samples: ", N)
+  message("Approximating relative counts with the: ", uncertaintydistribution)
+  message("Bootstrap sample size (S): ", S)
+  message("Algorithm selected: ", algorithm)
+  
   if (!is.null(externalscalemeasurements) && 
       (is.matrix(externalscalemeasurements) || is.vector(externalscalemeasurements))) {
       
@@ -188,22 +184,20 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
       }
   
       if (ncol(Y) == nrow(externalscalemeasurements)) {
-          cat("External scale measurements were provided:\n")
-          cat("Dimensions of supplied external scale measurements matrix:\n")
+          message("External scale measurements were provided:")
+          message("Dimensions of supplied external scale measurements matrix:")
           replicates <- ncol(externalscalemeasurements)
           sampletotals <- nrow(externalscalemeasurements)
-          print(paste0("Number of Sample-scale Measurement Pairs: ", sampletotals))
-          print(paste0("Number of Replicates: ", replicates))
-          cat("Estimating Rho bounds and scale SD from the external scale measurements.\n")
-          externalscalemeasurements = log(externalscalemeasurements)
+          message("Number of Sample-scale Measurement Pairs: ", sampletotals)
+          message("Number of Replicates: ", replicates)
+          message("Estimating Rho bounds and scale SD from the external scale measurements.")
+          externalscalemeasurements <- log(externalscalemeasurements)
       } else {
           stop("Error: Mismatch in dimensions between external scale measurements and Y.")
       }
   } else {
-      cat("Using default Rho bounds:\n")
-      print(paste0(lowerrhobound, ":", upperrhobound))
-      cat("Using default Scale standard deviation bounds:\n")
-      print(paste0(lowerscalestdev, ":", upperscalestdev))
+      message("Using default Rho bounds: ", paste0(lowerrhobound, ":", upperrhobound))
+      message("Using default Scale standard deviation bounds: ", paste0(lowerscalestdev, ":", upperscalestdev))
   }
   ## END SETUP ----------------------------------------------------------------------------------------------------------------------------------------------
   ## CLUSTER RESOURCES --------------------------------------------------------------------------------------------------------------------------------------
@@ -217,10 +211,10 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
   
   # Verify cluster registration
   if (!foreach::getDoParRegistered()) {
-    stop("Parallel backend is not registered.")
+      stop("Parallel backend is not registered.")
   } else {
-    # Check the number of workers
-    cat("Number of workers/cpus: ", foreach::getDoParWorkers(), "\n")
+      # Check the number of workers
+      message("Number of workers/cpus: ", foreach::getDoParWorkers())
   }
   ## END CLUSTER RESOURCES ----------------------------------------------------------------------------------------------------------------------------------
   ## PROGRESS BARS ------------------------------------------------------------------------------------------------------------------------------------------
@@ -298,9 +292,9 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
   rWparaoriginal <- log(rWparaoriginal)
 
   prism.posteriorsamples(rWparaoriginal, filename = prefix)
-  
   ## END ACCOUNTING FOR UNCERTAINTY IN OBSERVED RELATIVE ABUNDANCES ---------------------------------------------------------------------------------------
   ## ESTIMATING RHO AND SD --------------------------------------------------------------------------------------------------------------------------------
+  message("Start SD and Rho estimation")  
   if (!is.null(externalscalemeasurements) && is.matrix(externalscalemeasurements) && ncol(Y) == nrow(externalscalemeasurements)) {
     rhoandsd_list <- foreach(s = 1:S, .packages = c('stats')) %dopar% {
         n <- length(externalscalemeasurements)
@@ -317,10 +311,6 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
         z_critical <- qnorm(1 - alpha / 2)
         for (taxa in 1:D) {
 
-            # Account for measurement error
-            #sampled_sd <- runif(1, min = scalestdev_s[1], max = scalestdev_s[2])
-            #sampled_externalscalemeasurements <- rnorm(length(externalscalemeasurements), mean = externalscalemeasurements, sd = sampled_sd)
-  
             # Compute correlation
             r <- cor(rWparaoriginal[taxa, sample_indices, s], externalscalemeasurements[sample_indices])
             # Fisher Z-transformation
@@ -360,11 +350,10 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
   } else {
     rhobounds = NULL
   }
-
-  
+  message("End SD and Rho estimation")                                   
   ## END ESTIMATING RHO AND SD ----------------------------------------------------------------------------------------------------------------------------
   ## ESTIMATING COVARIANCE --------------------------------------------------------------------------------------------------------------------------------
-  cat("Running sigma estimation\n")
+  message("Running Sigma estimation")
 
   # Generate all pairs of indices
   pair_indices <- combn(D, 2, simplify = FALSE)
@@ -380,9 +369,8 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
       d1 <- pair[1]
       d2 <- pair[2]
       comparison <- paste(rownames(Y)[d1], rownames(Y)[d2], sep = ":")
-
-      
-      
+      message("Start Current Comparison: ", comparison)
+    
       # Use sequential foreach for the inner loop
       results_inner <- foreach(s = 1:S, .combine = 'rbind', .packages = c('stats', 'MCMCpack', 'nloptr', 'dplyr')) %dopar% {
         
@@ -822,7 +810,8 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
           scalesdupperbound = ifelse(is.null(upperscalestdev), {message("upperscalestdev is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, upperscalestdev)
         )
       }
-
+    message("End Comparison: ", comparison)
+    
     if (nrow(results_inner) == 0) {
       stop("Error: No valid inner results generated")
     }
@@ -894,7 +883,7 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
       ninetyfive_ci_upper = ifelse(is.null(ciupper), {message("ninetyfive_ci_upper is NULL for d1:", d1, "d2:", d2); NA}, ciupper),
       minsigma_absolute_minimum_covariance = ifelse(is.null(minsigma), {message("minsigma_absolute_minimum_covariance is NULL for d1:", d1, "d2:", d2); NA}, minsigma),
       maxsigma_absolute_maximum_covariance = ifelse(is.null(maxsigma), {message("maxsigma_absolute_maximum_covariance is NULL for d1:", d1, "d2:", d2); NA}, maxsigma),
-      sigmarange = ifelse(is.null(range), {message("range is NULL for d1:", d1, "d2:", d2); NA}, sigmarange),
+      sigmarange = ifelse(is.null(sigmarange), {message("range is NULL for d1:", d1, "d2:", d2); NA}, sigmarange),
       cirange = ifelse(is.null(ciintervalrange), {message("cirange is NULL for d1:", d1, "d2:", d2); NA}, ciintervalrange),
       minsigma_correlation_relativetaxa1_scale = ifelse(is.null(min_rho1), {message("minsigma_correlation_relativetaxa1_scale is NULL for d1:", d1, "d2:", d2); NA}, min_rho1),
       minsigma_correlation_relativetaxa2_scale = ifelse(is.null(min_rho2), {message("minsigma_correlation_relativetaxa2_scale is NULL for d1:", d1, "d2:", d2); NA}, min_rho2),
@@ -918,7 +907,7 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
     # Combine the results into a list of two data frames
     results_list <- list(resultsinner = results_inner, results = results_df)
   }
-  
+  message("End Sigma estimation")
   ## END SIGMA ESTIMATION --------------------------------------------------------------------------------------------------------------------------------------
   
   # Remove all lock files
@@ -933,8 +922,10 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
   final_results <- as.data.frame(final_results, stringsAsFactors = FALSE)
   rownames(final_results) <- NULL
 
-  #final_results <- calculate_pval(final_results)
-  
+  if (pvalue) {
+    final_results <- calculate_pval(final_results)
+  }
+                                         
   # Combine all inner loop results
   all_inner_results <- do.call(rbind, lapply(results_list, function(x) x$resultsinner))
   all_inner_results <- as.data.frame(all_inner_results)
@@ -944,13 +935,19 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
   end_time <- Sys.time()
   elapsed_time <- end_time - start_time
   formatted_time <- format_elapsed_time(elapsed_time)
-  print(paste("Total time taken:", formatted_time))
+  message("Total time taken: ", formatted_time)
 
   sink()  
   sink(type = "message") 
-  
+  ## END LOGGING --------------------------------------------------------------------------------------------------------------------------------------------
   return(list(final_results = final_results, all_inner_results = all_inner_results))
 }
+
+
+
+
+
+
 #' Run Analysis on All Pairwise Taxa with Bootstrap Convergence Diagnostics
 #'
 #' This function runs a bootstrapped analysis on the input data matrix \code{Y}, estimating covariance for all pairwise comparisons of taxa. It includes convergence diagnostics by incrementally increasing the number of bootstrap samples.
