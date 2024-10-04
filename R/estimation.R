@@ -185,12 +185,10 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
       }
   
       if (ncol(Y) == nrow(externalscalemeasurements)) {
-          message("External scale measurements were provided:")
-          message("Dimensions of supplied external scale measurements matrix:")
+          message("External scale measurements were provided.")
           replicates <- ncol(externalscalemeasurements)
           sampletotals <- nrow(externalscalemeasurements)
-          message("Number of Sample-scale Measurement Pairs: ", sampletotals)
-          message("Number of Replicates: ", replicates)
+          message("Dimensions of supplied external scale measurements matrix: Number of Sample-scale Measurement Pairs: ", sampletotals, ", Number of Replicates: ", replicates)
           message("Estimating Rho bounds and scale SD from the external scale measurements.")
           externalscalemeasurements <- log(externalscalemeasurements)
       } else {
@@ -200,14 +198,13 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
       message("Using default Rho bounds: ", paste0(lowerrhobound, ":", upperrhobound))
       message("Using default Scale standard deviation bounds: ", paste0(lowerscalestdev, ":", upperscalestdev))
   }
+
+  message("Input Y:", head(Y))
   ## END SETUP ----------------------------------------------------------------------------------------------------------------------------------------------
   ## CLUSTER RESOURCES --------------------------------------------------------------------------------------------------------------------------------------
-  # Register the parallel backend
   num_cores <- parallel::detectCores() - 1
   cl <- parallel::makeCluster(num_cores)
   doSNOW::registerDoSNOW(cl)
-  
-  # Ensure the cluster is stopped after the function exits
   on.exit(parallel::stopCluster(cl), add = TRUE)
   
   # Verify cluster registration
@@ -217,8 +214,6 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
       # Check the number of workers
       message("Number of workers/cpus: ", foreach::getDoParWorkers())
   }
-
-  message("Input Y:", head(Y))
   ## END CLUSTER RESOURCES ----------------------------------------------------------------------------------------------------------------------------------
   ## PROGRESS BARS ------------------------------------------------------------------------------------------------------------------------------------------
   progressr::handlers(global = TRUE)
