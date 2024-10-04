@@ -504,11 +504,11 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
       ## END SIGMA ESTIMATION --------------------------------------------------------------------------------------------------------------------------------------
       
       # Remove all lock files
-      if (is.null(outputdirectory)) {
-        outputdirectory <- getwd()
+      if (!is.null(outputdirectory)) {
+          lock_files <- list.files(path = outputdirectory, pattern = "\\.txt\\.lock$", full.names = TRUE)
+          file.remove(lock_files)
       }
-      lock_files <- list.files(path = outputdirectory, pattern = "\\.txt\\.lock$", full.names = TRUE)
-      file.remove(lock_files)
+
       
       # Combine the results into a data frame, transpose it, remove row names
       final_results <- do.call(rbind, lapply(results_list, function(x) x$results))
