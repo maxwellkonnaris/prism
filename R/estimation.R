@@ -191,11 +191,10 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
       
           if (ncol(Y) == nrow(externalscalemeasurements)) {
               message("External scale measurements were provided.")
-              replicates <- ncol(externalscalemeasurements)
-              sampletotals <- nrow(externalscalemeasurements)
-              message(sprintf("Dimensions of supplied external scale measurements matrix: Number of Sample-scale Measurement Pairs %s and Number of Replicates %s", sampletotals, replicates))
+              message(sprintf("Dimensions of supplied external scale measurements matrix: Number of Sample-scale Measurement Pairs %s and Number of Replicates %s", nrow(externalscalemeasurements), ncol(externalscalemeasurements)))
               message("Estimating Rho bounds and scale SD from the external scale measurements.")
               externalscalemeasurements <- log(externalscalemeasurements)
+            
           } else {
               stop("Error: Mismatch in dimensions between external scale measurements and Y.")
           }
@@ -207,8 +206,6 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
           rm(pbounds)
           rm(sdbounds)
       }
-    
-      message("Input Y:", head(Y))
       ## END SETUP ----------------------------------------------------------------------------------------------------------------------------------------------
       
       ## CLUSTER RESOURCES --------------------------------------------------------------------------------------------------------------------------------------
@@ -288,7 +285,6 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
         Xi <- (upsilon-D)*G%*%Omega%*%t(G)
         Theta <- matrix(0, D-1, nrow(X))
         Gamma <- diag(nrow(X))
-        
         priors <- fido::pibble(otu_table, X, upsilon, Theta, Gamma, Xi, n_samples = S)  
         names_covariates(priors) <- rownames(X)
         posterior <- refit(priors, optim_method="lbfgs")
@@ -320,9 +316,6 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
       ## END ESTIMATING RHO AND SD ----------------------------------------------------------------------------------------------------------------------------
       
       ## ESTIMATING COVARIANCE --------------------------------------------------------------------------------------------------------------------------------
-    
-      # Share large data objects with the cluster
-      parallel::clusterExport(cl, varlist = c("Y", "rWparaoriginal", "bootstrap_samples", "rhobounds", "scalestdev"))
                                          
       message("Running Sigma estimation")
       sigmastart = Sys.time()
