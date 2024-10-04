@@ -1824,6 +1824,10 @@ ridge_plot <- ggplot(W.para_long, aes(x = Value, y = Taxa, fill = Condition)) +
       ))
     }
   }
+	
+  # Arrange the plots: heatmaps on the top row, forest plot and ridge plot on the bottom row
+  combined_plot <- gridExtra::grid.arrange(correlation_grob, underlying_correlation_grob, forest_plot_grob, ridge_plot_grob, ncol = 2, nrow = 2)
+  print(combined_plot)
   
   return(forest_plot_data)  # Keep the forest plot data intact
 }
