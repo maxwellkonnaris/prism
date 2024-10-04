@@ -2025,25 +2025,22 @@ prism.circlenetwork <- function(data_list, metric = "covariance", pvalue = FALSE
   for (dataset_name in names(data_list)) {
     results <- data_list[[dataset_name]]
     
-    # Filter rows with non-NA taxa and handle sparse data (i.e., NA values in the relevant columns)
-    filtered_results <- results[!is.na(results$taxa1) & !is.na(results$taxa2) & !is.na(results$ninetyfive_ci_lower) & !is.na(results$ninetyfive_ci_upper), ]
-    
-    # Create edge list from the results dataframe
-    edges <- data.frame(from = filtered_results$taxa1, 
-                        to = filtered_results$taxa2, 
-                        ci_lower = filtered_results$ninetyfive_ci_lower, 
-                        ci_upper = filtered_results$ninetyfive_ci_upper)
+    # Create edge list from the results dataframe, treating NAs as zero for correlation or covariance
+    edges <- data.frame(from = results$taxa1, 
+                        to = results$taxa2, 
+                        ci_lower = ifelse(is.na(results$ninetyfive_ci_lower), 0, results$ninetyfive_ci_lower), 
+                        ci_upper = ifelse(is.na(results$ninetyfive_ci_upper), 0, results$ninetyfive_ci_upper))
     
     # Add color and width for the edges based on the CI
     edges$color <- ifelse(edges$ci_lower > 0, "blue", ifelse(edges$ci_upper < 0, "red", "grey"))
     
-    # Edge width inversely proportional to certainty
+    # Edge width inversely proportional to certainty, treating NA as zero
     edges$width <- ifelse(edges$ci_lower > 0, 
                           1 / (edges$ci_lower),  # Positive edges: thickness based on lower bound distance from zero
                           ifelse(edges$ci_upper < 0, 1 / abs(edges$ci_upper), NA))  # Negative edges: thickness based on upper bound distance from zero
     
-    # Remove edges where the 95% CI covers zero
-    edges <- edges[!((edges$ci_lower <= 0 & edges$ci_upper >= 0)), ]
+    # Remove edges where the 95% CI covers zero (i.e., both ci_lower and ci_upper are zero)
+    edges <- edges[!(edges$ci_lower == 0 & edges$ci_upper == 0), ]
     
     # Ensure all taxa in the edges exist in the all_taxa list, and filter any edges referring to non-existent taxa
     valid_edges <- edges[edges$from %in% all_taxa & edges$to %in% all_taxa, ]
@@ -2080,15 +2077,6 @@ prism.circlenetwork <- function(data_list, metric = "covariance", pvalue = FALSE
   if (combine_plots) {
     combined_plot <- wrap_plots(plot_list)  # Use patchwork to combine
     
-    # Add a single legend for "Thick = High Certainty, Thin = Low Certainty" at the bottom of the combined plot
-    # combined_plot <- combined_plot + 
-    #   plot_annotation(
-    #     caption = "Thick = High Certainty, Thin = Low Certainty",
-    #     theme = theme(
-    #       plot.caption = element_text(hjust = 0.5, size = 16, face = "italic")
-    #     )
-    #   )
-    
     if (save_plot) {
       ggsave(paste0(dir_path, filename, "_circlenetwork_combined.png"), combined_plot, width = 20, height = 15, dpi = 300)
     }
@@ -2109,6 +2097,7 @@ prism.circlenetwork <- function(data_list, metric = "covariance", pvalue = FALSE
     return(plot_list)  # Return the list of individual plots
   }
 }
+
 
 
 
