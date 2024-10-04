@@ -146,7 +146,8 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
   flog.appender(appender.file(logfile))
   flog.threshold(INFO)
   ## COMPUTATIONAL TIME -----------------------------------------------------------------------------------------------------------------------------------
-  flog.time("Total time")
+  start_time_total <- Sys.time()  # Start time for the entire function
+  flog.info("Start time: %s", start_time_total)
   ## END COMPUTATIONAL TIME SETUP ---------------------------------------------------------------------------------------------------------------------------
   ## SETUP --------------------------------------------------------------------------------------------------------------------------------------------------
   # Check if Y is a matrix, dataframe, or tibble, and has appropriate dimensions
