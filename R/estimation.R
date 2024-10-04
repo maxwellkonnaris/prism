@@ -217,6 +217,8 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
       # Check the number of workers
       message("Number of workers/cpus: ", foreach::getDoParWorkers())
   }
+
+  message("Input Y:", head(Y))
   ## END CLUSTER RESOURCES ----------------------------------------------------------------------------------------------------------------------------------
   ## PROGRESS BARS ------------------------------------------------------------------------------------------------------------------------------------------
   progressr::handlers(global = TRUE)
