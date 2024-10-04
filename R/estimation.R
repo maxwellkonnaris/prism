@@ -141,13 +141,13 @@
 #' @export
 prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinomialdirichlet", bootstrap = TRUE, externalscalemeasurements = NULL, lowerrhobound = rep(-1.0, nrow(Y)), upperrhobound = rep(1.0, nrow(Y)), S = 1000, lowerscalestdev = 0.450, upperscalestdev = 0.650, algorithm = "GRID_SEARCH", prefix="setprefix", pvalue=TRUE, outputdirectory = NULL, logfile = "log_prismcovariance.txt", seed = NULL) {
   
-  ## COMPUTATIONAL TIME -------------------------------------------------------------------------------------------------------------------------------------
-  start_time <- Sys.time()
-  ## END COMPUTATIONAL TIME SETUP ---------------------------------------------------------------------------------------------------------------------------
-  ## START LOGGING ------------------------------------------------------------------------------------------------------------------------------------------
+   ## START LOGGING -----------------------------------------------------------------------------------------------------------------------------------------
   logfile <- "log_prismcovariance.txt"
   flog.appender(appender.file(logfile))
   flog.threshold(INFO)
+  ## COMPUTATIONAL TIME -----------------------------------------------------------------------------------------------------------------------------------
+  flog.time("Total time")
+  ## END COMPUTATIONAL TIME SETUP ---------------------------------------------------------------------------------------------------------------------------
   ## SETUP --------------------------------------------------------------------------------------------------------------------------------------------------
   # Check if Y is a matrix, dataframe, or tibble, and has appropriate dimensions
   if (!(is.matrix(Y) || is.data.frame(Y) || inherits(Y, "tbl_df")) || nrow(Y) < 2 || ncol(Y) < 2) {
@@ -294,6 +294,7 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
   ## END ACCOUNTING FOR UNCERTAINTY IN OBSERVED RELATIVE ABUNDANCES ---------------------------------------------------------------------------------------
   ## ESTIMATING RHO AND SD --------------------------------------------------------------------------------------------------------------------------------
   flog.info("Start SD and Rho estimation")  
+  flog.time("SD AND RHO")
   if (!is.null(externalscalemeasurements) && is.matrix(externalscalemeasurements) && ncol(Y) == nrow(externalscalemeasurements)) {
     rhoandsd_list <- foreach(s = 1:S, .packages = c('stats')) %dopar% {
         n <- length(externalscalemeasurements)
@@ -349,11 +350,12 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
   } else {
     rhobounds = NULL
   }
+  flog.time.end("SD AND RHO")
   flog.info("End SD and Rho estimation")                                   
   ## END ESTIMATING RHO AND SD ----------------------------------------------------------------------------------------------------------------------------
   ## ESTIMATING COVARIANCE --------------------------------------------------------------------------------------------------------------------------------
   flog.info("Running Sigma estimation")
-
+  flog.time("SIGMA ESTIMATION")
   # Generate all pairs of indices
   pair_indices <- combn(D, 2, simplify = FALSE)
   
@@ -369,6 +371,7 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
       d2 <- pair[2]
       comparison <- paste(rownames(Y)[d1], rownames(Y)[d2], sep = ":")
       flog.info("Start Current Comparison: ", comparison)
+      flog.time(paste("Comparison", comparison))  
     
       # Use sequential foreach for the inner loop
       results_inner <- foreach(s = 1:S, .combine = 'rbind', .packages = c('stats', 'MCMCpack', 'nloptr', 'dplyr')) %dopar% {
@@ -809,6 +812,7 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
           scalesdupperbound = ifelse(is.null(upperscalestdev), {flog.info("upperscalestdev is NULL for d1:", d1, "d2:", d2, "s:", s); NA}, upperscalestdev)
         )
       }
+    flog.time(paste("Comparison", comparison))
     flog.info("End Comparison: ", comparison)
     
     if (nrow(results_inner) == 0) {
@@ -906,6 +910,7 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
     # Combine the results into a list of two data frames
     results_list <- list(resultsinner = results_inner, results = results_df)
   }
+  flog.time.end("SIGMA ESTIMATION")
   flog.info("End Sigma estimation")
   ## END SIGMA ESTIMATION --------------------------------------------------------------------------------------------------------------------------------------
   
@@ -929,12 +934,8 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
   all_inner_results <- do.call(rbind, lapply(results_list, function(x) x$resultsinner))
   all_inner_results <- as.data.frame(all_inner_results)
   all_inner_results$comparison <- paste(rownames(Y)[all_inner_results$d1], rownames(Y)[all_inner_results$d2], sep = ":")
-  
-  # Calculate and print the total elapsed time
-  end_time <- Sys.time()
-  elapsed_time <- end_time - start_time
-  formatted_time <- format_elapsed_time(elapsed_time)
-  flog.info("Total time taken: ", formatted_time)
+
+  flog.time.end("Total time")                               
   ## END LOGGING --------------------------------------------------------------------------------------------------------------------------------------------
   return(list(final_results = final_results, all_inner_results = all_inner_results))
 }
