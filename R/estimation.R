@@ -149,7 +149,7 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
       
       ## COMPUTATIONAL TIME -------------------------------------------------------------------------------------------------------------------------------------
       start_time_total <- Sys.time()  # Start time for the entire function
-      message(sprintf("Start time: %s", format_elapsed_time(start_time_total)))
+      message(sprintf("Start time: %s", format(start_time_total, "%Y-%m-%d %H:%M:%S")))
       ## END COMPUTATIONAL TIME SETUP ---------------------------------------------------------------------------------------------------------------------------
       
       ## SETUP --------------------------------------------------------------------------------------------------------------------------------------------------
