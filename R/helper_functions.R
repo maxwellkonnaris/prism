@@ -880,6 +880,37 @@ prism.simulate_prepost <- function(
 }
 
 
+#' Optimizes sigma based on different algorithms
+#' 
+#' This internal function performs optimization using a variety of algorithms to minimize and maximize the sigma parameter. 
+#' It supports several algorithms, including COBYLA, MMA, SLSQP, AUGLAG with SLSQP or LBFGS as the local optimizer, and 
+#' a grid search approach. The function is flexible in handling multiple optimization methods and evaluates both 
+#' the objective and constraint functions during optimization.
+#' 
+#' @param algorithm The optimization algorithm to use. Supported values are "COBYLA", "MMA", "SLSQP", "AUGLAG_SLSQP", 
+#' "AUGLAG_LBFGS", and "GRID_SEARCH".
+#' @param initialparameters The initial parameters for optimization.
+#' @param taxa1relativesd Standard deviation of taxa 1.
+#' @param taxa2relativesd Standard deviation of taxa 2.
+#' @param relativecovariance The relative covariance between taxa 1 and 2.
+#' @param rho_lower_bound_1 Lower bound for the first rho parameter.
+#' @param rho_upper_bound_1 Upper bound for the first rho parameter.
+#' @param rho_lower_bound_2 Lower bound for the second rho parameter.
+#' @param rho_upper_bound_2 Upper bound for the second rho parameter.
+#' @param lowerscalestdev Lower bound for the scale standard deviation.
+#' @param upperscalestdev Upper bound for the scale standard deviation.
+#' @param outputdirectory Optional. The directory to output grid search results.
+#' @param d1 Optional. Identifier for the first dimension of the optimization process.
+#' @param d2 Optional. Identifier for the second dimension of the optimization process.
+#' @param s Optional. The current iteration of the optimization process.
+#' 
+#' @return A list containing the results of the optimization, including minimum and maximum values for sigma and corresponding parameter values.
+#' @keywords internal
+#' @examples
+#' # Example usage (for internal purposes):
+#' result <- optimize_sigma("COBYLA", initialparameters, taxa1relativesd, taxa2relativesd, relativecovariance, 
+#'                          rho_lower_bound_1, rho_upper_bound_1, rho_lower_bound_2, rho_upper_bound_2, 
+#'                          lowerscalestdev, upperscalestdev)
 optimize_sigma <- function(algorithm, initialparameters, taxa1relativesd, taxa2relativesd, relativecovariance, 
                            rho_lower_bound_1, rho_upper_bound_1, rho_lower_bound_2, rho_upper_bound_2, 
                            lowerscalestdev, upperscalestdev, outputdirectory = NULL, d1 = NULL, d2 = NULL, s = NULL) {
@@ -1192,6 +1223,31 @@ optimize_sigma <- function(algorithm, initialparameters, taxa1relativesd, taxa2r
   return(result)
 }
 
+
+#' Estimate Rho and Scale Standard Deviation (SD) for Taxa
+#' 
+#' This internal function estimates the correlation (rho) and scale standard deviation (SD) of external scale measurements 
+#' with taxa using a bootstrap-based approach. It performs this estimation in parallel and computes confidence intervals 
+#' for both rho and SD based on Fisher Z-transformation for rho and chi-squared distribution for variance.
+#' 
+#' @param externalscalemeasurements A matrix of external scale measurements. The number of columns should match the number of rows in `Y`.
+#' @param Y A matrix representing the data for taxa.
+#' @param S The number of bootstrap samples.
+#' @param D The number of taxa.
+#' @param rWparaoriginal A 3D array representing taxa-specific values across bootstrap samples.
+#' @param bootstrap_samples A matrix where each column corresponds to the indices of bootstrap samples.
+#' @param alpha The significance level for confidence intervals (e.g., 0.05 for 95% confidence intervals).
+#' @param prefix A string used as the prefix for filenames when saving the plot results.
+#' 
+#' @return A list with two components:
+#' \describe{
+#'   \item{scalestdev}{A matrix of scale standard deviations [S x 2], where each row contains the lower and upper bounds.}
+#'   \item{rhobounds}{A 3D array of rho confidence bounds [D x 2 x S], representing the lower and upper bounds for each taxa across bootstrap samples.}
+#' }
+#' @keywords internal
+#' @examples
+#' # Example usage (for internal purposes):
+#' result <- estimate_rho_and_sd(externalscalemeasurements, Y, S, D, rWparaoriginal, bootstrap_samples, alpha = 0.05, prefix = "output")
 estimate_rho_and_sd <- function(externalscalemeasurements, Y, S, D, rWparaoriginal, bootstrap_samples, alpha, prefix) {
   if (!is.null(externalscalemeasurements) && is.matrix(externalscalemeasurements) && ncol(Y) == nrow(externalscalemeasurements)) {
     
