@@ -419,6 +419,8 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
         positive_non_zero_intervals <- sum((results_inner$minsigma_absolute_minimum_covariance > 0 & results_inner$maxsigma_absolute_maximum_covariance > 0))
         negative_non_zero_intervals <- sum((results_inner$minsigma_absolute_minimum_covariance < 0 & results_inner$maxsigma_absolute_maximum_covariance < 0))
         proportion_intervals_dontcoverzero <- (positive_non_zero_intervals + negative_non_zero_intervals) / nrow(results_inner)
+        proportion_positiveintervals_dontcoverzero <- positive_non_zero_intervals / nrow(results_inner)
+        proportion_negativeintervals_dontcoverzero <- negative_non_zero_intervals / nrow(results_inner)
         
         # Gather the min and max optimized sigmas
         minsigma_values <- results_inner$minsigma_absolute_minimum_covariance
