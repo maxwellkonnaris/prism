@@ -18,12 +18,14 @@ prism.method_comparison <- function(Y,
                                     S = 4000, 
                                     output_directory = getwd(),
                                     algorithm = "GRID_SEARCH",
-                                    uncertaintydistribution = "multinomiallognormal") {
+                                    uncertaintydistribution = "multinomiallognormal",
+                                    logfile = "log_prismcovariance.txt",
+                                    pvalue = FALSE) {
   cat("Start PRISM\n")
   
   results <- PRISM::prism.covariance(Y = Y, S = S, uncertaintydistribution = uncertaintydistribution,  
                                      externalscalemeasurements = externalscalemeasurements, algorithm = algorithm, 
-                                     outputdirectory = output_directory, prefix=filename)
+                                     outputdirectory = output_directory, prefix=filename, pvalue=pvalue, logfile = logfile)
   
   final_results_filename <- paste0(filename, "finalresults_", uncertaintydistribution, "_", algorithm, ".csv")
   all_inner_results_filename <- paste0(filename, "allinnerresults_", uncertaintydistribution, "_", algorithm, ".csv")
