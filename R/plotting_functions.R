@@ -1171,29 +1171,23 @@ prism.proportions <- function(data, comparison_col = "comparison",
     ) +
     # Add horizontal dashed lines at specified y-values
     geom_hline(yintercept = c(0.10, 0.25, 0.5, 0.75, 0.9, 0.95, 0.975), 
-               linetype = "dashed", color = "grey50") +
-    # Add legend for colors
-    scale_fill_manual(values = c("Positive Intervals" = "#6BAED6", "Negative Intervals" = "#FC9272")) +  # Muted colors
-
-  # Remove text labels for values
-  # (no geom_text() calls here since we want to remove labels)
+               linetype = "dashed", color = "grey50")
 
   if (save) {
     if (!is.null(filename)) {
       # Save the plot in high resolution suitable for publications
-      ggsave(paste0(outputdirectory, filename, "proportion_coverage_plot.png"), 
-             plot = p, width = 15, height = 8, dpi = 300, units = "in")
+      ggsave(paste0(outputdirectory, filename, "_proportion_coverage_plot.png"), 
+             plot = p, height = 8, dpi = 300, units = "in")
     } else {
       # Save the plot in high resolution suitable for publications
       ggsave(paste0(outputdirectory, "proportion_coverage_plot.png"), 
-             plot = p, width = 15, height = 8, dpi = 300, units = "in")
+             plot = p, height = 8, dpi = 300, units = "in")
     }
   }
   
   # Return the plot object
   return(p)
 }
-
 
 #' Plot Ridge Plot with Boxplots for RhoLower and RhoUpper per Taxa
 #'
@@ -1976,8 +1970,9 @@ prism.network <- function(results, pvalue = FALSE, dir_path="./plots/", filename
 #'
 #' @examples
 #' prism.circlenetwork(list(df1 = df1, df2 = df2), pvalue = TRUE)
-prism.circlenetwork <- function(data_list, metric = "covariance", pvalue = FALSE, dir_path = "./plots/", 
-                                filename = "specifydatasetname", save_plot = TRUE, combine_plots = FALSE) {
+prism.circlenetwork <- function(data_list, metric = "covariance", pvalue = FALSE, 
+                                dir_path = "./plots/", filename = "specifydatasetname", 
+                                save_plot = TRUE, combine_plots = FALSE) {
   
   # Validate input: data_list must be a named list of dataframes
   if (!is.list(data_list) || is.null(names(data_list))) {
@@ -2012,32 +2007,31 @@ prism.circlenetwork <- function(data_list, metric = "covariance", pvalue = FALSE
   # Now that all data frames have taxa1 and taxa2, define all unique taxa across all dataframes
   all_taxa <- unique(unlist(lapply(data_list, function(df) unique(c(df$taxa1, df$taxa2)))))
   
-  # Sort the taxa alphabetically or however you want the order to be fixed
+  # Sort the taxa alphabetically
   all_taxa <- sort(all_taxa)
   
   # Initialize list to store ggplot objects
   plot_list <- list()
 
-  # Continue with the rest of the function (looping through the data frames and creating the plots)
+  # Loop through the data frames and create the plots
   for (dataset_name in names(data_list)) {
     results <- data_list[[dataset_name]]
     
-    # Create edge list from the results dataframe, treating NAs as zero for correlation or covariance
+    # Create edge list from the results dataframe
     edges <- data.frame(from = results$taxa1, 
                         to = results$taxa2, 
                         ci_lower = ifelse(is.na(results$ninetyfive_ci_lower), 0, results$ninetyfive_ci_lower), 
                         ci_upper = ifelse(is.na(results$ninetyfive_ci_upper), 0, results$ninetyfive_ci_upper))
     
     # Add color and width for the edges based on the CI
-    edges$color <- ifelse(edges$ci_lower > 0 & edges$ci_upper > 0, "blue", 
-	                      ifelse(edges$ci_lower < 0 & edges$ci_upper < 0, "red", 
-	                             "grey"))
+    edges$color <- ifelse(edges$ci_lower > 0 & edges$ci_upper > 0, "#4C78A8",  # Muted blue
+                          ifelse(edges$ci_lower < 0 & edges$ci_upper < 0, "#E45756",  # Muted red
+                                 "grey"))  # Grey if it covers zero
 
-    
-    # Edge width inversely proportional to certainty, treating NA as zero
-    edges$width <- ifelse(edges$ci_lower > 0, 
-                          1 / (edges$ci_lower),  # Positive edges: thickness based on lower bound distance from zero
-                          ifelse(edges$ci_upper < 0, 1 / abs(edges$ci_upper), NA))  # Negative edges: thickness based on upper bound distance from zero
+    # Set width to 0 if the CI covers zero
+    edges$width <- ifelse(edges$ci_lower <= 0 & edges$ci_upper >= 0, 0,
+                          ifelse(edges$ci_lower > 0, 1 / (edges$ci_lower),  # Positive edges
+                                 ifelse(edges$ci_upper < 0, 1 / abs(edges$ci_upper), NA)))  # Negative edges
     
     # Remove edges where the 95% CI covers zero (i.e., both ci_lower and ci_upper are zero)
     edges <- edges[!(edges$ci_lower == 0 & edges$ci_upper == 0), ]
@@ -2057,14 +2051,14 @@ prism.circlenetwork <- function(data_list, metric = "covariance", pvalue = FALSE
     
     # Plot using ggraph with circular layout, ensure a circular aspect ratio and consistent node positions
     plot_object <- ggraph(layout_fixed) +
-      geom_edge_link(aes(edge_width = width, color = color), show.legend = FALSE) +
+      geom_edge_link(aes(edge_width = width, color = color), show.legend = TRUE) +
       geom_node_point(size = 5) +
       geom_node_text(aes(label = name), repel = TRUE, size = 6) +  # Larger font size for node labels
-      scale_edge_color_manual(values = c("blue", "red", "grey")) +  # Blue for positive, Red for negative
+      scale_edge_color_manual(values = c("#4C78A8", "#E45756", "grey")) +  # Muted colors for edges
       coord_fixed() +  # Ensures circular plot (aspect ratio = 1)
       theme_void() +
       theme(
-        legend.position = "none",
+        legend.position = "top",
         plot.title = element_text(hjust = 0.5, size = 20, face = "bold")  # Large centered title
       ) +
       ggtitle(dataset_name)  # Title with dataset name
@@ -2097,6 +2091,7 @@ prism.circlenetwork <- function(data_list, metric = "covariance", pvalue = FALSE
     return(plot_list)  # Return the list of individual plots
   }
 }
+
 
 
 #' Compare True Correlations with Confidence Intervals
