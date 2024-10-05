@@ -2133,10 +2133,10 @@ prism.circlenetwork <- function(data_list, metric = "covariance", pvalue = FALSE
 #'                                 0.3, 0.4, 1), 
 #'                               nrow = 3, byrow = TRUE,
 #'                               dimnames = list(c("A", "B", "C"), c("A", "B", "C")))
-#' results <- compare_correlations(list(Method1 = method1_data, Method2 = method2_data), correlation_matrix)
+#' results <- prism.assessment(list(Method1 = method1_data, Method2 = method2_data), correlation_matrix)
 #' print(results)
 #' 
-prism.assessment <- function(data_list, cov_matrix, output_dir = "./plots/") {
+prism.assessment <- function(data_list, cov_matrix, outputdirectory = "./plots/") {
   
   # Create output directory if it does not exist
   if (!dir.exists(output_dir)) {
@@ -2199,7 +2199,7 @@ prism.assessment <- function(data_list, cov_matrix, output_dir = "./plots/") {
   combined_confusion <- rbindlist(confusion_matrices, idcol = "Method")
   
   # Plotting the confusion matrix
-  plot_confusion_matrix(combined_confusion, output_dir)
+  plot_confusion_matrix(combined_confusion, outputdirectory)
   
   return(combined_confusion)
 }
@@ -2218,10 +2218,10 @@ prism.assessment <- function(data_list, cov_matrix, output_dir = "./plots/") {
 #' # Assuming 'confusion_data' is a data.table from 'compare_correlations'
 #' plot_confusion_matrix(confusion_data, output_dir = "./my_plots/")
 #' 
-plot_confusion_matrix <- function(confusion_data, output_dir) {
+plot_confusion_matrix <- function(confusion_data, outputdirectory) {
   p <- ggplot(confusion_data, aes(x = Comparison, fill = factor(Within_CI))) +
     geom_bar(position = "dodge") +
-    scale_fill_manual(values = c("0" = "red", "1" = "green"), 
+    scale_fill_manual(values = c("0" = "grey", "1" = "blue"), 
                       labels = c("0" = "Outside CI", "1" = "Within CI")) +
     labs(title = "Confusion Matrix: True Correlations vs 95% CI",
          x = "Comparison",
@@ -2240,7 +2240,7 @@ plot_confusion_matrix <- function(confusion_data, output_dir) {
     facet_wrap(~ Method, scales = "free_x", ncol = 1) # Creates a grid layout
 
   # Save the plot as a PNG file
-  ggsave(filename = paste0(output_dir, "confusion_matrix.png"), plot = p, dpi = 300, width = 10, height = 8)
+  ggsave(filename = paste0(outputdirectory, "prism_confusionmatrix.png"), plot = p, dpi = 300, width = 10, height = 8)
   
   # Display the plot
   print(p)
