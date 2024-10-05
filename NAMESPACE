@@ -1,3 +1,4 @@
+# Exported functions
 export(prism.simulate_prepost)
 export(prism.trueabundanceplot)
 export(prism.covariance)
@@ -18,18 +19,18 @@ export(prism.assessment)
 export(cclasso)
 export(SparCC_count)
 
+# Import packages
 import(fido)
 import(compositions)
 import(foreach)
 import(doSNOW)
-import(stats)
+import(stats)  # Keep stats for base R functions
 import(MCMCpack)
 import(rBeta2009)
 import(driver)
 import(forcats)
-import(tidyverse)
-import(dplyr)
-import(tidyr)
+import(dplyr)   # Part of tidyverse, can be directly imported
+import(tidyr)   # Part of tidyverse, can be directly imported
 import(progress)
 import(progressr)
 import(parallel)
@@ -59,5 +60,17 @@ import(qgraph)
 import(ggraph)
 import(patchwork)
 import(data.table)
+
+# Import specific functions to avoid conflicts
 importFrom(devtools, install_github)
 importFrom(utils, combn, head, tail)
+
+# Specify function imports explicitly to avoid ambiguity
+importFrom(fido, alrInv, alr, miniclo_array, clr_array, gather_array, create_default_ilr_base, alr_array, summarise_posterior)
+importFrom(compositions, cor, cov, dist, var, anova, ilr, ilrInv, normalize, alrInv, alr)
+importFrom(MCMCpack, rdirichlet, ddirichlet)
+importFrom(rBeta2009, rdirichlet, rbeta)
+importFrom(SpiecEasi, make_graph, clr, alr)
+importFrom(igraph, as_data_frame, decompose, normalize, groups, crossing, spectrum, permute, union)
+importFrom(gtools, ddirichlet, rdirichlet, permute)
+importFrom(data.table, melt, dcast, first, last, between)
