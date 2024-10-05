@@ -2162,7 +2162,7 @@ prism.assessment <- function(data_list, cov_matrix, outputdirectory = "./plots/"
     data$ninetyfive_ci_lower <- as.numeric(data$ninetyfive_ci_lower)
     data$ninetyfive_ci_upper <- as.numeric(data$ninetyfive_ci_upper)
 
-    # Initialize a confusion matrix
+    # Initialize a confusion matrix for this method
     confusion <- data.table(
       Comparison = data$comparison,
       Color_Code = NA_character_  # For the color coding
@@ -2187,11 +2187,10 @@ prism.assessment <- function(data_list, cov_matrix, outputdirectory = "./plots/"
       }
       
       # Check if the true correlation is within the CI
-      within_ci <- ifelse(true_cor >= data$ninetyfive_ci_lower[i] & true_cor <= data$ninetyfive_ci_upper[i], TRUE, FALSE)
+      within_ci <- true_cor >= data$ninetyfive_ci_lower[i] & true_cor <= data$ninetyfive_ci_upper[i]
 
       # Determine if the sign is correct (non-zero and sign matches)
-      sign_correct <- ifelse(data$ninetyfive_ci_lower[i] > 0 & true_cor > 0 |
-                             data$ninetyfive_ci_lower[i] < 0 & true_cor < 0, TRUE, FALSE)
+      sign_correct <- data$ninetyfive_ci_lower[i] > 0 & true_cor > 0 | data$ninetyfive_ci_lower[i] < 0 & true_cor < 0
 
       if (data$ninetyfive_ci_lower[i] * data$ninetyfive_ci_upper[i] > 0) { # CI does not cover zero
         if (within_ci) {
@@ -2204,17 +2203,19 @@ prism.assessment <- function(data_list, cov_matrix, outputdirectory = "./plots/"
       }
     }
     
+    # Store the confusion matrix in the list
     confusion_matrices[[method_name]] <- confusion
   }
   
-  # Combine confusion matrices from different methods
-  combined_confusion <- rbindlist(confusion_matrices, idcol = "Method")
+  # Plotting the confusion matrix for all methods
+  plot_confusion_matrix(confusion_matrices, outputdirectory)
   
-  # Plotting the confusion matrix
-  plot_confusion_matrix(combined_confusion, outputdirectory)
+  # Combine confusion matrices into a single data frame for return, if needed
+  combined_confusion <- rbindlist(confusion_matrices, idcol = "Method")
   
   return(combined_confusion)
 }
+
 
 
 #' Plot Confusion Matrix
@@ -2231,39 +2232,58 @@ prism.assessment <- function(data_list, cov_matrix, outputdirectory = "./plots/"
 #' # Assuming 'confusion_data' is a data.table from 'compare_correlations'
 #' plot_confusion_matrix(confusion_data, output_dir = "./my_plots/")
 #' 
-plot_confusion_matrix <- function(confusion_data, outputdirectory) {
-  # Ensure that Color_Code is treated as a factor for plotting
-  confusion_data$Color_Code <- factor(confusion_data$Color_Code, 
-                                       levels = c("grey", "blue", "red", "green"), 
-                                       labels = c("Does not match sign/95%CI covers zero", 
-                                                  "Matches sign, 95%CI does not cover zero", 
-                                                  "Does not match sign, 95%CI does not cover zero", 
-                                                  "Matches sign and within 95%CI"))
+plot_confusion_matrix <- function(confusion_data_list, outputdirectory) {
+  # Check if the output directory exists; if not, create it
+  if (!dir.exists(outputdirectory)) {
+    dir.create(outputdirectory, recursive = TRUE)
+  }
   
-  p <- ggplot(confusion_data, aes(x = Comparison, fill = Color_Code)) +
-    geom_bar(position = "stack") +  # Stacked bar chart
-    scale_fill_manual(values = c("grey", "blue", "red", "green")) +
-    labs(title = "True Correlations vs 95% CI",
-         x = "Comparison",
-         y = "Count",
-         fill = "CI Status") +
-    theme_minimal(base_size = 15) +
-    theme(
-      text = element_text(size = 12, family = "Arial"),
-      plot.title = element_text(hjust = 0.5, face = "bold", size = 16),
-      axis.title.x = element_text(face = "bold"),
-      axis.title.y = element_text(face = "bold"),
-      legend.position = "top",
-      panel.grid.major = element_line(color = "grey80"),
-      panel.grid.minor = element_blank()
-    ) +
-    facet_wrap(~ Method, scales = "free_x", ncol = 1) # Creates a grid layout
-
-  # Save the plot as a PNG file
-  ggsave(filename = paste0(outputdirectory, "prism_confusionmatrix.png"), plot = p, dpi = 300, width = 10, height = 8)
+  # Initialize an empty list to store plots
+  plot_list <- list()
   
-  # Display the plot
-  print(p)
+  # Loop through each data frame in the list
+  for (i in seq_along(confusion_data_list)) {
+    confusion_data <- confusion_data_list[[i]]
+    
+    # Ensure that Color_Code is treated as a factor for plotting
+    confusion_data$Color_Code <- factor(confusion_data$Color_Code, 
+                                         levels = c("grey", "blue", "red", "green"), 
+                                         labels = c("Does not match sign/95%CI covers zero", 
+                                                    "Matches sign, 95%CI does not cover zero", 
+                                                    "Does not match sign, 95%CI does not cover zero", 
+                                                    "Matches sign and within 95%CI"))
+    
+    # Create the plot
+    p <- ggplot(confusion_data, aes(x = Comparison, fill = Color_Code)) +
+      geom_bar(position = "stack") +  # Stacked bar chart
+      scale_fill_manual(values = c("grey", "blue", "red", "green")) +
+      labs(title = paste("True Correlations vs 95% CI - DataFrame", i),
+           x = "Comparison",
+           y = "Count",
+           fill = "CI Status") +
+      theme_minimal(base_size = 15) +
+      theme(
+        text = element_text(size = 12, family = "Arial"),
+        plot.title = element_text(hjust = 0.5, face = "bold", size = 16),
+        axis.title.x = element_text(face = "bold"),
+        axis.title.y = element_text(face = "bold"),
+        legend.position = "top",
+        panel.grid.major = element_line(color = "grey80"),
+        panel.grid.minor = element_blank()
+      )
+    
+    # Save the plot as a PNG file
+    ggsave(filename = paste0(outputdirectory, "prism_confusionmatrix_df", i, ".png"), 
+           plot = p, dpi = 300, width = 10, height = 8)
+    
+    # Add the plot to the list
+    plot_list[[i]] <- p
+  }
+  
+  # Optionally display all plots in the console
+  for (plot in plot_list) {
+    print(plot)
+  }
 }
 
 
