@@ -1130,44 +1130,38 @@ prism.bivariate <- function(data, output_directory = "./plots/", sample_size = 3
 #' @examples
 #' # Assuming you have a dataframe called `results_df` with columns for comparison and proportion_intervals_dontcoverzero
 #' # prism.proportions(results_df)
-prism.proportions <- function(data, comparison_col = "comparison", proportion_col = "proportion_intervals_dontcoverzero", 
-                                       ci_upper = "ninetyfive_ci_upper", ci_lower = "ninetyfive_ci_lower", outputdirectory = "./plots/", filename=NULL, save=TRUE) {
+prism.proportions <- function(data, comparison_col = "comparison", 
+                              proportion_col = "proportion_intervals_dontcoverzero", 
+                              positive_col = "proportion_positiveintervals_dontcoverzero",
+                              negative_col = "proportion_negativeintervals_dontcoverzero", 
+                              ci_upper = "ninetyfive_ci_upper", ci_lower = "ninetyfive_ci_lower", 
+                              outputdirectory = "./plots/", filename = NULL, save = TRUE) {
   
   # Check if the directory exists
   if (!dir.exists(outputdirectory)) {
     # Create the directory
-    dir.create(outputdirectory)
-    if (dir.exists(outputdirectory)) {
-      cat("Directory created successfully!\n")
-    } else {
-      cat("Failed to create directory.\n")
-    }
-  } else {
-    cat("Directory already present.\n")
+    dir.create(outputdirectory, recursive = TRUE)
   }
   
-  # Create a new column to flag whether the 95% CI does not cover zero
-  data$does_not_cover_zero <- ifelse(
-    (data[[ci_upper]] > 0 & data[[ci_lower]] > 0) | (data[[ci_upper]] < 0 & data[[ci_lower]] < 0),
-    "Does Not Cover Zero", "Covers Zero"
-  )
-  
   # Reorder the factor levels of the comparison column based on the proportion column
-  data[[comparison_col]] <- factor(data[[comparison_col]], levels = data[[comparison_col]][order(data[[proportion_col]], decreasing = TRUE)])
+  data[[comparison_col]] <- factor(data[[comparison_col]], 
+                                    levels = data[[comparison_col]][order(data[[proportion_col]], decreasing = TRUE)])
   
   # Create the bar plot
-  p <- ggplot(data, aes_string(x = comparison_col, y = proportion_col, fill = "does_not_cover_zero")) +
-    geom_bar(stat = "identity", colour = "black", size = 0.5) +
-    scale_fill_manual(values = c("Does Not Cover Zero" = "#023E8A", "Covers Zero" = "grey")) +
+  p <- ggplot(data) +
+    geom_bar(aes_string(x = comparison_col, y = positive_col), 
+             stat = "identity", fill = "blue", color = "black", size = 0.5) +
+    geom_bar(aes_string(x = comparison_col, y = negative_col), 
+             stat = "identity", fill = "red", color = "black", size = 0.5, position = "stack") +
+    scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, by = 0.05), expand = c(0, 0)) +
     labs(
       title = "Proportion of Range Intervals That Do Not Cover Zero",
       x = "Comparison",
       y = "Proportion",
-      fill = "95% CI Status"
+      fill = "Interval Status"
     ) +
     theme_classic() +
     theme(
-      # Increase font sizes for text elements
       text = element_text(size = 12, family = "Arial"),
       axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 10),
       axis.text.y = element_text(size = 12),
@@ -1176,24 +1170,29 @@ prism.proportions <- function(data, comparison_col = "comparison", proportion_co
       legend.position = "top"
     ) +
     # Add horizontal dashed lines at specified y-values
-    geom_hline(yintercept = c(0.10, 0.25, 0.5, 0.75, 0.9, 0.95, 0.975), linetype = "dashed", color = "grey50") +
-    # Set y-axis limits
-    scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, by = 0.05), expand = c(0, 0)) +
+    geom_hline(yintercept = c(0.10, 0.25, 0.5, 0.75, 0.9, 0.95, 0.975), 
+               linetype = "dashed", color = "grey50") +
     
-    # Add text labels for values < 0.05 using geom_text
-    geom_text(data = subset(data, data[[proportion_col]] == 0), 
-              aes_string(label = proportion_col), 
-              vjust = -0.5, color = "black", size = 3.5)  # Adjust position above bars
+    # Add text labels for values
+    geom_text(data = data, aes_string(label = positive_col), 
+              vjust = -0.5, color = "white", size = 3.5, 
+              position = position_stack(vjust = 0.5)) +  # Position above the positive bars
+    geom_text(data = data, aes_string(label = negative_col), 
+              vjust = -0.5, color = "white", size = 3.5, 
+              position = position_stack(vjust = 0.5))  # Position above the negative bars
 
   if (save) {
-	  if (!is.null(filename)) {
-		# Save the plot in high resolution suitable for publications
-  		ggsave(paste0(outputdirectory, filename, "proportion_coverage_plot.png"), plot = p, width = 15, height = 8, dpi = 300, units = "in")
-	} else {
-  		# Save the plot in high resolution suitable for publications
- 		 ggsave(paste0(outputdirectory, "proportion_coverage_plot.png"), plot = p, width = 15, height = 8, dpi = 300, units = "in")
-  	}
-  }	  
+    if (!is.null(filename)) {
+      # Save the plot in high resolution suitable for publications
+      ggsave(paste0(outputdirectory, filename, "proportion_coverage_plot.png"), 
+             plot = p, width = 15, height = 8, dpi = 300, units = "in")
+    } else {
+      # Save the plot in high resolution suitable for publications
+      ggsave(paste0(outputdirectory, "proportion_coverage_plot.png"), 
+             plot = p, width = 15, height = 8, dpi = 300, units = "in")
+    }
+  }
+  
   # Return the plot object
   return(p)
 }
