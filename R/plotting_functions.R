@@ -101,7 +101,7 @@ prism.forestplot <- function(data_list, bg = "white", save = NULL, filename = NU
     theme_classic(base_size = 16) +
     labs(
       x = "Taxa Comparison",
-      y = "Estimated Covariance",
+      y = "Estimated Log Scale Covariance",
       color = NULL
     ) +
     theme(
@@ -116,7 +116,7 @@ prism.forestplot <- function(data_list, bg = "white", save = NULL, filename = NU
       values = c(
         "95% CI Doesn't Cover Zero" = "#023E8A",  # Blue
         "95% CI Covers Zero" = "#BEBEBE",         # Grey
-        "Covariance Range" = "#676767"
+        "Log Covariance Range" = "#676767"
       ),
       breaks = c("95% CI Doesn't Cover Zero", "Covariance Range") # Exclude "Covers Zero" from legend
     )
