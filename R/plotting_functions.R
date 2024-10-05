@@ -2197,7 +2197,7 @@ prism.assessment <- function(data_list, cov_matrix, outputdirectory = "./plots/"
         if (within_ci) {
           confusion[i, Color_Code := "green"]  # True value lies within the CI
         } else {
-          confusion[i, Color_Code := ifelse(sign_correct, "blue", "red")  # Matches sign or not
+          confusion[i, Color_Code := ifelse(sign_correct, "blue", "red")]  # Matches sign or not
         }
       } else {
         confusion[i, Color_Code := "grey"]  # CI covers zero
