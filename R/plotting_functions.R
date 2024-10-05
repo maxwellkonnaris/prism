@@ -1171,15 +1171,21 @@ prism.proportions <- function(data, comparison_col = "comparison",
     ) +
     # Add horizontal dashed lines at specified y-values
     geom_hline(yintercept = c(0.10, 0.25, 0.5, 0.75, 0.9, 0.95, 0.975), 
-               linetype = "dashed", color = "grey50") +
-    
-    # Add text labels for values
-    geom_text(data = data, aes_string(label = positive_col), 
-              vjust = -0.5, color = "white", size = 3.5, 
-              position = position_stack(vjust = 0.5)) +  # Position above the positive bars
-    geom_text(data = data, aes_string(label = negative_col), 
-              vjust = -0.5, color = "white", size = 3.5, 
-              position = position_stack(vjust = 0.5))  # Position above the negative bars
+               linetype = "dashed", color = "grey50") 
+  
+  # Calculate y positions for the text labels
+  data_long <- data %>%
+    mutate(positive_y = !!sym(positive_col),
+           negative_y = !!sym(negative_col),
+           positive_label = ifelse(positive_y > 0, positive_y, NA),
+           negative_label = ifelse(negative_y > 0, negative_y, NA)) %>%
+    gather(key = "label_type", value = "y_value", positive_label, negative_label) %>%
+    filter(!is.na(y_value))  # Keep only rows with non-NA y values for labels
+  
+  # Add text labels for the bars
+  p <- p + geom_text(data = data_long, 
+                     aes_string(x = comparison_col, y = "y_value", label = "y_value"), 
+                     vjust = -0.5, color = "black", size = 3.5)
 
   if (save) {
     if (!is.null(filename)) {
@@ -1196,6 +1202,7 @@ prism.proportions <- function(data, comparison_col = "comparison",
   # Return the plot object
   return(p)
 }
+
 
 #' Plot Ridge Plot with Boxplots for RhoLower and RhoUpper per Taxa
 #'
