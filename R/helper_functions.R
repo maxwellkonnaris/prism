@@ -949,7 +949,11 @@ prism.simulate_prepost <- function(
   colnames(dummy) <- paste0("Taxa", 1:ncol(W)) 
   dummy$Condition <- Condition
   colnames(Y) <- paste0("Taxa", 1:ncol(Y)) 
-  
+  colnames(W_corr_matrix) <- paste0("Taxa", 1:ncol(W_corr_matrix)) 
+  rownames(W_corr_matrix) <- paste0("Taxa", 1:ncol(W_corr_matrix)) 
+  colnames(W_cov_matrix) <- paste0("Taxa", 1:ncol(W_cov_matrix)) 
+  rownames(W_cov_matrix) <- paste0("Taxa", 1:ncol(W_cov_matrix)) 
+            
   names(taxa_means_pre) <- paste0("Taxa", 1:n_taxa)
   names(taxa_means_post) <- paste0("Taxa", 1:n_taxa)
             
