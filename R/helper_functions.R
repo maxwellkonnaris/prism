@@ -1032,23 +1032,19 @@ optimize_sigma <- function(algorithm, initialparameters, taxa1relativesd, taxa2r
     ))
   }
   
-  # Helper function to perform a small grid search around initial parameters
-  perform_grid_search_on_initial <- function(initialparams, lower_bounds, upper_bounds, grid_size = 3) {
-    # Create a grid by generating values closer to bounds and the initial parameters
-    grid_list <- lapply(seq_along(initialparams), function(i) {
-      param <- initialparams[i]
-      lb <- lower_bounds[i]
-      ub <- upper_bounds[i]
-      
-      # Generate grid points around the initial parameter and at the bounds
-      seq_values <- seq(lb, ub, length.out = grid_size)
-      return(seq_values)
+ # Function to perform a grid search without a specified initial parameter
+  perform_grid_search_on_bounds <- function(lower_bounds, upper_bounds, grid_size = 3) {
+    # Create a list to store sequences for each parameter
+    grid_list <- lapply(seq_along(lower_bounds), function(i) {
+      # Generate grid points between the lower and upper bounds
+      seq(lower_bounds[i], upper_bounds[i], length.out = grid_size)
     })
     
+    # Create a grid by combining all parameter sequences
     grid <- expand.grid(grid_list)
     return(as.matrix(grid))
   }
-  
+    
   # Function to execute the optimization for a given set of initial parameters
   execute_algorithm <- function(algorithm, init_params) {
     switch(algorithm,
@@ -1064,7 +1060,7 @@ optimize_sigma <- function(algorithm, initialparameters, taxa1relativesd, taxa2r
                eval_g_ineq = constraint_f,
                lb = c(rho_lower_bound_1, rho_lower_bound_2, lowerscalestdev),
                ub = c(rho_upper_bound_1, rho_upper_bound_2, upperscalestdev),
-               opts = list("algorithm" = "NLOPT_LN_COBYLA", "maxeval" = 1000000, "xtol_rel" = 1e-5)
+               opts = list("algorithm" = "NLOPT_LN_COBYLA", "maxeval" = 10000, "xtol_rel" = 1e-4)
              )
              
              # Optimization for maximum (negating objective)
@@ -1074,7 +1070,7 @@ optimize_sigma <- function(algorithm, initialparameters, taxa1relativesd, taxa2r
                eval_g_ineq = constraint_f,
                lb = c(rho_lower_bound_1, rho_lower_bound_2, lowerscalestdev),
                ub = c(rho_upper_bound_1, rho_upper_bound_2, upperscalestdev),
-               opts = list("algorithm" = "NLOPT_LN_COBYLA", "maxeval" = 1000000, "xtol_rel" = 1e-5)
+               opts = list("algorithm" = "NLOPT_LN_COBYLA", "maxeval" = 10000, "xtol_rel" = 1e-4)
              )
              
              list(res_min = res_min, res_max = res_max)
@@ -1189,7 +1185,7 @@ optimize_sigma <- function(algorithm, initialparameters, taxa1relativesd, taxa2r
                init_params,
                eval_f = function(params) -objective_f(params),
                eval_g_ineq = function(params) constraint_f(params),
-               eval_grad_f = gradient_f,  # Note: Gradient should also be negated if objective is negated
+               eval_grad_f = -gradient_f, 
                eval_jac_g_ineq = constraint_grad_f,
                lb = c(rho_lower_bound_1, rho_lower_bound_2, lowerscalestdev),
                ub = c(rho_upper_bound_1, rho_upper_bound_2, upperscalestdev),
@@ -1241,7 +1237,7 @@ optimize_sigma <- function(algorithm, initialparameters, taxa1relativesd, taxa2r
                init_params,
                eval_f = function(params) -objective_f(params),
                eval_g_ineq = function(params) constraint_f(params),
-               eval_grad_f = gradient_f,  # Note: Gradient should also be negated if objective is negated
+               eval_grad_f = -gradient_f, 
                eval_jac_g_ineq = constraint_grad_f,
                lb = c(rho_lower_bound_1, rho_lower_bound_2, lowerscalestdev),
                ub = c(rho_upper_bound_1, rho_upper_bound_2, upperscalestdev),
@@ -1263,9 +1259,9 @@ optimize_sigma <- function(algorithm, initialparameters, taxa1relativesd, taxa2r
            "GRID_SEARCH" = {
              # Existing GRID_SEARCH implementation remains unchanged
              # Define parameter steps (unchanged for now)
-             scale <- (upperscalestdev - lowerscalestdev) / 5
-             bound1 <- (rho_upper_bound_1 - rho_lower_bound_1) / 5
-             bound2 <- (rho_upper_bound_2 - rho_lower_bound_2) / 5
+             scale <- (upperscalestdev - lowerscalestdev) / 10
+             bound1 <- (rho_upper_bound_1 - rho_lower_bound_1) / 10
+             bound2 <- (rho_upper_bound_2 - rho_lower_bound_2) / 10
              
              rho1 <- seq(rho_lower_bound_1, rho_upper_bound_1, by = bound1)
              rho2 <- seq(rho_lower_bound_2, rho_upper_bound_2, by = bound2)
@@ -1369,13 +1365,10 @@ optimize_sigma <- function(algorithm, initialparameters, taxa1relativesd, taxa2r
     # Directly perform GRID_SEARCH
     result <- execute_algorithm(algorithm, initialparameters)
   } else {
-    # Perform a small grid search on initial parameters
-    grid_points <- perform_grid_search_on_initial(
-      initialparameters,
-      lower_bounds = c(rho_lower_bound_1, rho_lower_bound_2, lowerscalestdev),
-      upper_bounds = c(rho_upper_bound_1, rho_upper_bound_2, upperscalestdev),
-      grid_size = 3  # This can be adjusted for more granularity
-    )
+    # Perform a small grid search on initial parameters    
+    grid_points <- perform_grid_search_on_bounds(lower_bounds = c(rho_lower_bound_1, rho_lower_bound_2, lowerscalestdev),
+                                                 upper_bounds = c(rho_upper_bound_1, rho_upper_bound_2, upperscalestdev),
+                                                 grid_size = 3 )
     
     # Initialize lists to store results
     all_res_min <- list()
