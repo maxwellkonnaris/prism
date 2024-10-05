@@ -906,7 +906,8 @@ prism.simulate_prepost <- function(
   
   # Compute correlation matrix of W
   W_corr_matrix <- cor(W)
-  
+  W_cov_matrix <- cov(W)
+                                   
   Condition <- factor(rep(c("Pre", "Post"), each = half_samples), levels = c("Pre", "Post"))
   
   ## 9. Normalize to Get Relative Abundances
@@ -966,7 +967,8 @@ prism.simulate_prepost <- function(
     flow = flow_data,
     latent_corr_matrix = corr_matrix_sparse, 
     latent_cov_matrix = log_cov_matrix,
-    W_corr_matrix = W_corr_matrix
+    W_corr_matrix = W_corr_matrix,
+    W_cov_matrix = W_cov_matrix
   )
   
   if (replicates > 1) {
