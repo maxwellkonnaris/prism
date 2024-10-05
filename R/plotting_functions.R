@@ -49,7 +49,7 @@ prism.forestplot <- function(data_list, bg = "white", save = NULL, filename = NU
     y_axis_colors <- first_data %>%
       mutate(color = ifelse(
         (ninetyfive_ci_lower > 0 & ninetyfive_ci_upper > 0) | (ninetyfive_ci_lower < 0 & ninetyfive_ci_upper < 0),
-        "#023E8A",  # Blue if the CI does not cover zero
+        "#143d80",  # Blue if the CI does not cover zero
         "#BEBEBE"   # Gray if the CI covers zero
       )) %>%
       select(comparison, color) %>%
@@ -114,7 +114,7 @@ prism.forestplot <- function(data_list, bg = "white", save = NULL, filename = NU
     ) +
     scale_color_manual(
       values = c(
-        "95% CI Doesn't Cover Zero" = "#023E8A",  # Blue
+        "95% CI Doesn't Cover Zero" = "#143d80",  # Blue
         "95% CI Covers Zero" = "#BEBEBE",         # Grey
         "Log Covariance Range" = "#676767"
       ),
@@ -1150,9 +1150,9 @@ prism.proportions <- function(data, comparison_col = "comparison",
   # Create the bar plot
   p <- ggplot(data) +
     geom_bar(aes_string(x = comparison_col, y = positive_col), 
-             stat = "identity", fill = "#566D7E", color = "black", size = 0.5) +  # Muted blue
+             stat = "identity", fill = "#143d80", color = "black", size = 0.5) +  # Muted blue
     geom_bar(aes_string(x = comparison_col, y = negative_col), 
-             stat = "identity", fill = "#7C0A02", color = "black", size = 0.5, position = "stack") +  # Muted red
+             stat = "identity", fill = "#80141f", color = "black", size = 0.5, position = "stack") +  # Muted red
     scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, by = 0.05), expand = c(0, 0)) +
     labs(
       title = "Proportion of Range Intervals That Do Not Cover Zero",
@@ -1229,7 +1229,7 @@ prism.rhoridges <- function(rhobounds, D, S, dir_path="./plots/", filename="spec
   melted_data$Taxa_position <- melted_data$Taxa_numeric + ifelse(melted_data$Bound == "RhoLower", -0.2, 0.2)
   
   # Colors for bounds
-  bound_colors <- c("RhoLower" = "#0072B2", "RhoUpper" = "#B22222")
+  bound_colors <- c("RhoLower" = "#80141f", "RhoUpper" = "#143d80")
   
   # Create the ridge plot with boxplots
   plot <- ggplot2::ggplot(melted_data, ggplot2::aes(x = Rho, y = Taxa, fill = Bound)) +
@@ -1339,7 +1339,7 @@ prism.scalesdhistogram <- function(scalestdev, S, dir_path="./plots/", filename=
                         linetype = "dashed", size = 1) +
     # Annotate mean values
     ggplot2::annotate("text", x = mean_values$ScaleSD, y = Inf, label = paste0("Mean = ", round(mean_values$ScaleSD, 4)),
-                      color = c("#0072B2", "#B22222"), angle = 90, vjust = -0.5, hjust = 1.1, size = 5) +
+                      color = c("#80141f", "#143d80"), angle = 90, vjust = -0.5, hjust = 1.1, size = 5) +
     # Labels and theme
     ggplot2::labs(title = "Histogram of Scale Standard Deviation Bounds",
                   x = "Scale Standard Deviation",
@@ -1347,8 +1347,8 @@ prism.scalesdhistogram <- function(scalestdev, S, dir_path="./plots/", filename=
                   fill = "Bound",
                   color = "Bound") +
     # Color palette
-    ggplot2::scale_fill_manual(values = c("Lower" = "#0072B2", "Upper" = "#B22222")) +
-    ggplot2::scale_color_manual(values = c("Lower" = "#0072B2", "Upper" = "#B22222")) +
+    ggplot2::scale_fill_manual(values = c("Lower" = "#80141f", "Upper" = "#143d80")) +
+    ggplot2::scale_color_manual(values = c("Lower" = "#80141f", "Upper" = "#143d80")) +
     # Professional theme
     ggplot2::theme_classic() +
     ggplot2::theme(
@@ -1725,7 +1725,7 @@ prism.trueabundanceplot <- function(W.perp, W, corr_matrix, W.condition, dir_pat
   forest_plot <- ggplot(data = data.frame(taxa = taxa_labels, rho = truerhocorrelation), 
                         aes(x = rho, y = reorder(taxa, -as.numeric(sub("Taxa", "", taxa))))) +
     geom_point(color = "steelblue", size = 6) +
-    geom_segment(aes(x = 0, xend = rho, y = taxa, yend = taxa), color = "steelblue", size = 1.2) +
+    geom_segment(aes(x = 0, xend = rho, y = taxa, yend = taxa), color = "#143d80", size = 1.2) +
     geom_vline(xintercept = 0, linetype = "dotted", color = "black") +
     scale_x_continuous(limits = c(-1, 1), breaks = seq(-1, 1, by = 0.1)) +
     labs(x = "Correlation") +
@@ -1751,7 +1751,7 @@ prism.trueabundanceplot <- function(W.perp, W, corr_matrix, W.condition, dir_pat
 # Ridge plot showing Pre and Post conditions for each taxon
 ridge_plot <- ggplot(W.para_long, aes(x = Value, y = Taxa, fill = Condition)) +
   geom_density_ridges(scale = 1, alpha = 0.4) +
-  scale_fill_manual(values = c("Pre" = "#BEBEBE", "Post" = "#023E8A")) + 
+  scale_fill_manual(values = c("Pre" = "#BEBEBE", "Post" = "#143d80")) + 
   labs(title = "Taxa with Pre and Post Conditions",
        x = "Composition (W.para)",
        y = "Taxa") +
@@ -2024,8 +2024,8 @@ prism.circlenetwork <- function(data_list, metric = "covariance", pvalue = FALSE
                         ci_upper = ifelse(is.na(results$ninetyfive_ci_upper), 0, results$ninetyfive_ci_upper))
     
     # Add color and width for the edges based on the CI
-    edges$color <- ifelse(edges$ci_lower > 0 & edges$ci_upper > 0, "#0041C2",  # Muted blue
-                          ifelse(edges$ci_lower < 0 & edges$ci_upper < 0, "#7C0A02",  # Muted red
+    edges$color <- ifelse(edges$ci_lower > 0 & edges$ci_upper > 0, "#143d80",  # Muted blue
+                          ifelse(edges$ci_lower < 0 & edges$ci_upper < 0, "#80141f",  # Muted red
                                  "grey"))  # Grey if it covers zero
 
     edges$width <- ifelse(edges$ci_lower <= 0 & edges$ci_upper >= 0, 0, 1)  # Uniform width
@@ -2051,7 +2051,7 @@ prism.circlenetwork <- function(data_list, metric = "covariance", pvalue = FALSE
       geom_edge_link(aes(edge_width = width, color = color), show.legend = TRUE) +
       geom_node_point(size = 5) +
       geom_node_text(aes(label = name), repel = TRUE, size = 6) +  # Larger font size for node labels
-      scale_edge_color_manual(values = c("#0041C2", "#7C0A02", "grey")) +  # Muted colors for edges
+      scale_edge_color_manual(values = c("#0041C2", "#80141f", "grey")) +  # Muted colors for edges
       coord_fixed() +  # Ensures circular plot (aspect ratio = 1)
       theme_void() +
       theme(
