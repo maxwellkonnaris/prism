@@ -1341,20 +1341,18 @@ optimize_sigma <- function(algorithm, initialparameters, taxa1relativesd, taxa2r
                               ifelse(is.null(min_sigma_row$scalestdevstep), {message(sprintf("min_sigma_row$scalestdevstep is NULL for d1: %s d2: %s s: %s", d1, d2, s)); NA}, min_sigma_row$scalestdevstep)),
                  message = "GRIDSEARCH_SUCCESS",
                  status = "GRIDSEARCH_SUCCESS",
-                 iterations = nrow(pars),
-                 spsd = nrow(rpars)
+                 iterations = nrow(pars)
                )
                
                # Extract values from max_sigma_row
                res_max <- list(
-                 objective = ifelse(is.null(max_sigma_row$sigma), {message(sprintf("max_sigma_row$sigma is NULL for d1 %s : d2 %s for bootstrap %s", d1, d2, s)); NA}, max_sigma_row$sigma),
+                 objective = ifelse(is.null(max_sigma_row$sigma), {message(sprintf("max_sigma_row$sigma is NULL for d1 %s : d2 %s for bootstrap %s", d1, d2, s)); NA}, -max_sigma_row$sigma),
                  solution = c(ifelse(is.null(max_sigma_row$rho1), {message(sprintf("max_sigma_row$rho1 is NULL for d1: %s d2: %s s: %s", d1, d2, s)); NA}, max_sigma_row$rho1),
                               ifelse(is.null(max_sigma_row$rho2), {message(sprintf("max_sigma_row$rho2 is NULL for d1: %s d2: %s s: %s", d1, d2, s)); NA}, max_sigma_row$rho2),
                               ifelse(is.null(max_sigma_row$scalestdevstep), {message(sprintf("max_sigma_row$scalestdevstep is NULL for d1: %s d2: %s s: %s", d1, d2, s)); NA}, max_sigma_row$scalestdevstep)),
                  message = "GRIDSEARCH_SUCCESS",
                  status = "GRIDSEARCH_SUCCESS",
-                 iterations = nrow(pars),
-                 spsd = nrow(rpars)
+                 iterations = nrow(pars)
                )
                
                message(sprintf("Valid rows found, returning min and max results for d1 %s : d2 %s for bootstrap %s", d1, d2, s))
