@@ -231,18 +231,13 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
     
       # Create progress bars
       pb <- progress::progress_bar$new(total = total_pairs, format = "Generating Sigmas [:bar] :percent in :elapsed | eta: :eta", clear = FALSE, width = 100)
-      pb_rhosd <- progress::progress_bar$new(total = D*S, format = "Generating Rho and SD [:bar] :percent in :elapsed | eta: :eta", clear = FALSE, width = 100)
       
       # Function to update progress bar
       progress <- function(n) {
         pb$tick()
       }
-      progress_rhosd <- function(n) {
-        pb_rhosd$tick()
-      }
       # Options for foreach to include progress updates
       opts <- list(progress = progress)
-      opts_rhosd <- list(progress = progress_rhosd)
       ## END PROGRESS BARS -------------------------------------------------------------------------------------------------------------------------------------
       
       ## ACCOUNTING FOR UNCERTAINTY IN FINITE SAMPLING ---------------------------------------------------------------------------------------------------------
