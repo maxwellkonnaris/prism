@@ -2139,8 +2139,8 @@ prism.circlenetwork <- function(data_list, metric = "covariance", pvalue = FALSE
 prism.assessment <- function(data_list, cov_matrix, outputdirectory = "./plots/") {
   
   # Create output directory if it does not exist
-  if (!dir.exists(output_dir)) {
-    dir.create(output_dir, recursive = TRUE)
+  if (!dir.exists(outputdirectory)) {
+    dir.create(outputdirectory, recursive = TRUE)
   }
   
   # Function to extract off-diagonal values from a covariance/correlation matrix
