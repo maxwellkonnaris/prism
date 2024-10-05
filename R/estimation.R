@@ -501,6 +501,9 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
       if (!is.null(outputdirectory)) {
           lock_files <- list.files(path = outputdirectory, pattern = "\\.txt\\.lock$", full.names = TRUE)
           file.remove(lock_files)
+      } else {
+          lock_files <- list.files(path = getwd(), pattern = "\\.txt\\.lock$", full.names = TRUE)
+          file.remove(lock_files)
       }
 
       
