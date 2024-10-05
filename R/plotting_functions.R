@@ -2007,7 +2007,7 @@ prism.circlenetwork <- function(data_list, metric = "covariance", pvalue = FALSE
         # Update the original dataframe with the new taxa1 and taxa2 columns
         data_list[[dataset_name]] <- results
       } else {
-        stop(paste("Data frame '", dataset_name, "' must contain columns 'taxa1', 'taxa2', 'ninetyfive_ci_lower', 'ninetyfive_ci_upper' or a 'comparison' column."))
+        stop(paste("Data frame '", dataset_name, "' must contain columns 'taxa1', 'taxa2', or a 'comparison' column, and 'ninetyfive_ci_lower', 'ninetyfive_ci_upper'."))
       }
     }
   }
@@ -2032,7 +2032,10 @@ prism.circlenetwork <- function(data_list, metric = "covariance", pvalue = FALSE
                         ci_upper = ifelse(is.na(results$ninetyfive_ci_upper), 0, results$ninetyfive_ci_upper))
     
     # Add color and width for the edges based on the CI
-    edges$color <- ifelse(edges$ci_lower > 0, "blue", ifelse(edges$ci_upper < 0, "red", "grey"))
+    edges$color <- ifelse(edges$ci_lower > 0 & edges$ci_upper > 0, "blue", 
+	                      ifelse(edges$ci_lower < 0 & edges$ci_upper < 0, "red", 
+	                             "grey"))
+
     
     # Edge width inversely proportional to certainty, treating NA as zero
     edges$width <- ifelse(edges$ci_lower > 0, 
