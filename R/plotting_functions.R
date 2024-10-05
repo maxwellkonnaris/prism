@@ -1724,7 +1724,7 @@ prism.trueabundanceplot <- function(W.perp, W, corr_matrix, W.condition, dir_pat
   # Create forest plot for true correlations with W.perp
   forest_plot <- ggplot(data = data.frame(taxa = taxa_labels, rho = truerhocorrelation), 
                         aes(x = rho, y = reorder(taxa, -as.numeric(sub("Taxa", "", taxa))))) +
-    geom_point(color = "steelblue", size = 6) +
+    geom_point(color = "#143d80", size = 6) +
     geom_segment(aes(x = 0, xend = rho, y = taxa, yend = taxa), color = "#143d80", size = 1.2) +
     geom_vline(xintercept = 0, linetype = "dotted", color = "black") +
     scale_x_continuous(limits = c(-1, 1), breaks = seq(-1, 1, by = 0.1)) +
