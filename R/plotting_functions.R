@@ -1150,9 +1150,9 @@ prism.proportions <- function(data, comparison_col = "comparison",
   # Create the bar plot
   p <- ggplot(data) +
     geom_bar(aes_string(x = comparison_col, y = positive_col), 
-             stat = "identity", fill = "#6BAED6", color = "black", size = 0.5) +  # Muted blue
+             stat = "identity", fill = "#566D7E", color = "black", size = 0.5) +  # Muted blue
     geom_bar(aes_string(x = comparison_col, y = negative_col), 
-             stat = "identity", fill = "#FC9272", color = "black", size = 0.5, position = "stack") +  # Muted red
+             stat = "identity", fill = "#7C0A02", color = "black", size = 0.5, position = "stack") +  # Muted red
     scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, by = 0.05), expand = c(0, 0)) +
     labs(
       title = "Proportion of Range Intervals That Do Not Cover Zero",
@@ -1170,7 +1170,7 @@ prism.proportions <- function(data, comparison_col = "comparison",
       legend.position = "top"
     ) +
     # Add horizontal dashed lines at specified y-values
-    geom_hline(yintercept = c(0.10, 0.25, 0.5, 0.75, 0.9, 0.95, 0.975), 
+    geom_hline(yintercept = c(0.85, 0.9, 0.95, 0.975), 
                linetype = "dashed", color = "grey50")
 
   if (save) {
@@ -2024,17 +2024,14 @@ prism.circlenetwork <- function(data_list, metric = "covariance", pvalue = FALSE
                         ci_upper = ifelse(is.na(results$ninetyfive_ci_upper), 0, results$ninetyfive_ci_upper))
     
     # Add color and width for the edges based on the CI
-    edges$color <- ifelse(edges$ci_lower > 0 & edges$ci_upper > 0, "#4C78A8",  # Muted blue
-                          ifelse(edges$ci_lower < 0 & edges$ci_upper < 0, "#E45756",  # Muted red
+    edges$color <- ifelse(edges$ci_lower > 0 & edges$ci_upper > 0, "#0041C2",  # Muted blue
+                          ifelse(edges$ci_lower < 0 & edges$ci_upper < 0, "#7C0A02",  # Muted red
                                  "grey"))  # Grey if it covers zero
 
-    # Set width to 0 if the CI covers zero
-    edges$width <- ifelse(edges$ci_lower <= 0 & edges$ci_upper >= 0, 0,
-                          ifelse(edges$ci_lower > 0, 1 / (edges$ci_lower),  # Positive edges
-                                 ifelse(edges$ci_upper < 0, 1 / abs(edges$ci_upper), NA)))  # Negative edges
+    edges$width <- ifelse(edges$ci_lower <= 0 & edges$ci_upper >= 0, 0, 1)  # Uniform width
     
     # Remove edges where the 95% CI covers zero (i.e., both ci_lower and ci_upper are zero)
-    edges <- edges[!(edges$ci_lower == 0 & edges$ci_upper == 0), ]
+    edges <- edges[!(edges$ci_lower < 0 & edges$ci_upper > 0), ]
     
     # Ensure all taxa in the edges exist in the all_taxa list, and filter any edges referring to non-existent taxa
     valid_edges <- edges[edges$from %in% all_taxa & edges$to %in% all_taxa, ]
@@ -2054,7 +2051,7 @@ prism.circlenetwork <- function(data_list, metric = "covariance", pvalue = FALSE
       geom_edge_link(aes(edge_width = width, color = color), show.legend = TRUE) +
       geom_node_point(size = 5) +
       geom_node_text(aes(label = name), repel = TRUE, size = 6) +  # Larger font size for node labels
-      scale_edge_color_manual(values = c("#4C78A8", "#E45756", "grey")) +  # Muted colors for edges
+      scale_edge_color_manual(values = c("#0041C2", "#7C0A02", "grey")) +  # Muted colors for edges
       coord_fixed() +  # Ensures circular plot (aspect ratio = 1)
       theme_void() +
       theme(
