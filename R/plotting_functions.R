@@ -1150,9 +1150,9 @@ prism.proportions <- function(data, comparison_col = "comparison",
   # Create the bar plot
   p <- ggplot(data) +
     geom_bar(aes_string(x = comparison_col, y = positive_col), 
-             stat = "identity", fill = "blue", color = "black", size = 0.5) +
+             stat = "identity", fill = "#6BAED6", color = "black", size = 0.5) +  # Muted blue
     geom_bar(aes_string(x = comparison_col, y = negative_col), 
-             stat = "identity", fill = "red", color = "black", size = 0.5, position = "stack") +
+             stat = "identity", fill = "#FC9272", color = "black", size = 0.5, position = "stack") +  # Muted red
     scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, by = 0.05), expand = c(0, 0)) +
     labs(
       title = "Proportion of Range Intervals That Do Not Cover Zero",
@@ -1171,21 +1171,12 @@ prism.proportions <- function(data, comparison_col = "comparison",
     ) +
     # Add horizontal dashed lines at specified y-values
     geom_hline(yintercept = c(0.10, 0.25, 0.5, 0.75, 0.9, 0.95, 0.975), 
-               linetype = "dashed", color = "grey50") 
-  
-  # Calculate y positions for the text labels
-  data_long <- data %>%
-    mutate(positive_y = !!sym(positive_col),
-           negative_y = !!sym(negative_col),
-           positive_label = ifelse(positive_y > 0, positive_y, NA),
-           negative_label = ifelse(negative_y > 0, negative_y, NA)) %>%
-    gather(key = "label_type", value = "y_value", positive_label, negative_label) %>%
-    filter(!is.na(y_value))  # Keep only rows with non-NA y values for labels
-  
-  # Add text labels for the bars
-  p <- p + geom_text(data = data_long, 
-                     aes_string(x = comparison_col, y = "y_value", label = "y_value"), 
-                     vjust = -0.5, color = "black", size = 3.5)
+               linetype = "dashed", color = "grey50") +
+    # Add legend for colors
+    scale_fill_manual(values = c("Positive Intervals" = "#6BAED6", "Negative Intervals" = "#FC9272")) +  # Muted colors
+
+  # Remove text labels for values
+  # (no geom_text() calls here since we want to remove labels)
 
   if (save) {
     if (!is.null(filename)) {
