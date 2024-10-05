@@ -2146,17 +2146,9 @@ prism.assessment <- function(data_list, cov_matrix, outputdirectory = "./plots/"
     dir.create(outputdirectory, recursive = TRUE)
   }
   
-  # Function to extract off-diagonal values from a covariance/correlation matrix
-  extract_off_diagonals <- function(mat) {
-    return(mat[upper.tri(mat)])
-  }
-  
   # Initialize a list to store confusion matrices for each method
   confusion_matrices <- list()
   
-  # Extract true correlations
-  true_correlations <- extract_off_diagonals(cov_matrix)
-
   # Loop through each data.table in the input list
   for (method_name in names(data_list)) {
     data <- data_list[[method_name]]
@@ -2166,17 +2158,33 @@ prism.assessment <- function(data_list, cov_matrix, outputdirectory = "./plots/"
       stop("The data.table must contain comparison, taxa1, taxa2, ninetyfive_ci_lower, and ninetyfive_ci_upper columns.")
     }
     
+    # Convert CI columns to numeric if they are not already
+    data$ninetyfive_ci_lower <- as.numeric(data$ninetyfive_ci_lower)
+    data$ninetyfive_ci_upper <- as.numeric(data$ninetyfive_ci_upper)
+
     # Initialize a confusion matrix
     confusion <- data.table(
       Comparison = data$comparison,
-      True_Correlation = NA,
-      Within_CI = NA,
-      Sign_Correct = NA
+      Color_Code = NA_character_  # For the color coding
     )
     
     # Populate the confusion matrix
     for (i in 1:nrow(data)) {
-      true_cor <- cov_matrix[data$taxa1[i], data$taxa2[i]] # Directly access true correlation
+      taxa1 <- data$taxa1[i]
+      taxa2 <- data$taxa2[i]
+      
+      if (!(taxa1 %in% rownames(cov_matrix)) || !(taxa2 %in% colnames(cov_matrix))) {
+        stop(paste("taxa1 or taxa2 not found in covariance matrix:", taxa1, taxa2))
+      }
+      
+      true_cor <- cov_matrix[taxa1, taxa2]  # Directly access true correlation
+
+      # Check for NA values in CI
+      if (is.na(data$ninetyfive_ci_lower[i]) || is.na(data$ninetyfive_ci_upper[i])) {
+          # If either CI is NA, assign grey color code
+          confusion[i, Color_Code := "grey"]
+          next  # Skip to the next iteration
+      }
       
       # Check if the true correlation is within the CI
       within_ci <- ifelse(true_cor >= data$ninetyfive_ci_lower[i] & true_cor <= data$ninetyfive_ci_upper[i], TRUE, FALSE)
@@ -2184,15 +2192,16 @@ prism.assessment <- function(data_list, cov_matrix, outputdirectory = "./plots/"
       # Determine if the sign is correct (non-zero and sign matches)
       sign_correct <- ifelse(data$ninetyfive_ci_lower[i] > 0 & true_cor > 0 |
                              data$ninetyfive_ci_lower[i] < 0 & true_cor < 0, TRUE, FALSE)
-      
-      # If CI does not cover zero and true correlation is not zero, it can be correct
-      if (data$ninetyfive_ci_lower[i] * data$ninetyfive_ci_upper[i] > 0 && true_cor != 0) {
-        sign_correct <- ifelse(sign_correct, TRUE, FALSE)
+
+      if (data$ninetyfive_ci_lower[i] * data$ninetyfive_ci_upper[i] > 0) { # CI does not cover zero
+        if (within_ci) {
+          confusion[i, Color_Code := "green"]  # True value lies within the CI
+        } else {
+          confusion[i, Color_Code := ifelse(sign_correct, "blue", "red")  # Matches sign or not
+        }
       } else {
-        sign_correct <- FALSE
+        confusion[i, Color_Code := "grey"]  # CI covers zero
       }
-      
-      confusion[i] <- list(Comparison = data$comparison[i], True_Correlation = true_cor, Within_CI = within_ci, Sign_Correct = sign_correct)
     }
     
     confusion_matrices[[method_name]] <- confusion
@@ -2206,6 +2215,7 @@ prism.assessment <- function(data_list, cov_matrix, outputdirectory = "./plots/"
   
   return(combined_confusion)
 }
+
 
 #' Plot Confusion Matrix
 #'
@@ -2222,11 +2232,18 @@ prism.assessment <- function(data_list, cov_matrix, outputdirectory = "./plots/"
 #' plot_confusion_matrix(confusion_data, output_dir = "./my_plots/")
 #' 
 plot_confusion_matrix <- function(confusion_data, outputdirectory) {
-  p <- ggplot(confusion_data, aes(x = Comparison, fill = factor(Within_CI))) +
-    geom_bar(position = "dodge") +
-    scale_fill_manual(values = c("0" = "grey", "1" = "blue"), 
-                      labels = c("0" = "Outside CI", "1" = "Within CI")) +
-    labs(title = "Confusion Matrix: True Correlations vs 95% CI",
+  # Ensure that Color_Code is treated as a factor for plotting
+  confusion_data$Color_Code <- factor(confusion_data$Color_Code, 
+                                       levels = c("grey", "blue", "red", "green"), 
+                                       labels = c("Does not match sign/95%CI covers zero", 
+                                                  "Matches sign, 95%CI does not cover zero", 
+                                                  "Does not match sign, 95%CI does not cover zero", 
+                                                  "Matches sign and within 95%CI"))
+  
+  p <- ggplot(confusion_data, aes(x = Comparison, fill = Color_Code)) +
+    geom_bar(position = "stack") +  # Stacked bar chart
+    scale_fill_manual(values = c("grey", "blue", "red", "green")) +
+    labs(title = "True Correlations vs 95% CI",
          x = "Comparison",
          y = "Count",
          fill = "CI Status") +
