@@ -2241,9 +2241,9 @@ plot_confusion_matrix <- function(confusion_data_list, outputdirectory) {
   # Initialize an empty list to store plots
   plot_list <- list()
   
-  # Loop through each data frame in the list
-  for (i in seq_along(confusion_data_list)) {
-    confusion_data <- confusion_data_list[[i]]
+  # Loop through each confusion data frame in the list
+  for (method_name in names(confusion_data_list)) {
+    confusion_data <- confusion_data_list[[method_name]]
     
     # Ensure that Color_Code is treated as a factor for plotting
     confusion_data$Color_Code <- factor(confusion_data$Color_Code, 
@@ -2253,12 +2253,18 @@ plot_confusion_matrix <- function(confusion_data_list, outputdirectory) {
                                                     "Does not match sign, 95%CI does not cover zero", 
                                                     "Matches sign and within 95%CI"))
     
+    # Summarize the counts for each Color_Code by Method
+    summary_data <- confusion_data %>%
+      group_by(Color_Code) %>%
+      summarise(Count = n(), .groups = 'drop') %>%
+      mutate(Method = method_name)  # Add the method name to the summary
+
     # Create the plot
-    p <- ggplot(confusion_data, aes(x = Comparison, fill = Color_Code)) +
-      geom_bar(position = "stack") +  # Stacked bar chart
+    p <- ggplot(summary_data, aes(x = Method, y = Count, fill = Color_Code)) +
+      geom_bar(stat = "identity", position = "stack") +  # Stacked bar chart
       scale_fill_manual(values = c("grey", "blue", "red", "green")) +
-      labs(title = paste("True Correlations vs 95% CI - DataFrame", i),
-           x = "Comparison",
+      labs(title = "True Correlations vs 95% CI",
+           x = "Method",
            y = "Count",
            fill = "CI Status") +
       theme_minimal(base_size = 15) +
@@ -2273,11 +2279,11 @@ plot_confusion_matrix <- function(confusion_data_list, outputdirectory) {
       )
     
     # Save the plot as a PNG file
-    ggsave(filename = paste0(outputdirectory, "prism_confusionmatrix_df", i, ".png"), 
+    ggsave(filename = paste0(outputdirectory, "prism_confusionmatrix_", method_name, ".png"), 
            plot = p, dpi = 300, width = 10, height = 8)
     
     # Add the plot to the list
-    plot_list[[i]] <- p
+    plot_list[[method_name]] <- p
   }
   
   # Optionally display all plots in the console
