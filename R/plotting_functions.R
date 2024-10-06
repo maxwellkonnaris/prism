@@ -1148,7 +1148,7 @@ prism.proportions <- function(data, comparison_col = "comparison",
   
   # Reorder the factor levels of the comparison column based on the proportion column
   data[[comparison_col]] <- factor(data[[comparison_col]], 
-                                    levels = data[[comparison_col]][order(data[[proportion_col]], decreasing = FALSE)])
+                                    levels = data[[comparison_col]][order(data[[proportion_col]], decreasing = TRUE)])
   
   # Reshape data to long format for ggplot
   data_long <- data %>%
@@ -1994,6 +1994,11 @@ prism.circlenetwork <- function(data_list, metric = "covariance", pvalue = FALSE
     stop("Invalid metric. Please specify either 'covariance' or 'correlation'.")
   }
   
+  # Initialize color labels
+  color_labels <- c("Positive effect" = "#143d80", 
+                    "Negative effect" = "#80141f", 
+                    "No effect" = "grey")
+  
   # Initialize all_taxa to store unique taxa names
   all_taxa <- unique(unlist(lapply(data_list, function(x) unique(c(x$taxa1, x$taxa2)))))
   
@@ -2121,6 +2126,7 @@ prism.circlenetwork <- function(data_list, metric = "covariance", pvalue = FALSE
     return(plot_list)  # Return the list of individual plots
   }
 }
+
 
 
 
