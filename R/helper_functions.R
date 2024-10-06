@@ -1584,20 +1584,30 @@ identify_promising_regions <- function(grid, top_n = 5) {
 #'
 #' @examples
 #' refined_grid <- refine_grid_search(top_grid, refinement_factor = 3)
-refine_grid_search <- function(top_grid, refinement_factor = 3) {
+refine_grid_search <- function(top_grid, rho1_range, rho2_range, scalestdev_range, refinement_factor = 3) {
   refined_grids <- list()
   
   for (i in 1:nrow(top_grid)) {
     # Narrow down the search range around each top grid point
-    rho1_range <- c(top_grid[i, "rho1"] - (top_grid[i, "rho1"] / refinement_factor),
-                    top_grid[i, "rho1"] + (top_grid[i, "rho1"] / refinement_factor))
-    rho2_range <- c(top_grid[i, "rho2"] - (top_grid[i, "rho2"] / refinement_factor),
-                    top_grid[i, "rho2"] + (top_grid[i, "rho2"] / refinement_factor))
-    scalestdev_range <- c(top_grid[i, "scalestdevstep"] - (top_grid[i, "scalestdevstep"] / refinement_factor),
-                          top_grid[i, "scalestdevstep"] + (top_grid[i, "scalestdevstep"] / refinement_factor))
+    rho1_best <- top_grid[i, "rho1"]
+    rho2_best <- top_grid[i, "rho2"]
+    scalestdev_best <- top_grid[i, "scalestdevstep"]
     
-    # Perform finer search within this range
-    refined_grid <- coarse_search(rho1_range, rho2_range, scalestdev_range, n_steps = 5)
+    # Calculate new ranges for refinement, ensuring we include original bounds
+    rho1_range_new <- c(max(rho1_range[1], rho1_best - (rho1_best / refinement_factor)),
+                        min(rho1_range[2], rho1_best + (rho1_best / refinement_factor)))
+    rho2_range_new <- c(max(rho2_range[1], rho2_best - (rho2_best / refinement_factor)),
+                        min(rho2_range[2], rho2_best + (rho2_best / refinement_factor)))
+    scalestdev_range_new <- c(max(scalestdev_range[1], scalestdev_best - (scalestdev_best / refinement_factor)),
+                              min(scalestdev_range[2], scalestdev_best + (scalestdev_best / refinement_factor)))
+    
+    # Ensure bounds are included in the new ranges
+    rho1_range_new <- unique(c(rho1_range_new, rho1_range[1], rho1_range[2]))
+    rho2_range_new <- unique(c(rho2_range_new, rho2_range[1], rho2_range[2]))
+    scalestdev_range_new <- unique(c(scalestdev_range_new, scalestdev_range[1], scalestdev_range[2]))
+    
+    # Perform finer search within this new range
+    refined_grid <- coarse_search(rho1_range_new, rho2_range_new, scalestdev_range_new, n_steps = 5)
     refined_grids[[i]] <- refined_grid
   }
   
@@ -1605,3 +1615,4 @@ refine_grid_search <- function(top_grid, refinement_factor = 3) {
   final_grid <- do.call(rbind, refined_grids)
   return(final_grid)
 }
+
