@@ -2320,26 +2320,28 @@ plot_confusion_matrix <- function(confusion_data_list, outputdirectory, save) {
     combined_data <- rbind(combined_data, summary_data)
   }
   
-  # Create a single plot with stacked bars for each method
+	# Create a single plot with stacked bars for each method
   p <- ggplot(combined_data, aes(x = Method, y = Count, fill = Color_Code)) +
-    geom_bar(stat = "identity", position = "stack") +  # Stacked bar chart for all methods
-    scale_fill_manual(values = c("grey", "blue", "red", "green"),
-                      guide = guide_legend(nrow = 2, byrow = TRUE)) +  # Split legend into 2 rows
-    labs(title = "True Correlations vs 95% CI",
-         x = NULL,  # Remove x-axis title
-         y = "Count",
-         fill = NULL) +
-    theme_minimal(base_size = 18) +  # Increase base size for font
-    theme(
-      text = element_text(size = 16, family = "Arial"),  # Increased text size
-      plot.title = element_text(hjust = 0.5, face = "bold", size = 20),  # Increased title size
-      axis.title.x = element_blank(),  # Remove x-axis title
-      axis.title.y = element_text(face = "bold", size = 16),  # Y-axis title size
-      legend.position = "top",  # Keep the legend at the top
-      legend.direction = "horizontal",  # Make the legend horizontal
-      panel.grid.major = element_line(color = "grey80"),
-      panel.grid.minor = element_blank()
-    )
+	  geom_bar(stat = "identity", position = "stack") +  # Stacked bar chart for all methods
+	  scale_fill_manual(values = c("grey", "blue", "red", "green"),
+	                    guide = guide_legend(nrow = 2, byrow = TRUE)) +  # Split legend into 2 rows
+	  labs(title = "True Correlations vs 95% CI",
+	       x = NULL,  # Remove x-axis title
+	       y = "Count",
+	       fill = NULL) +
+	  theme_minimal(base_size = 18) +  # Increase base size for font
+	  theme(
+	    text = element_text(size = 16, family = "Arial"),  # Increased text size
+	    plot.title = element_text(hjust = 0.5, face = "bold", size = 20),  # Increased title size
+	    axis.title.x = element_blank(),  # Remove x-axis title
+	    axis.title.y = element_text(face = "bold", size = 16, margin = margin(r = 15)),  # Y-axis title size and space
+	    axis.text.x = element_text(face = "bold", size = 16),  # Bold the x-axis labels
+	    legend.position = "top",  # Keep the legend at the top
+	    legend.direction = "horizontal",  # Make the legend horizontal
+	    panel.grid.major = element_line(color = "grey80"),
+	    panel.grid.minor = element_blank()
+  )
+
 
   if (save) {
   # Save the combined plot as a PNG file
