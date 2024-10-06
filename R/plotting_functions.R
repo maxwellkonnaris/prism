@@ -1156,7 +1156,7 @@ prism.proportions <- function(data, comparison_col = "comparison",
   # Create the stacked bar plot
   p <- ggplot(data) +
     geom_bar(aes_string(x = comparison_col, y = positive_col, fill = shQuote("Positive Intervals")), 
-             stat = "identity", color = "black", size = 0.5) +  # Positive color
+             stat = "identity", color = "black", size = 0.5, position = "stack") +  # Positive color
     geom_bar(aes_string(x = comparison_col, y = negative_col, fill = shQuote("Negative Intervals")), 
              stat = "identity", color = "black", size = 0.5, position = "stack") +  # Negative color
     scale_fill_manual(values = colors, labels = outcome_labels) +  # Custom colors and labels
