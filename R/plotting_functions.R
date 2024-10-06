@@ -1143,6 +1143,9 @@ prism.proportions <- function(data, comparison_col = "comparison",
     dir.create(outputdirectory, recursive = TRUE)
   }
   
+  # Remove NA values in the proportion column for ordering
+  data <- data[!is.na(data[[proportion_col]]), ]
+  
   # Reorder the factor levels of the comparison column based on the proportion column
   data[[comparison_col]] <- factor(data[[comparison_col]], 
                                     levels = data[[comparison_col]][order(data[[proportion_col]], decreasing = TRUE)])
@@ -1188,6 +1191,7 @@ prism.proportions <- function(data, comparison_col = "comparison",
   # Return the plot object
   return(p)
 }
+
 
 #' Plot Ridge Plot with Boxplots for RhoLower and RhoUpper per Taxa
 #'
@@ -2015,55 +2019,58 @@ prism.circlenetwork <- function(data_list, metric = "covariance", pvalue = FALSE
 
   # Loop through the data frames and create the plots
   for (dataset_name in names(data_list)) {
-    results <- data_list[[dataset_name]]
-    
-    # Create edge list from the results dataframe
-    edges <- data.frame(from = results$taxa1, 
-                        to = results$taxa2, 
-                        ci_lower = ifelse(is.na(results$ninetyfive_ci_lower), 0, results$ninetyfive_ci_lower), 
-                        ci_upper = ifelse(is.na(results$ninetyfive_ci_upper), 0, results$ninetyfive_ci_upper))
-    
-    # Add color and width for the edges based on the CI
-    edges$color <- ifelse(edges$ci_lower > 0 & edges$ci_upper > 0, "#143d80",  # Muted blue
-                          ifelse(edges$ci_lower < 0 & edges$ci_upper < 0, "#80141f",  # Muted red
-                                 "grey"))  # Grey if it covers zero
-
-    edges$width <- ifelse(edges$ci_lower <= 0 & edges$ci_upper >= 0, 0, 1)  # Uniform width
-    
-    # Remove edges where the 95% CI covers zero (i.e., both ci_lower and ci_upper are zero)
-    edges <- edges[!(edges$ci_lower < 0 & edges$ci_upper > 0), ]
-    
-    # Ensure all taxa in the edges exist in the all_taxa list, and filter any edges referring to non-existent taxa
-    valid_edges <- edges[edges$from %in% all_taxa & edges$to %in% all_taxa, ]
-    
-    # Create an igraph object with vertices being all unique taxa
-    graph <- graph_from_data_frame(valid_edges, directed = FALSE, vertices = all_taxa)
-    
-    # Set edge properties based on the calculated values
-    E(graph)$color <- valid_edges$color
-    E(graph)$width <- valid_edges$width
-    
-    # Fix node positions to maintain the same layout order for each plot
-    layout_fixed <- create_layout(graph, layout = "circle")  # Get the circular layout
-    
-    # Plot using ggraph with circular layout, ensure a circular aspect ratio and consistent node positions
-    plot_object <- ggraph(layout_fixed) +
-      geom_edge_link(aes(edge_width = width, color = color), show.legend = TRUE) +
-      geom_node_point(size = 5) +
-      geom_node_text(aes(label = name), repel = TRUE, size = 6) +  # Larger font size for node labels
-      scale_edge_color_manual(values = c("#0041C2", "#80141f", "grey")) +  # Muted colors for edges
-      coord_fixed() +  # Ensures circular plot (aspect ratio = 1)
-      theme_void() +
-      theme(
-        legend.position = "top",
-        plot.title = element_text(hjust = 0.5, size = 20, face = "bold")  # Large centered title
-      ) +
-      ggtitle(dataset_name)  # Title with dataset name
-    
-    # Add the plot to the list
-    plot_list[[dataset_name]] <- plot_object
+	  results <- data_list[[dataset_name]]
+	  
+	  # Create edge list from the results dataframe
+	  edges <- data.frame(from = results$taxa1, 
+			      to = results$taxa2, 
+			      ci_lower = ifelse(is.na(results$ninetyfive_ci_lower), 0, results$ninetyfive_ci_lower), 
+			      ci_upper = ifelse(is.na(results$ninetyfive_ci_upper), 0, results$ninetyfive_ci_upper))
+	  
+	  # Add color and width for the edges based on the CI
+	  edges$color <- ifelse(edges$ci_lower > 0 & edges$ci_upper > 0, "#143d80",  # Positive effect
+				ifelse(edges$ci_lower < 0 & edges$ci_upper < 0, "#80141f",  # Negative effect
+				       "grey"))  # No effect
+	
+	  edges$width <- ifelse(edges$ci_lower <= 0 & edges$ci_upper >= 0, 0, 1)  # Uniform width
+	  
+	  # Remove edges where the 95% CI covers zero (i.e., both ci_lower and ci_upper are zero)
+	  edges <- edges[!(edges$ci_lower < 0 & edges$ci_upper > 0), ]
+	  
+	  # Ensure all taxa in the edges exist in the all_taxa list, and filter any edges referring to non-existent taxa
+	  valid_edges <- edges[edges$from %in% all_taxa & edges$to %in% all_taxa, ]
+	  
+	  # Create an igraph object with vertices being all unique taxa
+	  graph <- graph_from_data_frame(valid_edges, directed = FALSE, vertices = all_taxa)
+	  
+	  # Set edge properties based on the calculated values
+	  E(graph)$color <- valid_edges$color
+	  E(graph)$width <- valid_edges$width
+	  
+	  # Fix node positions to maintain the same layout order for each plot
+	  layout_fixed <- create_layout(graph, layout = "circle")  # Get the circular layout
+	  
+	  # Define a named vector for the edge colors and corresponding labels
+	  color_labels <- c("Positive Effect" = "#143d80", "Negative Effect" = "#80141f")
+	  
+	  # Plot using ggraph with circular layout, ensure a circular aspect ratio and consistent node positions
+	  plot_object <- ggraph(layout_fixed) +
+	    geom_edge_link(aes(edge_width = width, color = color), show.legend = TRUE) +
+	    geom_node_point(size = 5) +
+	    geom_node_text(aes(label = name), repel = TRUE, size = 6) +  # Larger font size for node labels
+	    scale_edge_color_manual(values = color_labels, labels = names(color_labels)) +  # Custom colors and labels for edges
+	    coord_fixed() +  # Ensures circular plot (aspect ratio = 1)
+	    theme_void() +
+	    theme(
+	      legend.position = "top",
+	      plot.title = element_text(hjust = 0.5, size = 25, face = "bold")  # Large centered title
+	    ) +
+	    ggtitle(dataset_name)  # Title with dataset name
+	  
+	  # Add the plot to the list
+	  plot_list[[dataset_name]] <- plot_object
   }
-  
+				   
   # Combine the plots into a multi-panel plot if combine_plots is TRUE
   if (combine_plots) {
     combined_plot <- wrap_plots(plot_list)  # Use patchwork to combine
@@ -2087,8 +2094,6 @@ prism.circlenetwork <- function(data_list, metric = "covariance", pvalue = FALSE
     }
     return(plot_list)  # Return the list of individual plots
   }
-}
-
 
 
 #' Compare True Correlations with Confidence Intervals
