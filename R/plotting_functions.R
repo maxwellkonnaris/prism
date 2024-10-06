@@ -2266,10 +2266,10 @@ plot_confusion_matrix <- function(confusion_data_list, outputdirectory) {
     # Ensure that Color_Code is treated as a factor for plotting
     confusion_data$Color_Code <- factor(confusion_data$Color_Code, 
                                          levels = c("grey", "blue", "red", "green"), 
-                                         labels = c("Does not match sign / 95%CI covers zero / Not Identified", 
-                                                    "Matches sign and 95%CI does not cover zero", 
-                                                    "Does not match sign and 95%CI does not cover zero", 
-                                                    "Matches sign / 95% does not cover zero / value within 95%CI"))
+                                         labels = c("Doesnt match sign | 95%CI covers zero | Not Identified", 
+                                                    "Matches sign | 95%CI doesnt cover zero", 
+                                                    "Doesnt match sign | 95%CI doesnt cover zero", 
+                                                    "Value within 95%CI"))
     
     # Summarize the counts for each Color_Code by Method
     summary_data <- confusion_data %>%
