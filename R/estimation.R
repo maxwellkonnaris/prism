@@ -352,13 +352,11 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
               upperscalestdev = scalestdev[s,2]
               lowerscalestdev = scalestdev[s,1]
             }
-            # Define initial parameters for optimization
-            initialparameters <- c(((rho_upper_bound_1+rho_lower_bound_1) / 2), ((rho_upper_bound_2+rho_lower_bound_2) / 2), ((upperscalestdev + lowerscalestdev) / 2))
-    
+ 
             # Function for optimizations (See helper_functions)
             result_sigma = optimize_sigma(d1 = d1, d2 = d2, s = s, taxa1relativesd = taxa1relativesd, taxa2relativesd = taxa2relativesd, relativecovariance = relativecovariance, rho_lower_bound_1 = rho_lower_bound_1, 
                                          rho_lower_bound_2 = rho_lower_bound_2, rho_upper_bound_1 = rho_upper_bound_1, rho_upper_bound_2 = rho_upper_bound_2, lowerscalestdev = lowerscalestdev, upperscalestdev = upperscalestdev, 
-                                         initialparameters = initialparameters, algorithm = algorithm, outputdirectory = outputdirectory)
+                                         algorithm = algorithm, outputdirectory = outputdirectory)
       
             res_min <- result_sigma$res_min
             res_max <- result_sigma$res_max
