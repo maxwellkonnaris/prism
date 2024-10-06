@@ -2259,10 +2259,10 @@ plot_confusion_matrix <- function(confusion_data_list, outputdirectory) {
     # Ensure that Color_Code is treated as a factor for plotting
     confusion_data$Color_Code <- factor(confusion_data$Color_Code, 
                                          levels = c("grey", "blue", "red", "green"), 
-                                         labels = c("Does not match sign/95%CI covers zero", 
-                                                    "Matches sign, 95%CI does not cover zero", 
-                                                    "Does not match sign, 95%CI does not cover zero", 
-                                                    "Matches sign and within 95%CI"))
+                                         labels = c("Does not match sign / 95%CI covers zero / Not Identified", 
+                                                    "Matches sign and 95%CI does not cover zero", 
+                                                    "Does not match sign and 95%CI does not cover zero", 
+                                                    "Matches sign / 95% does not cover zero / value within 95%CI"))
     
     # Summarize the counts for each Color_Code by Method
     summary_data <- confusion_data %>%
@@ -2275,15 +2275,15 @@ plot_confusion_matrix <- function(confusion_data_list, outputdirectory) {
       geom_bar(stat = "identity", position = "stack") +  # Stacked bar chart
       scale_fill_manual(values = c("grey", "blue", "red", "green")) +
       labs(title = "True Correlations vs 95% CI",
-           x = "Method",
+           x = NULL,  # Remove x-axis title
            y = "Count",
-           fill = "CI Status") +
-      theme_minimal(base_size = 15) +
+           fill = NULL) +
+      theme_minimal(base_size = 18) +  # Increase base size for font
       theme(
-        text = element_text(size = 12, family = "Arial"),
-        plot.title = element_text(hjust = 0.5, face = "bold", size = 16),
-        axis.title.x = element_text(face = "bold"),
-        axis.title.y = element_text(face = "bold"),
+        text = element_text(size = 16, family = "Arial"),  # Increased text size
+        plot.title = element_text(hjust = 0.5, face = "bold", size = 20),  # Increased title size
+        axis.title.x = element_blank(),  # Remove x-axis title
+        axis.title.y = element_text(face = "bold", size = 16),  # Y-axis title size
         legend.position = "top",
         panel.grid.major = element_line(color = "grey80"),
         panel.grid.minor = element_blank()
@@ -2302,6 +2302,7 @@ plot_confusion_matrix <- function(confusion_data_list, outputdirectory) {
     print(plot)
   }
 }
+
 
 
 
