@@ -2107,24 +2107,30 @@ prism.circlenetwork <- function(data_list, metric = "covariance", pvalue = FALSE
     # Fix node positions to maintain the same layout order for each plot
     layout_fixed <- ggraph::create_layout(graph, layout = "circle")
     
-    # Plot using ggraph
     plot_object <- ggraph::ggraph(layout_fixed) +
-      ggraph::geom_edge_link(aes(edge_width = width, color = color), show.legend = TRUE) +
-      ggraph::geom_node_point(size = 5) +
-      ggraph::geom_node_text(aes(label = name), repel = TRUE, size = 6, hjust = 2, vjust = 2) +  # Repel and nudge labels outside
-      ggraph::scale_edge_colour_manual(values = color_labels) +  # Proper mapping of edge colors
-      ggraph::scale_edge_width(range = c(0.1, 1)) +  # Correct function for edge width scale
-      guides(edge_width = guide_legend(override.aes = list(edge_width = c(0.1, 0.5, 0.75, 1)))) +  # Manually add edge width legend
-      labs(edge_width = "Edge Width", color = "Edge Effect") +  # Set the legend titles
-      coord_fixed() +
-      theme_void() +
-      theme(
-        legend.position = "top",  # Position the legend
-        legend.title = element_text(size = 14, face = "bold"),  # Legend title font size and style
-        legend.text = element_text(size = 12),  # Legend item font size
-        plot.title = element_text(hjust = 0.5, size = 25, face = "bold")  # Large centered title
-      ) +
-      ggtitle(dataset_name)  # Title with dataset name
+	  ggraph::geom_edge_link(aes(edge_width = width, color = color), show.legend = TRUE) +
+	  ggraph::geom_node_point(size = 5) +
+	  ggraph::geom_node_text(aes(label = name), repel = TRUE, size = 6, hjust = 2, vjust = 2) +  # Repel and nudge labels outside
+	  ggraph::scale_edge_colour_manual(values = color_labels) +  # Proper mapping of edge colors
+	  ggraph::scale_edge_width(range = c(0.1, 1)) +  # Correct function for edge width scale
+	  guides(
+	    edge_width = guide_legend(
+	      title = "Association Strength",  # Change legend title for edge width
+	      override.aes = list(edge_width = c(0.1, 0.5, 0.75, 1))
+	    ),
+	    edge_color = guide_legend(title = "Association Sign")  # Change legend title for edge color
+	  ) +
+	  labs(edge_width = "Association Strength", color = "Association Sign") +  # Set the legend titles
+	  coord_fixed() +
+	  theme_void() +
+	  theme(
+	    legend.position = "top",  # Position the legend
+	    legend.title = element_text(size = 14, face = "bold"),  # Legend title font size and style
+	    legend.text = element_text(size = 12),  # Legend item font size
+	    plot.title = element_text(hjust = 0.5, size = 25, face = "bold")  # Large centered title
+	  ) +
+	  ggtitle(dataset_name)  # Title with dataset name
+
     
     # Add the plot to the list
     plot_list[[dataset_name]] <- plot_object
