@@ -1514,4 +1514,94 @@ estimate_rho_and_sd <- function(externalscalemeasurements, Y, S, D, rWparaorigin
   }
 }
 
+# ADAPTIVE GRID SEARCH:
+                                     
+#' Perform an Initial Coarse Grid Search
+#'
+#' This function performs an initial grid search over the given ranges of parameters with a coarse granularity.
+#' It creates a grid of parameters (rho1, rho2, and scalestdevstep) with evenly spaced values, evaluates
+#' the objective function at each point, and returns the performance for each combination.
+#'
+#' @param rho1_range A numeric vector of length 2 defining the lower and upper bounds for the `rho1` parameter.
+#' @param rho2_range A numeric vector of length 2 defining the lower and upper bounds for the `rho2` parameter.
+#' @param scalestdev_range A numeric vector of length 2 defining the lower and upper bounds for the `scalestdevstep` parameter.
+#' @param n_steps An integer specifying the number of steps to take between the bounds for each parameter (default is 5).
+#'
+#' @return A data frame containing the grid of parameters and their associated performance.
+#' @export
+#'
+#' @examples
+#' rho1_range <- c(0.1, 1.0)
+#' rho2_range <- c(0.1, 1.0)
+#' scalestdev_range <- c(0.01, 0.1)
+#' coarse_grid <- coarse_search(rho1_range, rho2_range, scalestdev_range, n_steps = 5)
+coarse_search <- function(rho1_range, rho2_range, scalestdev_range, n_steps = 5) {
+  # Define coarse steps
+  rho1 <- seq(rho1_range[1], rho1_range[2], length.out = n_steps)
+  rho2 <- seq(rho2_range[1], rho2_range[2], length.out = n_steps)
+  scalestdevstep <- seq(scalestdev_range[1], scalestdev_range[2], length.out = n_steps)
+  
+  # Create coarse grid
+  grid <- expand.grid(rho1 = rho1, rho2 = rho2, scalestdevstep = scalestdevstep)
+  
+  # Evaluate objective function at each grid point
+  grid$performance <- apply(grid, 1, function(row) {
+    objective_function(row["rho1"], row["rho2"], row["scalestdevstep"])
+  })
+  
+  return(grid)
+}
 
+#' Identify Promising Regions in the Grid
+#'
+#' This function identifies the top-performing parameter combinations from the initial grid search based on performance.
+#' It orders the grid by performance and selects the top `N` best-performing parameter combinations.
+#'
+#' @param grid A data frame containing the grid of parameters and their associated performance.
+#' @param top_n An integer specifying how many of the top-performing parameter combinations to return (default is 5).
+#'
+#' @return A data frame containing the top `N` parameter combinations and their performance.
+#' @export
+#'
+#' @examples
+#' top_grid <- identify_promising_regions(coarse_grid, top_n = 5)
+identify_promising_regions <- function(grid, top_n = 5) {
+  # Select top N grid points based on performance
+  top_grid <- grid[order(grid$performance, decreasing = TRUE), ][1:top_n, ]
+  return(top_grid)
+}
+
+#' Refine the Grid Search in Promising Regions
+#'
+#' This function refines the search around the top-performing regions identified in the initial coarse grid search.
+#' It narrows the parameter ranges around each top-performing combination and performs a finer grid search in those regions.
+#'
+#' @param top_grid A data frame containing the top-performing parameter combinations from the initial grid search.
+#' @param refinement_factor A numeric value that controls how much to narrow the parameter range around each top point (default is 3).
+#'
+#' @return A data frame containing the refined grid of parameters and their associated performance.
+#' @export
+#'
+#' @examples
+#' refined_grid <- refine_grid_search(top_grid, refinement_factor = 3)
+refine_grid_search <- function(top_grid, refinement_factor = 3) {
+  refined_grids <- list()
+  
+  for (i in 1:nrow(top_grid)) {
+    # Narrow down the search range around each top grid point
+    rho1_range <- c(top_grid[i, "rho1"] - (top_grid[i, "rho1"] / refinement_factor),
+                    top_grid[i, "rho1"] + (top_grid[i, "rho1"] / refinement_factor))
+    rho2_range <- c(top_grid[i, "rho2"] - (top_grid[i, "rho2"] / refinement_factor),
+                    top_grid[i, "rho2"] + (top_grid[i, "rho2"] / refinement_factor))
+    scalestdev_range <- c(top_grid[i, "scalestdevstep"] - (top_grid[i, "scalestdevstep"] / refinement_factor),
+                          top_grid[i, "scalestdevstep"] + (top_grid[i, "scalestdevstep"] / refinement_factor))
+    
+    # Perform finer search within this range
+    refined_grid <- coarse_search(rho1_range, rho2_range, scalestdev_range, n_steps = 5)
+    refined_grids[[i]] <- refined_grid
+  }
+  
+  # Combine all refined grids
+  final_grid <- do.call(rbind, refined_grids)
+  return(final_grid)
+}
