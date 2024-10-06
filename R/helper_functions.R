@@ -1609,7 +1609,7 @@ coarse_search <- function(rho1_range, rho2_range, scalestdev_range, taxa1relativ
 #' top_grid <- identify_promising_regions(coarse_grid, top_n = 5)
 identify_promising_regions <- function(griddy, top_n = 5) {
   # Select top N grid points based on performance
-  top_grid <- grid[order(griddy$sigma, decreasing = FALSE), ][1:top_n, ]
+  top_grid <- griddy[order(griddy$sigma, decreasing = FALSE), ][1:top_n, ]
   return(top_grid)
 }
 
