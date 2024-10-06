@@ -1185,7 +1185,7 @@ prism.proportions <- function(data,
       title = "Proportion of Min/Max Intervals That Do Not Cover Zero",
       x = NULL,
       y = "Proportion",
-      fill = "Interval Type"
+      fill = " "
     ) +
     theme_classic() +
     theme(
