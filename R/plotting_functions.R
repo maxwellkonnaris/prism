@@ -1130,42 +1130,62 @@ prism.bivariate <- function(data, output_directory = "./plots/", sample_size = 3
 #' @examples
 #' # Assuming you have a dataframe called `results_df` with columns for comparison and proportion_intervals_dontcoverzero
 #' # prism.proportions(results_df)
-prism.proportions <- function(data, comparison_col = "comparison", 
+prism.proportions <- function(data, 
+                              comparison_col = "comparison", 
                               proportion_col = "proportion_intervals_dontcoverzero", 
                               positive_col = "proportion_positiveintervals_dontcoverzero",
                               negative_col = "proportion_negativeintervals_dontcoverzero", 
-                              outputdirectory = "./plots/", filename = NULL, save = TRUE) {
+                              outputdirectory = "./plots/", 
+                              filename = NULL, 
+                              save = TRUE) {
   
-  # Check if the directory exists
+  # Ensure required columns exist
+  required_cols <- c(comparison_col, proportion_col, positive_col, negative_col)
+  missing_cols <- setdiff(required_cols, names(data))
+  if(length(missing_cols) > 0){
+    stop(paste("The following required columns are missing from the data:", 
+               paste(missing_cols, collapse = ", ")))
+  }
+  
+  # Check if the directory exists; if not, create it
   if (!dir.exists(outputdirectory)) {
-    # Create the directory
     dir.create(outputdirectory, recursive = TRUE)
   }
   
   # Remove NA values in the proportion column for ordering
-  data <- data[!is.na(data[[proportion_col]]), ]
+  data <- data %>% 
+    filter(!is.na(!!sym(proportion_col)))
   
   # Reorder the factor levels of the comparison column based on the proportion column
-  data[[comparison_col]] <- factor(data[[comparison_col]], 
-                                    levels = data[[comparison_col]][order(data[[proportion_col]], decreasing = TRUE)])
+  data <- data %>%
+    mutate(!!sym(comparison_col) := fct_reorder(!!sym(comparison_col), !!sym(proportion_col), .desc = TRUE))
   
-  # Create the color and label mapping for the legend
-  colors <- c("#143d80", "#80141f")  # Colors for positive and negative
-  outcome_labels <- c("Positive Intervals", "Negative Intervals")  # Labels for legend
+  # Reshape data to long format for easier plotting
+  data_long <- data %>%
+    select(all_of(comparison_col), all_of(positive_col), all_of(negative_col)) %>%
+    pivot_longer(
+      cols = c(all_of(positive_col), all_of(negative_col)),
+      names_to = "Interval_Type",
+      values_to = "Proportion"
+    ) %>%
+    mutate(Interval_Type = recode(Interval_Type,
+                                  !!positive_col = "Positive Intervals",
+                                  !!negative_col = "Negative Intervals"))
+  
+  # Define colors for the intervals
+  colors <- c("Positive Intervals" = "#143d80", 
+              "Negative Intervals" = "#80141f")
   
   # Create the stacked bar plot
-  p <- ggplot(data) +
-    geom_bar(aes_string(x = comparison_col, y = positive_col, fill = shQuote("Positive Intervals")), 
-             stat = "identity", color = "black", size = 0.5, position = "stack") +  # Positive color
-    geom_bar(aes_string(x = comparison_col, y = negative_col, fill = shQuote("Negative Intervals")), 
-             stat = "identity", color = "black", size = 0.5, position = "stack") +  # Negative color
-    scale_fill_manual(values = colors, labels = outcome_labels) +  # Custom colors and labels
+  p <- ggplot(data_long, aes(x = !!sym(comparison_col), y = Proportion, fill = Interval_Type)) +
+    geom_bar(stat = "identity", color = "black", size = 0.5, position = "stack") +
+    scale_fill_manual(values = colors, labels = c("Positive Intervals", "Negative Intervals")) +
     scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, by = 0.05), expand = c(0, 0)) +
     labs(
       title = "Proportion of Min/Max Intervals That Do Not Cover Zero",
       x = NULL,
       y = "Proportion",
-      fill = " " # Legend title
+      fill = "Interval Type"
     ) +
     theme_classic() +
     theme(
@@ -1174,28 +1194,30 @@ prism.proportions <- function(data, comparison_col = "comparison",
       axis.text.y = element_text(size = 14),
       axis.title = element_text(size = 16),
       plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
-      legend.position = "top"  # Legend at the top
+      legend.position = "top"
     ) +
     # Add horizontal dashed lines at specified y-values
     geom_hline(yintercept = c(0.85, 0.9, 0.95, 0.975), 
                linetype = "dashed", color = "grey50")
-
+  
   if (save) {
-    if (!is.null(filename)) {
-      # Save the plot in high resolution suitable for publications
-      ggsave(paste0(outputdirectory, filename, "_proportion_coverage_plot.png"), 
-             plot = p, height = 10, dpi = 300, units = "in")
+    # Determine the filename
+    plot_filename <- if (!is.null(filename)) {
+      paste0(filename, "_proportion_coverage_plot.png")
     } else {
-      # Save the plot in high resolution suitable for publications
-      ggsave(paste0(outputdirectory, "proportion_coverage_plot.png"), 
-             plot = p, height = 10, dpi = 300, units = "in")
+      "proportion_coverage_plot.png"
     }
+    
+    # Construct the full file path
+    file_path <- file.path(outputdirectory, plot_filename)
+    
+    # Save the plot in high resolution suitable for publications
+    ggsave(filename = file_path, plot = p, height = 10, dpi = 300, units = "in")
   }
   
   # Return the plot object
   return(p)
 }
-
 
 
 
