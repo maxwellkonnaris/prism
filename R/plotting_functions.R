@@ -1153,31 +1153,31 @@ prism.proportions <- function(data,
   }
   
   # Remove NA values in the proportion column for ordering
-  data <- data %>% 
-    filter(!is.na(!!sym(proportion_col)))
+  data_clean <- data[!is.na(data[[proportion_col]]), ]
   
   # Reorder the factor levels of the comparison column based on the proportion column
-  data <- data %>%
-    mutate(!!sym(comparison_col) := fct_reorder(!!sym(comparison_col), !!sym(proportion_col), .desc = TRUE))
+  data_clean[[comparison_col]] <- factor(data_clean[[comparison_col]], 
+                                         levels = data_clean[[comparison_col]][order(data_clean[[proportion_col]], decreasing = TRUE)])
   
   # Reshape data to long format for easier plotting
-  data_long <- data %>%
-    select(all_of(comparison_col), all_of(positive_col), all_of(negative_col)) %>%
-    pivot_longer(
-      cols = c(all_of(positive_col), all_of(negative_col)),
+  data_long <- data_clean %>%
+    tidyr::pivot_longer(
+      cols = c(positive_col, negative_col),
       names_to = "Interval_Type",
       values_to = "Proportion"
     ) %>%
-    mutate(Interval_Type = recode(Interval_Type,
-                                  !!positive_col = "Positive Intervals",
-                                  !!negative_col = "Negative Intervals"))
+    mutate(Interval_Type = case_when(
+      Interval_Type == positive_col ~ "Positive Intervals",
+      Interval_Type == negative_col ~ "Negative Intervals",
+      TRUE ~ Interval_Type
+    ))
   
   # Define colors for the intervals
   colors <- c("Positive Intervals" = "#143d80", 
               "Negative Intervals" = "#80141f")
   
   # Create the stacked bar plot
-  p <- ggplot(data_long, aes(x = !!sym(comparison_col), y = Proportion, fill = Interval_Type)) +
+  p <- ggplot(data_long, aes_string(x = comparison_col, y = "Proportion", fill = "Interval_Type")) +
     geom_bar(stat = "identity", color = "black", size = 0.5, position = "stack") +
     scale_fill_manual(values = colors, labels = c("Positive Intervals", "Negative Intervals")) +
     scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, by = 0.05), expand = c(0, 0)) +
@@ -1194,7 +1194,8 @@ prism.proportions <- function(data,
       axis.text.y = element_text(size = 14),
       axis.title = element_text(size = 16),
       plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
-      legend.position = "top"
+      legend.position = "top",
+      legend.text = element_text(size = 16),  # Adjust legend text size
     ) +
     # Add horizontal dashed lines at specified y-values
     geom_hline(yintercept = c(0.85, 0.9, 0.95, 0.975), 
