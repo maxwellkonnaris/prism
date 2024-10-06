@@ -1134,7 +1134,6 @@ prism.proportions <- function(data, comparison_col = "comparison",
                               proportion_col = "proportion_intervals_dontcoverzero", 
                               positive_col = "proportion_positiveintervals_dontcoverzero",
                               negative_col = "proportion_negativeintervals_dontcoverzero", 
-                              ci_upper = "ninetyfive_ci_upper", ci_lower = "ninetyfive_ci_lower", 
                               outputdirectory = "./plots/", filename = NULL, save = TRUE) {
   
   # Check if the directory exists
@@ -1150,24 +1149,23 @@ prism.proportions <- function(data, comparison_col = "comparison",
   data[[comparison_col]] <- factor(data[[comparison_col]], 
                                     levels = data[[comparison_col]][order(data[[proportion_col]], decreasing = TRUE)])
   
-  # Reshape data to long format for ggplot
-  data_long <- data %>%
-    pivot_longer(cols = c(positive_col, negative_col), 
-                 names_to = "positive_negative", 
-                 values_to = "proportion") 
+  # Create the color and label mapping for the legend
+  colors <- c("#143d80", "#80141f")  # Colors for positive and negative
+  outcome_labels <- c("Positive Intervals", "Negative Intervals")  # Labels for legend
   
-  # Create the bar plot
-  p <- ggplot(data_long) +
-    geom_bar(aes_string(x = comparison_col, y = "proportion", fill = "positive_negative"), 
-             stat = "identity", color = "black", size = 0.5, position = "stack") +
-    scale_fill_manual(values = c("positive_col" = "#143d80", "negative_col" = "#80141f"), 
-                      labels = c("Positive Intervals", "Negative Intervals")) +
+  # Create the stacked bar plot
+  p <- ggplot(data) +
+    geom_bar(aes_string(x = comparison_col, y = positive_col, fill = shQuote("Positive Intervals")), 
+             stat = "identity", color = "black", size = 0.5) +  # Positive color
+    geom_bar(aes_string(x = comparison_col, y = negative_col, fill = shQuote("Negative Intervals")), 
+             stat = "identity", color = "black", size = 0.5, position = "stack") +  # Negative color
+    scale_fill_manual(values = colors, labels = outcome_labels) +  # Custom colors and labels
     scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, by = 0.05), expand = c(0, 0)) +
     labs(
       title = "Proportion of Min/Max Intervals That Do Not Cover Zero",
       x = NULL,
       y = "Proportion",
-      fill = NULL
+      fill = " " # Legend title
     ) +
     theme_classic() +
     theme(
@@ -1197,6 +1195,7 @@ prism.proportions <- function(data, comparison_col = "comparison",
   # Return the plot object
   return(p)
 }
+
 
 
 
@@ -2126,8 +2125,6 @@ prism.circlenetwork <- function(data_list, metric = "covariance", pvalue = FALSE
     return(plot_list)  # Return the list of individual plots
   }
 }
-
-
 
 
 #' Compare True Correlations with Confidence Intervals
