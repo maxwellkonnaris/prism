@@ -2008,72 +2008,90 @@ prism.circlenetwork <- function(data_list, metric = "covariance", pvalue = FALSE
     }
   }
   
-  # Now that all data frames have taxa1 and taxa2, define all unique taxa across all dataframes
-  all_taxa <- unique(unlist(lapply(data_list, function(df) unique(c(df$taxa1, df$taxa2)))))
+  # Initialize a list to hold average CIs for normalization
+  all_average_cis <- numeric(0)
   
-  # Sort the taxa alphabetically
-  all_taxa <- sort(all_taxa)
+  # Loop through the data frames and calculate average CIs
+  for (dataset_name in names(data_list)) {
+    results <- data_list[[dataset_name]]
+    
+    # Create edge list from the results dataframe
+    edges <- data.frame(from = results$taxa1, 
+                        to = results$taxa2, 
+                        ci_lower = ifelse(is.na(results$ninetyfive_ci_lower), 0, results$ninetyfive_ci_lower), 
+                        ci_upper = ifelse(is.na(results$ninetyfive_ci_upper), 0, results$ninetyfive_ci_upper))
+    
+    # Calculate the average of the 95% CI
+    edges$average_ci <- (edges$ci_lower + edges$ci_upper) / 2
+    
+    # Store the average CIs for normalization later
+    all_average_cis <- c(all_average_cis, edges$average_ci)
+  }
+  
+  # Determine global min and max for normalization
+  global_min_ci <- min(all_average_cis, na.rm = TRUE)
+  global_max_ci <- max(all_average_cis, na.rm = TRUE)
   
   # Initialize list to store ggplot objects
   plot_list <- list()
 
-  # Loop through the data frames and create the plots
+  # Loop again to create plots and normalize widths
   for (dataset_name in names(data_list)) {
-	  results <- data_list[[dataset_name]]
-	  
-	  # Create edge list from the results dataframe
-	  edges <- data.frame(from = results$taxa1, 
-			      to = results$taxa2, 
-			      ci_lower = ifelse(is.na(results$ninetyfive_ci_lower), 0, results$ninetyfive_ci_lower), 
-			      ci_upper = ifelse(is.na(results$ninetyfive_ci_upper), 0, results$ninetyfive_ci_upper))
-	  
-	  # Add color and width for the edges based on the CI
-	  edges$color <- ifelse(edges$ci_lower > 0 & edges$ci_upper > 0, "#143d80",  # Positive effect
-				ifelse(edges$ci_lower < 0 & edges$ci_upper < 0, "#80141f",  # Negative effect
-				       "grey"))  # No effect
-	
-	  edges$width <- ifelse(edges$ci_lower <= 0 & edges$ci_upper >= 0, 0, 1)  # Uniform width
-	  
-	  # Remove edges where the 95% CI covers zero (i.e., both ci_lower and ci_upper are zero)
-	  edges <- edges[!(edges$ci_lower < 0 & edges$ci_upper > 0), ]
-	  
-	  # Ensure all taxa in the edges exist in the all_taxa list, and filter any edges referring to non-existent taxa
-	  valid_edges <- edges[edges$from %in% all_taxa & edges$to %in% all_taxa, ]
-	  
-	  # Create an igraph object with vertices being all unique taxa
-	  graph <- graph_from_data_frame(valid_edges, directed = FALSE, vertices = all_taxa)
-	  
-	  # Set edge properties based on the calculated values
-	  E(graph)$color <- valid_edges$color
-	  E(graph)$width <- valid_edges$width
-	  
-	  # Fix node positions to maintain the same layout order for each plot
-	  layout_fixed <- create_layout(graph, layout = "circle")  # Get the circular layout
-	  
-	  # Define a named vector for the edge colors and corresponding labels
-	  color_labels <- c("Positive Effect" = "#143d80", "Negative Effect" = "#80141f")
-	  
-	  # Plot using ggraph with circular layout, ensure a circular aspect ratio and consistent node positions
-	  plot_object <- ggraph(layout_fixed) +
-	    geom_edge_link(aes(edge_width = width, color = color), show.legend = TRUE) +
-	    geom_node_point(size = 5) +
-	    geom_node_text(aes(label = name), repel = TRUE, size = 6) +  # Larger font size for node labels
-	    scale_edge_color_manual(values = color_labels, labels = names(color_labels)) +  # Custom colors and labels for edges
-	    coord_fixed() +  # Ensures circular plot (aspect ratio = 1)
-	    theme_void() +
-	    theme(
-	      legend.position = "top",
-	      plot.title = element_text(hjust = 0.5, size = 25, face = "bold")  # Large centered title
-	    ) +
-	    ggtitle(dataset_name)  # Title with dataset name
-	  
-	  # Add the plot to the list
-	  plot_list[[dataset_name]] <- plot_object
+    results <- data_list[[dataset_name]]
+    
+    edges <- data.frame(from = results$taxa1, 
+                        to = results$taxa2, 
+                        ci_lower = ifelse(is.na(results$ninetyfive_ci_lower), 0, results$ninetyfive_ci_lower), 
+                        ci_upper = ifelse(is.na(results$ninetyfive_ci_upper), 0, results$ninetyfive_ci_upper))
+    
+    # Calculate the average of the 95% CI
+    edges$average_ci <- (edges$ci_lower + edges$ci_upper) / 2
+    
+    # Normalize edge width based on global min and max
+    edges$width <- pmin(pmax(0.1, (edges$average_ci - global_min_ci) / (global_max_ci - global_min_ci) * 0.9 + 0.1), 1)
+    
+    # Add color for the edges based on the CI
+    edges$color <- ifelse(edges$ci_lower > 0 & edges$ci_upper > 0, "#143d80",  # Positive effect
+                          ifelse(edges$ci_lower < 0 & edges$ci_upper < 0, "#80141f",  # Negative effect
+                                 "grey"))  # No effect
+    
+    # Remove edges where the 95% CI covers zero
+    edges <- edges[!(edges$ci_lower < 0 & edges$ci_upper > 0), ]
+    
+    # Ensure all taxa in the edges exist in the all_taxa list
+    valid_edges <- edges[edges$from %in% all_taxa & edges$to %in% all_taxa, ]
+    
+    # Create an igraph object
+    graph <- graph_from_data_frame(valid_edges, directed = FALSE, vertices = all_taxa)
+    
+    # Set edge properties
+    E(graph)$color <- valid_edges$color
+    E(graph)$width <- valid_edges$width
+    
+    # Fix node positions to maintain the same layout order for each plot
+    layout_fixed <- create_layout(graph, layout = "circle")
+    
+    # Plot using ggraph
+    plot_object <- ggraph(layout_fixed) +
+      geom_edge_link(aes(edge_width = width, color = color), show.legend = TRUE) +
+      geom_node_point(size = 5) +
+      geom_node_text(aes(label = name), repel = TRUE, size = 6, nudge_y = 0.1) +  # Nudge labels outside nodes
+      scale_edge_color_manual(values = color_labels, labels = names(color_labels)) +
+      coord_fixed() +
+      theme_void() +
+      theme(
+        legend.position = "top",
+        plot.title = element_text(hjust = 0.5, size = 25, face = "bold")  # Large centered title
+      ) +
+      ggtitle(dataset_name)  # Title with dataset name
+    
+    # Add the plot to the list
+    plot_list[[dataset_name]] <- plot_object
   }
-				   
-  # Combine the plots into a multi-panel plot if combine_plots is TRUE
+  
+  # Combine plots if required
   if (combine_plots) {
-    combined_plot <- wrap_plots(plot_list)  # Use patchwork to combine
+    combined_plot <- wrap_plots(plot_list)
     
     if (save_plot) {
       ggsave(paste0(dir_path, filename, "_circlenetwork_combined.png"), combined_plot, width = 20, height = 15, dpi = 300)
@@ -2084,16 +2102,15 @@ prism.circlenetwork <- function(data_list, metric = "covariance", pvalue = FALSE
     if (save_plot) {
       for (dataset_name in names(plot_list)) {
         plot <- plot_list[[dataset_name]]
-        # Check if "plots" directory exists, if not, create it
         if (!dir.exists(dir_path)) {
           dir.create(dir_path)
         }
-        # Save each plot with the dataset name as the suffix
         ggsave(paste0(dir_path, filename, "_circlenetwork_", dataset_name, ".png"), plot, width = 10, height = 10, dpi = 300)
       }
     }
     return(plot_list)  # Return the list of individual plots
   }
+}
 
 
 #' Compare True Correlations with Confidence Intervals
