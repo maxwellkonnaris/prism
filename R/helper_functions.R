@@ -1288,7 +1288,10 @@ optimize_sigma <- function(algorithm, taxa1relativesd, taxa2relativesd, relative
             #   refinement_factor = 3  # Refinement factor to zoom into the best regions
             # )
 
-             
+                 # Perform a small grid search on initial parameters    
+             pars <- perform_grid_search_on_bounds(lower_bounds = c(rho1_lb, rho2_lb, scale_lb),
+                                                 upper_bounds = c(rho1_ub, rho2_ub, scale_ub),
+                                                 grid_size = 10)
              
              # Step 4: Use refined grid to calculate sigma for the final grid space
              # Calculate SPSD
