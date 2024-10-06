@@ -1148,29 +1148,35 @@ prism.proportions <- function(data, comparison_col = "comparison",
   
   # Reorder the factor levels of the comparison column based on the proportion column
   data[[comparison_col]] <- factor(data[[comparison_col]], 
-                                    levels = data[[comparison_col]][order(data[[proportion_col]], decreasing = TRUE)])
+                                    levels = data[[comparison_col]][order(data[[proportion_col]], decreasing = FALSE)])
+  
+  # Reshape data to long format for ggplot
+  data_long <- data %>%
+    pivot_longer(cols = c(positive_col, negative_col), 
+                 names_to = "positive_negative", 
+                 values_to = "proportion") 
   
   # Create the bar plot
-  p <- ggplot(data) +
-    geom_bar(aes_string(x = comparison_col, y = positive_col), 
-             stat = "identity", fill = "#143d80", color = "black", size = 0.5) +  # Muted blue
-    geom_bar(aes_string(x = comparison_col, y = negative_col), 
-             stat = "identity", fill = "#80141f", color = "black", size = 0.5, position = "stack") +  # Muted red
+  p <- ggplot(data_long) +
+    geom_bar(aes_string(x = comparison_col, y = "proportion", fill = "positive_negative"), 
+             stat = "identity", color = "black", size = 0.5, position = "stack") +
+    scale_fill_manual(values = c("positive_col" = "#143d80", "negative_col" = "#80141f"), 
+                      labels = c("Positive Intervals", "Negative Intervals")) +
     scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, by = 0.05), expand = c(0, 0)) +
     labs(
-      title = "Proportion of Range Intervals That Do Not Cover Zero",
-      x = "Comparison",
+      title = "Proportion of Min/Max Intervals That Do Not Cover Zero",
+      x = NULL,
       y = "Proportion",
-      fill = "Interval Status"
+      fill = NULL
     ) +
     theme_classic() +
     theme(
-      text = element_text(size = 12, family = "Arial"),
-      axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 10),
-      axis.text.y = element_text(size = 12),
-      axis.title = element_text(size = 12),
-      plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
-      legend.position = "top"
+      text = element_text(size = 14, family = "Arial"),
+      axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 12),
+      axis.text.y = element_text(size = 14),
+      axis.title = element_text(size = 16),
+      plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
+      legend.position = "top"  # Legend at the top
     ) +
     # Add horizontal dashed lines at specified y-values
     geom_hline(yintercept = c(0.85, 0.9, 0.95, 0.975), 
@@ -1180,17 +1186,18 @@ prism.proportions <- function(data, comparison_col = "comparison",
     if (!is.null(filename)) {
       # Save the plot in high resolution suitable for publications
       ggsave(paste0(outputdirectory, filename, "_proportion_coverage_plot.png"), 
-             plot = p, height = 8, dpi = 300, units = "in")
+             plot = p, height = 10, dpi = 300, units = "in")
     } else {
       # Save the plot in high resolution suitable for publications
       ggsave(paste0(outputdirectory, "proportion_coverage_plot.png"), 
-             plot = p, height = 8, dpi = 300, units = "in")
+             plot = p, height = 10, dpi = 300, units = "in")
     }
   }
   
   # Return the plot object
   return(p)
 }
+
 
 
 #' Plot Ridge Plot with Boxplots for RhoLower and RhoUpper per Taxa
@@ -1203,7 +1210,7 @@ prism.proportions <- function(data, comparison_col = "comparison",
 #'   the second dimension contains RhoLower and RhoUpper values, and S is the number 
 #'   of samples.
 #' @param D Integer representing the number of taxa.
-#' @param S Integer representing the number of samples.
+#' @param S Integer representing the number of samples.95% CI 
 #'
 #' @return A ggplot object containing the ridge plot with boxplots.
 #' 
