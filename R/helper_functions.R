@@ -1060,7 +1060,7 @@ optimize_sigma <- function(algorithm, initialparameters, taxa1relativesd, taxa2r
                eval_g_ineq = constraint_f,
                lb = c(rho_lower_bound_1, rho_lower_bound_2, lowerscalestdev),
                ub = c(rho_upper_bound_1, rho_upper_bound_2, upperscalestdev),
-               opts = list("algorithm" = "NLOPT_LN_COBYLA", "maxeval" = 10000, "xtol_rel" = 1e-4)
+               opts = list("algorithm" = "NLOPT_LN_COBYLA", "maxeval" = 1000, "xtol_rel" = 1e-4)
              )
              
              # Optimization for maximum (negating objective)
@@ -1070,7 +1070,7 @@ optimize_sigma <- function(algorithm, initialparameters, taxa1relativesd, taxa2r
                eval_g_ineq = constraint_f,
                lb = c(rho_lower_bound_1, rho_lower_bound_2, lowerscalestdev),
                ub = c(rho_upper_bound_1, rho_upper_bound_2, upperscalestdev),
-               opts = list("algorithm" = "NLOPT_LN_COBYLA", "maxeval" = 10000, "xtol_rel" = 1e-4)
+               opts = list("algorithm" = "NLOPT_LN_COBYLA", "maxeval" = 1000, "xtol_rel" = 1e-4)
              )
              
              list(res_min = res_min, res_max = res_max)
@@ -1092,7 +1092,7 @@ optimize_sigma <- function(algorithm, initialparameters, taxa1relativesd, taxa2r
                eval_jac_g_ineq = constraint_grad_f,
                lb = c(rho_lower_bound_1, rho_lower_bound_2, lowerscalestdev),
                ub = c(rho_upper_bound_1, rho_upper_bound_2, upperscalestdev),
-               opts = list("algorithm" = "NLOPT_LD_MMA", "maxeval" = 10000, "ftol_rel" = 1e-4)
+               opts = list("algorithm" = "NLOPT_LD_MMA", "maxeval" = 1000, "ftol_rel" = 1e-4)
              )
              
              # Optimization for maximum (negating the objective and gradient)
@@ -1104,7 +1104,7 @@ optimize_sigma <- function(algorithm, initialparameters, taxa1relativesd, taxa2r
                eval_jac_g_ineq = constraint_grad_f,
                lb = c(rho_lower_bound_1, rho_lower_bound_2, lowerscalestdev),
                ub = c(rho_upper_bound_1, rho_upper_bound_2, upperscalestdev),
-               opts = list("algorithm" = "NLOPT_LD_MMA", "maxeval" = 10000, "ftol_rel" = 1e-4)
+               opts = list("algorithm" = "NLOPT_LD_MMA", "maxeval" = 1000, "ftol_rel" = 1e-4)
              )
              
              list(res_min = res_min, res_max = res_max)
@@ -1116,7 +1116,7 @@ optimize_sigma <- function(algorithm, initialparameters, taxa1relativesd, taxa2r
                "algorithm" = "NLOPT_LD_SLSQP",
                "xtol_rel" = 1e-4,
                "ftol_rel" = 1e-4,
-               "maxeval" = 10000
+               "maxeval" = 1000
              )
              
              # Define objective, gradient, and constraint functions
@@ -1173,9 +1173,9 @@ optimize_sigma <- function(algorithm, initialparameters, taxa1relativesd, taxa2r
                  "local_opts" = list(
                    "algorithm" = "NLOPT_LD_SLSQP",
                    "xtol_rel" = 1e-4,
-                   "maxeval" = 10000
+                   "maxeval" = 1000
                  ),
-                 "maxeval" = 10000,
+                 "maxeval" = 1000,
                  "ftol_rel" = 1e-4
                )
              )
@@ -1194,9 +1194,9 @@ optimize_sigma <- function(algorithm, initialparameters, taxa1relativesd, taxa2r
                  "local_opts" = list(
                    "algorithm" = "NLOPT_LD_SLSQP",
                    "xtol_rel" = 1e-4,
-                   "maxeval" = 10000
+                   "maxeval" = 1000
                  ),
-                 "maxeval" = 10000,
+                 "maxeval" = 1000,
                  "ftol_rel" = 1e-4
                )
              )
@@ -1225,9 +1225,9 @@ optimize_sigma <- function(algorithm, initialparameters, taxa1relativesd, taxa2r
                  "local_opts" = list(
                    "algorithm" = "NLOPT_LD_LBFGS",
                    "xtol_rel" = 1e-4,
-                   "maxeval" = 10000
+                   "maxeval" = 1000
                  ),
-                 "maxeval" = 10000,
+                 "maxeval" = 1000,
                  "ftol_rel" = 1e-4
                )
              )
@@ -1246,9 +1246,9 @@ optimize_sigma <- function(algorithm, initialparameters, taxa1relativesd, taxa2r
                  "local_opts" = list(
                    "algorithm" = "NLOPT_LD_LBFGS",
                    "xtol_rel" = 1e-4,
-                   "maxeval" = 10000
+                   "maxeval" = 1000
                  ),
-                 "maxeval" = 10000,
+                 "maxeval" = 1000,
                  "ftol_rel" = 1e-4
                )
              )
