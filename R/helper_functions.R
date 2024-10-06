@@ -1265,29 +1265,31 @@ optimize_sigma <- function(algorithm, taxa1relativesd, taxa2relativesd, relative
              scale_lb = init_params[5]
              scale_ub = init_params[6]
    
-            # Step 1: Perform the initial coarse grid search
-            initial_grid <- coarse_search(
-              rho1_range = c(rho1_lb, rho1_ub),
-              rho2_range = c(rho2_lb, rho2_ub),
-              scalestdev_range = c(scale_lb, scale_ub),
-              taxa1relativesd = taxa1relativesd,
-              taxa2relativesd = taxa2relativesd,
-              relativecovariance = relativecovariance,
-              n_steps = 5  # Coarse grid with 5 steps in each parameter
-            )
+            # # Step 1: Perform the initial coarse grid search
+            # initial_grid <- coarse_search(
+            #   rho1_range = c(rho1_lb, rho1_ub),
+            #   rho2_range = c(rho2_lb, rho2_ub),
+            #   scalestdev_range = c(scale_lb, scale_ub),
+            #   taxa1relativesd = taxa1relativesd,
+            #   taxa2relativesd = taxa2relativesd,
+            #   relativecovariance = relativecovariance,
+            #   n_steps = 5  # Coarse grid with 5 steps in each parameter
+            # )
           
-            # Step 2: Identify top-performing regions based on initial results
-            top_grid <- identify_promising_regions(initial_grid, top_n = 5)
+            # # Step 2: Identify top-performing regions based on initial results
+            # top_grid <- identify_promising_regions(initial_grid, top_n = 5)
           
-            # Step 3: Refine the grid search in promising regions
-            pars <- refine_grid_search(
-              top_grid = top_grid,
-              rho1_range = c(rho1_lb, rho1_ub),
-              rho2_range = c(rho2_lb, rho2_ub),
-              scalestdev_range = c(scale_lb, scale_ub),
-              refinement_factor = 3  # Refinement factor to zoom into the best regions
-            )
-                   
+            # # Step 3: Refine the grid search in promising regions
+            # pars <- refine_grid_search(
+            #   top_grid = top_grid,
+            #   rho1_range = c(rho1_lb, rho1_ub),
+            #   rho2_range = c(rho2_lb, rho2_ub),
+            #   scalestdev_range = c(scale_lb, scale_ub),
+            #   refinement_factor = 3  # Refinement factor to zoom into the best regions
+            # )
+
+             
+             
              # Step 4: Use refined grid to calculate sigma for the final grid space
              # Calculate SPSD
              constraint_values <- vectorized_constraint_function(
