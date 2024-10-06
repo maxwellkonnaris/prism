@@ -2298,7 +2298,7 @@ plot_confusion_matrix <- function(confusion_data_list, outputdirectory) {
     
     # Save the plot as a PNG file
     ggsave(filename = paste0(outputdirectory, "prism_confusionmatrix_", method_name, ".png"), 
-           plot = p, dpi = 300, width = 10, height = 8)
+           plot = p, dpi = 300, width = 10, bg = 'white', height = 8)
     
     # Add the plot to the list
     plot_list[[method_name]] <- p
