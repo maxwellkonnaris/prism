@@ -1994,6 +1994,9 @@ prism.circlenetwork <- function(data_list, metric = "covariance", pvalue = FALSE
     stop("Invalid metric. Please specify either 'covariance' or 'correlation'.")
   }
   
+  # Initialize all_taxa to store unique taxa names
+  all_taxa <- unique(unlist(lapply(data_list, function(x) unique(c(x$taxa1, x$taxa2)))))
+  
   # Preprocess each dataframe in data_list to ensure 'taxa1', 'taxa2', 'ninetyfive_ci_lower', 'ninetyfive_ci_upper'
   for (dataset_name in names(data_list)) {
     results <- data_list[[dataset_name]]
@@ -2118,6 +2121,7 @@ prism.circlenetwork <- function(data_list, metric = "covariance", pvalue = FALSE
     return(plot_list)  # Return the list of individual plots
   }
 }
+
 
 
 #' Compare True Correlations with Confidence Intervals
