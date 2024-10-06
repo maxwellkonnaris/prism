@@ -1554,7 +1554,7 @@ estimate_rho_and_sd <- function(externalscalemeasurements, Y, S, D, rWparaorigin
 #' rho2_range <- c(0.1, 1.0)
 #' scalestdev_range <- c(0.01, 0.1)
 #' coarse_grid <- coarse_search(rho1_range, rho2_range, scalestdev_range, n_steps = 5)
-coarse_search <- function(rho1_range, rho2_range, scalestdev_range, taxa1relativesd, taxa2relativesd, relativecovariance, n_steps = 5) {
+coarse_search <- function(rho1_range, rho2_range, scalestdev_range, taxa1relativesd, taxa2relativesd, s, d1, d2, relativecovariance, n_steps = 5) {
   # Define coarse steps
   rho1 <- seq(rho1_range[1], rho1_range[2], length.out = n_steps)
   rho2 <- seq(rho2_range[1], rho2_range[2], length.out = n_steps)
@@ -1635,7 +1635,7 @@ refine_grid_search <- function(top_grid, rho1_range, rho2_range, scalestdev_rang
     rho2_best <- top_grid[i, "rho2"]
     scalestdev_best <- top_grid[i, "scalestdevstep"]
     
-    # Calculate new ranges for refinement, ensuring we include original bounds
+    # Calculate new ranges for refinement
     rho1_range_new <- c(max(rho1_range[1], rho1_best - (rho1_best / refinement_factor)),
                         min(rho1_range[2], rho1_best + (rho1_best / refinement_factor)))
     rho2_range_new <- c(max(rho2_range[1], rho2_best - (rho2_best / refinement_factor)),
@@ -1643,14 +1643,13 @@ refine_grid_search <- function(top_grid, rho1_range, rho2_range, scalestdev_rang
     scalestdev_range_new <- c(max(scalestdev_range[1], scalestdev_best - (scalestdev_best / refinement_factor)),
                               min(scalestdev_range[2], scalestdev_best + (scalestdev_best / refinement_factor)))
     
-    # Ensure bounds are included in the new ranges
-    rho1_range_new <- unique(c(rho1_range_new, rho1_range[1], rho1_range[2]))
-    rho2_range_new <- unique(c(rho2_range_new, rho2_range[1], rho2_range[2]))
-    scalestdev_range_new <- unique(c(scalestdev_range_new, scalestdev_range[1], scalestdev_range[2]))
+    rho1 <- seq(rho1_range_new[1], rho1_range_new[2], length.out = 3)
+    rho2 <- seq(rho2_range_new[1], rho2_range_new[2], length.out = 3)
+    scalestdevstep <- seq(scalestdev_range_new[1], scalestdev_range_new[2], length.out = 3)
     
-    # Perform finer search within this new range
-    refined_grid <- coarse_search(rho1_range_new, rho2_range_new, scalestdev_range_new, n_steps = 5)
-    refined_grids[[i]] <- refined_grid
+    # Create coarse grid
+    grid <- expand.grid(rho1 = rho1, rho2 = rho2, scalestdevstep = scalestdevstep)
+    refined_grids[[i]] <- grid
   }
   
   # Combine all refined grids
