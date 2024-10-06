@@ -2196,7 +2196,7 @@ prism.circlenetwork <- function(data_list, metric = "covariance", pvalue = FALSE
 #' results <- prism.assessment(list(Method1 = method1_data, Method2 = method2_data), correlation_matrix)
 #' print(results)
 #' 
-prism.assessment <- function(data_list, cov_matrix, outputdirectory = "./plots/") {
+prism.assessment <- function(data_list, cov_matrix, outputdirectory = "./plots/", save = FALSE) {
   
   # Create output directory if it does not exist
   if (!dir.exists(outputdirectory)) {
@@ -2265,7 +2265,7 @@ prism.assessment <- function(data_list, cov_matrix, outputdirectory = "./plots/"
   }
   
   # Plotting the confusion matrix for all methods
-  plot_confusion_matrix(confusion_matrices, outputdirectory)
+  plot_confusion_matrix(confusion_matrices, outputdirectory, save)
   
   # Combine confusion matrices into a single data frame for return, if needed
   combined_confusion <- rbindlist(confusion_matrices, idcol = "Method")
@@ -2289,14 +2289,14 @@ prism.assessment <- function(data_list, cov_matrix, outputdirectory = "./plots/"
 #' # Assuming 'confusion_data' is a data.table from 'compare_correlations'
 #' plot_confusion_matrix(confusion_data, output_dir = "./my_plots/")
 #' 
-plot_confusion_matrix <- function(confusion_data_list, outputdirectory) {
+plot_confusion_matrix <- function(confusion_data_list, outputdirectory, save) {
   # Check if the output directory exists; if not, create it
   if (!dir.exists(outputdirectory)) {
     dir.create(outputdirectory, recursive = TRUE)
   }
   
-  # Initialize an empty list to store plots
-  plot_list <- list()
+  # Initialize an empty dataframe to combine all methods
+  combined_data <- data.frame()
   
   # Loop through each confusion data frame in the list
   for (method_name in names(confusion_data_list)) {
@@ -2308,48 +2308,46 @@ plot_confusion_matrix <- function(confusion_data_list, outputdirectory) {
                                          labels = c("Doesnt match sign | 95%CI covers zero | Not Identified", 
                                                     "Matches sign | 95%CI doesnt cover zero", 
                                                     "Doesnt match sign | 95%CI doesnt cover zero", 
-                                                    "Value within 95%CI"))
+                                                    "True Value within 95%CI"))
     
     # Summarize the counts for each Color_Code by Method
     summary_data <- confusion_data %>%
       group_by(Color_Code) %>%
       summarise(Count = n(), .groups = 'drop') %>%
       mutate(Method = method_name)  # Add the method name to the summary
-
-    # Create the plot
-    p <- ggplot(summary_data, aes(x = Method, y = Count, fill = Color_Code)) +
-      geom_bar(stat = "identity", position = "stack") +  # Stacked bar chart
-      scale_fill_manual(values = c("grey", "blue", "red", "green")) +
-      labs(title = "True Correlations vs 95% CI",
-           x = NULL,  # Remove x-axis title
-           y = "Count",
-           fill = NULL) +
-      theme_minimal(base_size = 18) +  # Increase base size for font
-      theme(
-        text = element_text(size = 16, family = "Arial"),  # Increased text size
-        plot.title = element_text(hjust = 0.5, face = "bold", size = 20),  # Increased title size
-        axis.title.x = element_blank(),  # Remove x-axis title
-        axis.title.y = element_text(face = "bold", size = 16),  # Y-axis title size
-        legend.position = "top",
-        panel.grid.major = element_line(color = "grey80"),
-        panel.grid.minor = element_blank()
-      )
     
-    # Save the plot as a PNG file
-    ggsave(filename = paste0(outputdirectory, "prism_confusionmatrix_", method_name, ".png"), 
-           plot = p, dpi = 300, width = 10, bg = 'white', height = 8)
-    
-    # Add the plot to the list
-    plot_list[[method_name]] <- p
+    # Append to combined_data
+    combined_data <- rbind(combined_data, summary_data)
   }
   
-  # Optionally display all plots in the console
-  for (plot in plot_list) {
-    print(plot)
+  # Create a single plot with stacked bars for each method
+  p <- ggplot(combined_data, aes(x = Method, y = Count, fill = Color_Code)) +
+    geom_bar(stat = "identity", position = "stack") +  # Stacked bar chart for all methods
+    scale_fill_manual(values = c("grey", "blue", "red", "green"),
+                      guide = guide_legend(nrow = 2, byrow = TRUE)) +  # Split legend into 2 rows
+    labs(title = "True Correlations vs 95% CI",
+         x = NULL,  # Remove x-axis title
+         y = "Count",
+         fill = NULL) +
+    theme_minimal(base_size = 18) +  # Increase base size for font
+    theme(
+      text = element_text(size = 16, family = "Arial"),  # Increased text size
+      plot.title = element_text(hjust = 0.5, face = "bold", size = 20),  # Increased title size
+      axis.title.x = element_blank(),  # Remove x-axis title
+      axis.title.y = element_text(face = "bold", size = 16),  # Y-axis title size
+      legend.position = "top",  # Keep the legend at the top
+      legend.direction = "horizontal",  # Make the legend horizontal
+      panel.grid.major = element_line(color = "grey80"),
+      panel.grid.minor = element_blank()
+    )
+
+  if (save) {
+  # Save the combined plot as a PNG file
+  ggsave(filename = paste0(outputdirectory, "prism_confusionplot.png"), 
+         plot = p, dpi = 300, width = 10, bg = 'white', height = 10)
   }
+  
+  # Optionally display the plot
+  print(p)
 }
-
-
-
-
 
