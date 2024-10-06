@@ -2320,7 +2320,10 @@ plot_confusion_matrix <- function(confusion_data_list, outputdirectory, save) {
     combined_data <- rbind(combined_data, summary_data)
   }
   
-	# Create a single plot with stacked bars for each method
+  # Ensure that the x-axis labels (Method) are plotted in the original order provided in the data
+  combined_data$Method <- factor(combined_data$Method, levels = unique(combined_data$Method))
+
+  # Create a single plot with stacked bars for each method
   p <- ggplot(combined_data, aes(x = Method, y = Count, fill = Color_Code)) +
 	  geom_bar(stat = "identity", position = "stack") +  # Stacked bar chart for all methods
 	  scale_fill_manual(values = c("grey", "blue", "red", "green"),
@@ -2341,7 +2344,6 @@ plot_confusion_matrix <- function(confusion_data_list, outputdirectory, save) {
 	    panel.grid.major = element_line(color = "grey80"),
 	    panel.grid.minor = element_blank()
   )
-
 
   if (save) {
   # Save the combined plot as a PNG file
