@@ -1012,8 +1012,8 @@ prism.simulate_prepost <- function(
   
   # 1. Generate mean abundances for taxa on the log scale
   # Define abundance categories: rare, medium, frequent
-  rare_pct = 0.2
-  medium_pct = 0.4
+  rare_pct = 0.25
+  medium_pct = 0.65
   n_rare = round(n_taxa * rare_pct)
   n_medium = round(n_taxa * medium_pct)
   n_frequent = n_taxa - n_rare - n_medium
