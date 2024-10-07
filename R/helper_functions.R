@@ -846,16 +846,16 @@ prism.simulate_prepost <- function(
   Condition = factor(rep(c("Pre", "Post"), each = half_samples), levels = c("Pre", "Post"))
   
   # 12. Prepare results
-  colnames(W_counts) = paste0("Taxon", 1:n_taxa)
-  colnames(Y_counts) = paste0("Taxon", 1:n_taxa)
+  colnames(W_counts) = paste0("Taxa", 1:n_taxa)
+  colnames(Y_counts) = paste0("Taxa", 1:n_taxa)
   
   # Compute observed covariance and correlation matrices from counts
   W_cov_matrix = cov(W_counts)
   W_corr_matrix = cor(W_counts)
-  colnames(W_cov_matrix) = paste0("Taxon", 1:n_taxa)
-  rownames(W_cov_matrix) = paste0("Taxon", 1:n_taxa)
-  colnames(W_corr_matrix) = paste0("Taxon", 1:n_taxa)
-  rownames(W_corr_matrix) = paste0("Taxon", 1:n_taxa)
+  colnames(W_cov_matrix) = paste0("Taxa", 1:n_taxa)
+  rownames(W_cov_matrix) = paste0("Taxa", 1:n_taxa)
+  colnames(W_corr_matrix) = paste0("Taxa", 1:n_taxa)
+  rownames(W_corr_matrix) = paste0("Taxa", 1:n_taxa)
 
   dummy <- as.data.frame(W_counts)
   colnames(dummy) <- paste0("Taxa", 1:ncol(W_counts)) 
