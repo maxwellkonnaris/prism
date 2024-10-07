@@ -1145,7 +1145,7 @@ prism.simulate_prepost <- function(
     return(flow_data)
     }
   
-  W.perp <- rowSums(W)
+  W.perp <- rowSums(W_counts)
   flow_data <- flow_cytometry(W.perp, replicates, flow_sd)
   
   ## 12. Collapse Flow Data if Replicates > 1
