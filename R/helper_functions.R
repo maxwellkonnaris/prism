@@ -982,7 +982,7 @@ calculate_mcse <- function(bootstrap_estimates) {
 #   return(results)
 # }
 
-simulate_prepost <- function(
+prism.simulate_prepost <- function(
   n_taxa = 20,
   n_samples = 1000,
   seq_depth = 10000,
