@@ -1723,7 +1723,7 @@ prism.trueabundanceplot <- function(W.perp, W, corr_matrix, W.condition, dir_pat
     truecorrelations, 
     labels_row = taxa_labels,
     labels_col = taxa_labels,
-    main = paste("Correlation Matrix of W (Sparsity: ", round(sum(abs(truecorrelations) <= 0.05, na.rm=TRUE) / (D * (D - 1)),3), ")"),
+    main = paste("Correlation Matrix of W\n(Sparsity: ", round(sum(abs(truecorrelations) <= 0.05, na.rm=TRUE) / (D * (D - 1)),3), ")"),
     color = colorRampPalette(c("blue", "white", "red"))(100),
     breaks = seq(-1, 1, length.out = 101), 
     border_color = NA, 
@@ -1744,7 +1744,7 @@ prism.trueabundanceplot <- function(W.perp, W, corr_matrix, W.condition, dir_pat
     corr_matrix, 
     labels_row = taxa_labels,
     labels_col = taxa_labels,
-    main = paste("Latent Correlation Matrix for MVLognorm (Sparsity: ", round(sum(abs(corr_matrix) <= 0.05, na.rm=TRUE) / (D * (D - 1)),3), ")"),
+    main = paste("Latent Correlation Matrix for MVLognorm\n(Sparsity: ", round(sum(abs(corr_matrix) <= 0.05, na.rm=TRUE) / (D * (D - 1)), 3), ")")
     color = colorRampPalette(c("blue", "white", "red"))(100),
     breaks = seq(-1, 1, length.out = 101), 
     border_color = NA, 
@@ -1757,8 +1757,8 @@ prism.trueabundanceplot <- function(W.perp, W, corr_matrix, W.condition, dir_pat
   # Create forest plot for true correlations with W.perp
   forest_plot <- ggplot(data = data.frame(taxa = taxa_labels, rho = truerhocorrelation), 
                         aes(x = rho, y = reorder(taxa, -as.numeric(sub("Taxa", "", taxa))))) +
-    geom_point(color = "#143d80", size = 6, alpha = 0.4) +
-    geom_segment(aes(x = 0, xend = rho, y = taxa, yend = taxa), color = "#143d80", size = 1.2, alpha = 0.4) +
+    geom_point(color = "#143d80", size = 6, alpha = 0.7) +
+    geom_segment(aes(x = 0, xend = rho, y = taxa, yend = taxa), color = "#143d80", size = 1.2, alpha = 0.7) +
     geom_vline(xintercept = 0, linetype = "dotted", color = "black") +
     scale_x_continuous(limits = c(-1, 1), breaks = seq(-1, 1, by = 0.1)) +
     labs(x = "Correlation") +
@@ -1766,7 +1766,7 @@ prism.trueabundanceplot <- function(W.perp, W, corr_matrix, W.condition, dir_pat
     theme(
       axis.title.y = element_blank(),
       axis.text.y = element_text(size = 15),
-      axis.text.x = element_text(size = 12),
+      axis.text.x = element_text(size = 10),
       axis.title.x = element_text(size = 15),
       plot.title = element_text(hjust = 0.5, size = 15)
     ) +
@@ -1787,7 +1787,7 @@ ridge_plot <- ggplot(W.para_long, aes(x = Value, y = Taxa, fill = Condition)) +
   scale_fill_manual(values = c("Pre" = "#BEBEBE", "Post" = "#143d80")) + 
   labs(title = "Taxa with Pre and Post Conditions",
        x = "Composition (W.para)",
-       y = "Taxa") +
+       y = " ") +
   theme_ridges() +
   theme(
     legend.position = "right", 
