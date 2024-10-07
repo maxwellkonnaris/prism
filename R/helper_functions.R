@@ -982,6 +982,202 @@ prism.simulate_prepost <- function(
   return(results)
 }
 
+
+simulate_prepost <- function(
+  n_taxa = 20,
+  n_samples = 1000,
+  seq_depth = 10000,
+  total_abundance_scale = 1e7,
+  sparsity = 20,        # Percentage of non-zero correlations for sparse matrix
+  dense = FALSE,        # If TRUE, use dense covariance matrix
+  target_taxa_index = 1, # Index of taxon affected by treatment
+  treatment_effect = 0.8, # Scaling factor for target taxon (e.g., 0.8 reduces mean by 20%)
+  seed = NULL,
+  replicates = 1,
+  flow_sd = 300
+) {
+  # Set seed for reproducibility
+  if (!is.null(seed)) {
+    set.seed(seed)
+  }
+  
+  # Load required packages
+  if (!requireNamespace("MASS", quietly = TRUE)) {
+    install.packages("MASS")
+  }
+  if (!requireNamespace("clusterGeneration", quietly = TRUE)) {
+    install.packages("clusterGeneration")
+  }
+  library(MASS)               # For multivariate normal sampling
+  library(clusterGeneration)  # For generating random covariance matrices
+  
+  # 1. Generate mean abundances for taxa on the log scale
+  # Define abundance categories: rare, medium, frequent
+  rare_pct = 0.2
+  medium_pct = 0.4
+  n_rare = round(n_taxa * rare_pct)
+  n_medium = round(n_taxa * medium_pct)
+  n_frequent = n_taxa - n_rare - n_medium
+  
+  # Assign means for each category
+  means_rare = runif(n_rare, min = 1e-4 * total_abundance_scale, max = 1e-3 * total_abundance_scale)
+  means_medium = runif(n_medium, min = 1e-3 * total_abundance_scale, max = 1e-2 * total_abundance_scale)
+  means_frequent = runif(n_frequent, min = 1e-2 * total_abundance_scale, max = 1e-1 * total_abundance_scale)
+  
+  # Combine means and take logarithm to get log-scale means
+  taxa_means = c(means_rare, means_medium, means_frequent)
+  log_taxa_means = log(taxa_means)
+  
+  # 2. Generate standard deviations for the log-scale abundances
+  log_taxa_sds = runif(n_taxa, min = 0.1, max = 0.5)
+  
+  # 3. Generate the covariance matrix
+  if (dense) {
+    # Generate a dense, positive definite correlation matrix
+    corr_matrix = genPositiveDefMat(n_taxa, covMethod = "unifcorrmat")$Sigma
+  } else {
+    # Generate a dense correlation matrix first
+    corr_matrix_full = genPositiveDefMat(n_taxa, covMethod = "unifcorrmat")$Sigma
+    # Zero out some off-diagonal elements to achieve sparsity
+    n_elements = n_taxa * (n_taxa - 1) / 2  # Total number of off-diagonal elements
+    n_nonzero = round(sparsity / 100 * n_elements)
+    indices = which(lower.tri(corr_matrix_full), arr.ind = TRUE)
+    n_zero = n_elements - n_nonzero
+    if (n_zero > 0) {
+      # Randomly select indices to zero out
+      zero_indices = indices[sample(1:nrow(indices), n_zero), ]
+      for (i in 1:nrow(zero_indices)) {
+        idx = zero_indices[i, ]
+        corr_matrix_full[idx[1], idx[2]] = 0
+        corr_matrix_full[idx[2], idx[1]] = 0
+      }
+    }
+    # Ensure the diagonal is 1
+    diag(corr_matrix_full) = 1
+    # Ensure the matrix is positive definite
+    eigenvalues = eigen(corr_matrix_full)$values
+    min_eigenvalue = min(eigenvalues)
+    if (min_eigenvalue <= 0) {
+      # Adjust to make positive definite
+      corr_matrix = corr_matrix_full + diag(n_taxa) * (-min_eigenvalue + 0.01)
+    } else {
+      corr_matrix = corr_matrix_full
+    }
+  }
+  
+  # 4. Create the covariance matrix by scaling the correlation matrix
+  D = diag(log_taxa_sds)
+  cov_matrix = D %*% corr_matrix %*% D
+  
+  # 5. Generate latent variables from a multivariate normal distribution
+  latent_vars = mvrnorm(n_samples, mu = log_taxa_means, Sigma = cov_matrix)
+  
+  # 6. Apply treatment effect to post-treatment samples
+  half_samples = n_samples / 2
+  latent_vars_pre = latent_vars[1:half_samples, ]
+  latent_vars_post = latent_vars[(half_samples + 1):n_samples, ]
+  
+  # Reduce the mean of the target taxon in post-treatment samples
+  latent_vars_post[, target_taxa_index] = latent_vars_post[, target_taxa_index] + log(treatment_effect)
+  
+  # Adjust other taxa based on their correlation with the target taxon
+  correlations_with_target = corr_matrix[target_taxa_index, ]
+  correlations_with_target[target_taxa_index] = 0  # Exclude self-correlation
+  for (i in 1:n_taxa) {
+    if (i != target_taxa_index) {
+      # Adjust other taxa means
+      adjustment = correlations_with_target[i] * log(treatment_effect)
+      latent_vars_post[, i] = latent_vars_post[, i] + adjustment
+    }
+  }
+  
+  # Combine adjusted latent variables
+  latent_vars_adjusted = rbind(latent_vars_pre, latent_vars_post)
+  
+  # 7. Exponentiate latent variables to get Poisson rate parameters (λ)
+  lambda = exp(latent_vars_adjusted)
+  
+  # 8. Sample counts from Poisson distributions using λ
+  W_counts = matrix(rpois(n = n_samples * n_taxa, lambda = lambda), nrow = n_samples, ncol = n_taxa)
+  
+  # 9. Normalize counts to get relative abundances
+  relative_abundances = W_counts / rowSums(W_counts)
+  
+  # 10. Simulate sequencing counts by sampling from multinomial distribution
+  Y_counts = t(sapply(1:n_samples, function(i) {
+    rmultinom(1, size = seq_depth, prob = relative_abundances[i, ])
+  }))
+  
+  # 11. Create sample condition labels
+  Condition = factor(rep(c("Pre", "Post"), each = half_samples), levels = c("Pre", "Post"))
+  
+  # 12. Prepare results
+  colnames(W_counts) = paste0("Taxon", 1:n_taxa)
+  colnames(Y_counts) = paste0("Taxon", 1:n_taxa)
+  
+  # Compute observed covariance and correlation matrices from counts
+  W_cov_matrix = cov(W_counts)
+  W_corr_matrix = cor(W_counts)
+  colnames(W_cov_matrix) = paste0("Taxon", 1:n_taxa)
+  rownames(W_cov_matrix) = paste0("Taxon", 1:n_taxa)
+  colnames(W_corr_matrix) = paste0("Taxon", 1:n_taxa)
+  rownames(W_corr_matrix) = paste0("Taxon", 1:n_taxa)
+
+  dummy <- as.data.frame(W_counts)
+  colnames(dummy) <- paste0("Taxa", 1:ncol(W)) 
+  dummy$Condition <- Condition
+  
+  ## 11. Simulate Flow Cytometry Data
+  flow_cytometry <- function(totals, replicates, flow_sd) {
+    flow_vals <- sapply(totals, function(total) {
+        rnorm(replicates, mean = total, sd = flow_sd)
+    })
+    
+    # Handle negative values by setting them to zero
+    flow_vals[flow_vals < 0] <- 0
+    
+    flow_data <- data.frame(
+        sample = rep(1:length(totals), each = replicates),
+        flow = as.vector(flow_vals)
+    )
+    return(flow_data)
+  }
+  
+  W.perp <- rowSums(W)
+  flow_data <- flow_cytometry(W.perp, replicates, flow_sd)
+  
+  ## 12. Collapse Flow Data if Replicates > 1
+  if (replicates > 1) {
+    flow_data_collapse <- flow_data %>%
+      group_by(sample) %>%
+      summarise(mean_flow = mean(flow), stdev_flow = sd(flow)) %>%
+      ungroup()
+  }
+  
+  # 13. Return results as a list
+  results = list(
+    W = W_counts,
+    W.perp = W.perp,
+    W.para = relative_abundances,
+    Y = Y_counts,
+    flow = flow_data,
+    Condition = dummy,
+    W_cov_matrix = W_cov_matrix,
+    W_corr_matrix = W_corr_matrix,
+    latent_cov_matrix = cov_matrix,
+    latent_corr_matrix = corr_matrix
+  )
+
+  if (replicates > 1) {
+    results$flow_collapse <- flow_data_collapse
+  }
+  
+  return(results)
+}
+
+
+
+            
 # Function to perform a grid search with column names
 perform_grid_search_on_bounds <- function(lower_bounds, upper_bounds, grid_size = 3) {
   # Create a list to store sequences for each parameter
