@@ -982,6 +982,23 @@ prism.simulate_prepost <- function(
   return(results)
 }
 
+# Function to perform a grid search with column names
+perform_grid_search_on_bounds <- function(lower_bounds, upper_bounds, grid_size = 3) {
+  # Create a list to store sequences for each parameter
+  grid_list <- lapply(seq_along(lower_bounds), function(i) {
+    # Generate grid points between the lower and upper bounds
+    seq(lower_bounds[i], upper_bounds[i], length.out = grid_size)
+  })
+  
+  # Create a grid by combining all parameter sequences
+  grid <- expand.grid(grid_list)
+  
+  # Assign column names (rho1, rho2, scalestdevstep)
+  colnames(grid) <- c("rho1", "rho2", "scalestdevstep")
+  
+  return(grid)
+}
+
 
 #' Optimizes sigma based on different algorithms
 #' 
@@ -1032,18 +1049,6 @@ optimize_sigma <- function(algorithm, taxa1relativesd, taxa2relativesd, relative
     ))
   }
   
- # Function to perform a grid search without a specified initial parameter
-  perform_grid_search_on_bounds <- function(lower_bounds, upper_bounds, grid_size = 3) {
-    # Create a list to store sequences for each parameter
-    grid_list <- lapply(seq_along(lower_bounds), function(i) {
-      # Generate grid points between the lower and upper bounds
-      seq(lower_bounds[i], upper_bounds[i], length.out = grid_size)
-    })
-    
-    # Create a grid by combining all parameter sequences
-    grid <- expand.grid(grid_list)
-    return(as.matrix(grid))
-  }
     
   # Function to execute the optimization for a given set of initial parameters
   execute_algorithm <- function(algorithm, init_params, taxa1relativesd = taxa1relativesd, taxa2relativesd = taxa2relativesd, relativecovariance = relativecovariance) {
@@ -1264,29 +1269,6 @@ optimize_sigma <- function(algorithm, taxa1relativesd, taxa2relativesd, relative
              rho2_ub = init_params[4]
              scale_lb = init_params[5]
              scale_ub = init_params[6]
-   
-            # # Step 1: Perform the initial coarse grid search
-            # initial_grid <- coarse_search(
-            #   rho1_range = c(rho1_lb, rho1_ub),
-            #   rho2_range = c(rho2_lb, rho2_ub),
-            #   scalestdev_range = c(scale_lb, scale_ub),
-            #   taxa1relativesd = taxa1relativesd,
-            #   taxa2relativesd = taxa2relativesd,
-            #   relativecovariance = relativecovariance,
-            #   n_steps = 5  # Coarse grid with 5 steps in each parameter
-            # )
-          
-            # # Step 2: Identify top-performing regions based on initial results
-            # top_grid <- identify_promising_regions(initial_grid, top_n = 5)
-          
-            # # Step 3: Refine the grid search in promising regions
-            # pars <- refine_grid_search(
-            #   top_grid = top_grid,
-            #   rho1_range = c(rho1_lb, rho1_ub),
-            #   rho2_range = c(rho2_lb, rho2_ub),
-            #   scalestdev_range = c(scale_lb, scale_ub),
-            #   refinement_factor = 3  # Refinement factor to zoom into the best regions
-            # )
 
                  # Perform a small grid search on initial parameters    
              pars <- perform_grid_search_on_bounds(lower_bounds = c(rho1_lb, rho2_lb, scale_lb),
