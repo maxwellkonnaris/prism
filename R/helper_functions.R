@@ -982,18 +982,18 @@ calculate_mcse <- function(bootstrap_estimates) {
 #   return(results)
 # }
 
-prism.simulate_prepost <- function(
+simulate_prepost <- function(
   n_taxa = 20,
   n_samples = 1000,
   seq_depth = 10000,
-  total_abundance_scale = 1e7,
   sparsity = 20,        # Percentage of non-zero correlations for sparse matrix
   dense = FALSE,        # If TRUE, use dense covariance matrix
-  target_taxa_index = 1, # Index of taxon affected by treatment
-  treatment_effect = 0.8, # Scaling factor for target taxon (e.g., 0.8 reduces mean by 20%)
+  target_taxa_index = 15, # Index of taxon affected by treatment
+  treatment_effect = 0.2, # Scaling factor for target taxon (e.g., 0.8 reduces mean by 20%)
   seed = NULL,
   replicates = 1,
-  flow_sd = 300
+  flow_sd = 300,
+  df=60
 ) {
   # Set seed for reproducibility
   if (!is.null(seed)) {
@@ -1019,21 +1019,25 @@ prism.simulate_prepost <- function(
   n_frequent = n_taxa - n_rare - n_medium
   
   # Assign means for each category
-  means_rare = runif(n_rare, min = 1e-4 * total_abundance_scale, max = 1e-3 * total_abundance_scale)
-  means_medium = runif(n_medium, min = 1e-3 * total_abundance_scale, max = 1e-2 * total_abundance_scale)
-  means_frequent = runif(n_frequent, min = 1e-2 * total_abundance_scale, max = 1e-1 * total_abundance_scale)
-  
+  means_rare = runif(n_rare, min = 200, max = 500)
+  means_medium = runif(n_medium, min = 800, max = 1500)
+  means_frequent = runif(n_frequent, min = 3000, max = 4000)
+
   # Combine means and take logarithm to get log-scale means
   taxa_means = c(means_rare, means_medium, means_frequent)
   log_taxa_means = log(taxa_means)
   
   # 2. Generate standard deviations for the log-scale abundances
-  log_taxa_sds = runif(n_taxa, min = 0.1, max = 0.5)
+  log_taxa_sds = runif(n_taxa, min = 0.1, max = 0.1)
   
   # 3. Generate the covariance matrix
   if (dense) {
-    # Generate a dense, positive definite correlation matrix
-    corr_matrix = genPositiveDefMat(n_taxa, covMethod = "unifcorrmat")$Sigma
+    # Inverse Wishart approach for dense covariance matrix
+    V <- diag(log_taxa_sds^2)  # Scale matrix based on log-scale standard deviations
+    cov_matrix <- MCMCpack::riwish(df, V)  # Sample covariance matrix from Inverse Wishart distribution
+    
+    # Convert covariance matrix to correlation matrix
+    corr_matrix <- cov2cor(cov_matrix)
   } else {
     # Generate a dense correlation matrix first
     corr_matrix_full = genPositiveDefMat(n_taxa, covMethod = "unifcorrmat")$Sigma
@@ -1125,8 +1129,7 @@ prism.simulate_prepost <- function(
   dummy <- as.data.frame(W_counts)
   colnames(dummy) <- paste0("Taxa", 1:ncol(W_counts)) 
   dummy$Condition <- Condition
-  
-  ## 11. Simulate Flow Cytometry Data
+
   flow_cytometry <- function(totals, replicates, flow_sd) {
     flow_vals <- sapply(totals, function(total) {
         rnorm(replicates, mean = total, sd = flow_sd)
@@ -1140,7 +1143,7 @@ prism.simulate_prepost <- function(
         flow = as.vector(flow_vals)
     )
     return(flow_data)
-  }
+    }
   
   W.perp <- rowSums(W)
   flow_data <- flow_cytometry(W.perp, replicates, flow_sd)
@@ -1173,7 +1176,6 @@ prism.simulate_prepost <- function(
   
   return(results)
 }
-
 
 
             
