@@ -1179,7 +1179,7 @@ prism.proportions <- function(data,
   # Create the stacked bar plot
   p <- ggplot(data_long, aes_string(x = comparison_col, y = "Proportion", fill = "Interval_Type")) +
     geom_bar(stat = "identity", color = "black", size = 0.5, position = "stack") +
-    scale_fill_manual(values = colors, labels = c("Positive Intervals", "Negative Intervals")) +
+    scale_fill_manual(values = colors, labels = c("Negative Intervals", "Positive Intervals")) +
     scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, by = 0.05), expand = c(0, 0)) +
     labs(
       title = "Proportion of Min/Max Intervals That Do Not Cover Zero",
