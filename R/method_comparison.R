@@ -194,21 +194,200 @@ prism.method_comparison <- function(Y,
   cat("Start Banocc\n")
   max_cores <- parallel::detectCores() - 1  # Reserve 1 core
   ### BANOCC Model ###
-  # Pre data
-  ps <- phyloseq::phyloseq(otu_table(normalized_data, taxa_are_rows = TRUE))
-  ps <- t(ps)
+
+  # Define the function to run sensitivity analysis with different priors and initial values
+  run_banocc_sensitivity <- function(C, compiled_model, n_prior, L_list, a_list, b_list, init_list, chains = 4, iter = 6000, warmup = 3000, cores = 4) {
+    
+    # Ensure the lists of priors are the same length
+    if (length(L_list) != length(a_list) || length(L_list) != length(b_list) || length(L_list) != length(init_list)) {
+      stop("L_list, a_list, b_list, and init_list must have the same length!")
+    }
+    
+    # Store results in a list
+    results_list <- list()
+    output_list <- list()
+    
+    # Loop over each set of priors and initial values
+    for (i in seq_along(L_list)) {
+      
+      # Print progress message
+      cat("Running model", i, "with L =", L_list[[i]], "a =", a_list[[i]], "b =", b_list[[i]], "\n")
+      
+      # Run the BAnOCC model with the specified priors and initial values
+      fit <- banocc::run_banocc(C = C,
+                                compiled_banocc_model = compiled_model,
+                                n = n_prior,
+                                L = L_list[[i]],   # L for this model run
+                                a = a_list[[i]],   # a (shape) for this model run
+                                b = b_list[[i]],   # b (rate) for this model run
+                                init = init_list[[i]], # Initial values for this model run
+                                chains = chains,   # Number of chains
+                                iter = iter,       # Total iterations
+                                warmup = warmup,   # Warmup iterations
+                                cores = cores)     # Number of cores for parallel processing
+      
+      # Store the fit result in the results list
+      results_list[[paste0("model_", i)]] <- fit
+      
+      # Extract the covariance matrix and credible intervals
+      cov_matrix <- banocc::get_banocc_output(banoccfit = fit, conf_alpha = 0)
+      cov_matrix_CI <- banocc::get_banocc_output(banoccfit = fit, conf_alpha = 0.05)
+      
+      # Store them in output list
+      output_list[[paste0("cov_matrix_", i)]] <- cov_matrix
+      output_list[[paste0("cov_matrix_CI_", i)]] <- cov_matrix_CI
+    }
+    
+    # Return the list of results and the extracted covariance matrices
+    return(list(fit_results = results_list, cov_matrices = output_list))
+  }
+  
+  # Compile BAnOCC model
   compiled_banocc_model <- rstan::stan_model(model_code = banocc::banocc_model)
-  banocc_results <- banocc::run_banocc(ps, compiled_banocc_model = compiled_banocc_model,
-                                           control = list(adapt_delta = 0.99, max_treedepth = 15),
-                                           iter = 6000, chains = 4, cores = max_cores, init=list( list(r = 0.1),  # For chain 1
-    												list(r = 0.4),  # For chain 2
-    												list(r = 0.9),  # For chain 3
-    												list(r = 0.7)   # For chain 4
-                                                                                        ))
   
-  cov_matrix_banocc <- banocc::get_banocc_output(banoccfit = banocc_results, conf_alpha = 0)
-  cov_matrix_banocc_CI <- banocc::get_banocc_output(banoccfit = banocc_results, conf_alpha = 0.05)
+  # Define priors and initial values for sensitivity analysis
   
+  # Priors for L (covariance matrix)
+  L_prior_1 <- 1 * diag(ncol(ps))
+  L_prior_2 <- 10 * diag(ncol(ps))
+  L_prior_3 <- 100 * diag(ncol(ps))
+  
+  # Priors for a (shape) and b (rate)
+  a_prior_1 <- 0.5; b_prior_1 <- 0.01
+  a_prior_2 <- 1; b_prior_2 <- 0.1
+  a_prior_3 <- 0.1; b_prior_3 <- 1
+  
+  # Initial values for each model
+  init_1 <- list(
+    list(m = rep(0, ncol(ps)), O = diag(ncol(ps)), lambda = 0.02),
+    list(m = runif(ncol(ps), -0.1, 0.1), O = diag(ncol(ps)), lambda = runif(1, 0.01, 0.1)),
+    list(m = rnorm(ncol(ps), 0, 0.5), O = diag(ncol(ps)), lambda = 0.05),
+    list(m = rep(-1, ncol(ps)), O = diag(ncol(ps)), lambda = 0.01)
+  )
+  
+  init_2 <- list(
+    list(m = rep(0, ncol(ps)), O = diag(ncol(ps)), lambda = 0.5),
+    list(m = runif(ncol(ps), -1, 1), O = diag(ncol(ps)), lambda = runif(1, 0.1, 2)),
+    list(m = rnorm(ncol(ps)), O = diag(ncol(ps)), lambda = runif(1, 0.05, 1)),
+    list(m = rep(-1, ncol(ps)), O = diag(ncol(ps)), lambda = 0.01)
+  )
+  
+  init_3 <- list(
+    list(m = rep(0, ncol(ps)), O = diag(ncol(ps)), lambda = 1),
+    list(m = runif(ncol(ps), -5, 5), O = diag(ncol(ps)), lambda = runif(1, 0.5, 3)),
+    list(m = rnorm(ncol(ps), 0, 2), O = diag(ncol(ps)), lambda = runif(1, 0.5, 2)),
+    list(m = rep(-2, ncol(ps)), O = diag(ncol(ps)), lambda = 0.1)
+  )
+  
+  # Combine priors into lists for sensitivity analysis
+  L_list <- list(L_prior_1, L_prior_2, L_prior_3)
+  a_list <- list(a_prior_1, a_prior_2, a_prior_3)
+  b_list <- list(b_prior_1, b_prior_2, b_prior_3)
+  init_list <- list(init_1, init_2, init_3)
+  
+  # Run the sensitivity analysis function
+  banoccresults <- run_banocc_sensitivity(C = ps,
+                                    compiled_model = compiled_banocc_model,
+                                    n_prior = rep(0, ncol(ps)),
+                                    L_list = L_list,
+                                    a_list = a_list,
+                                    b_list = b_list,
+                                    init_list = init_list,
+                                    chains = 4,
+                                    iter = 6000,
+                                    warmup = 3000,
+                                    cores = max_cores)
+  
+  # Access the results for each model
+  fit_results <- banoccresults$fit_results
+  cov_matrices <- banoccresults$cov_matrices
+  
+  cov_matrix_CI_model_lo <- cov_matrices$cov_matrix_CI_1
+  cov_matrix_CI_model_md <- cov_matrices$cov_matrix_CI_2
+  cov_matrix_CI_model_lg <- cov_matrices$cov_matrix_CI_3
+
+    # Initialize empty data frames for each sensitivity run
+  banoccresults_lo <- data.frame(
+    comparison = character(),
+    ninetyfive_ci_lower = numeric(),
+    ninetyfive_ci_upper = numeric(),
+    minsigma_absolute_minimum_covariance = numeric(),
+    maxsigma_absolute_maximum_covariance = numeric(),
+    p_value = numeric()  # Optional, can leave out if not needed
+  )
+  
+  banoccresults_md <- data.frame(
+    comparison = character(),
+    ninetyfive_ci_lower = numeric(),
+    ninetyfive_ci_upper = numeric(),
+    minsigma_absolute_minimum_covariance = numeric(),
+    maxsigma_absolute_maximum_covariance = numeric(),
+    p_value = numeric()  # Optional, can leave out if not needed
+  )
+  
+  banoccresults_lg <- data.frame(
+    comparison = character(),
+    ninetyfive_ci_lower = numeric(),
+    ninetyfive_ci_upper = numeric(),
+    minsigma_absolute_minimum_covariance = numeric(),
+    maxsigma_absolute_maximum_covariance = numeric(),
+    p_value = numeric()  # Optional, can leave out if not needed
+  )
+  
+  # Function to extract results into a data frame
+  extract_cov_results <- function(cov_matrix, cov_matrix_CI, label) {
+    results_df <- data.frame(
+      comparison = character(),
+      ninetyfive_ci_lower = numeric(),
+      ninetyfive_ci_upper = numeric(),
+      minsigma_absolute_minimum_covariance = numeric(),
+      maxsigma_absolute_maximum_covariance = numeric(),
+      p_value = numeric()  # Optional, can leave out if not needed
+    )
+    
+    # Loop through the upper triangular part of the covariance matrix to extract comparisons
+    for (i in 1:(ncol(cov_matrix$Estimates.median) - 1)) {
+      for (j in (i + 1):ncol(cov_matrix$Estimates.median)) {
+        
+        # Extract the 95% CI bounds for the same pair
+        ninetyfive_ci_lower <- cov_matrix_CI$CI.hpd$lower[i, j]
+        ninetyfive_ci_upper <- cov_matrix_CI$CI.hpd$upper[i, j]
+        
+        # Extract the min and max bounds for the same pair
+        lower <- cov_matrix$CI.hpd$lower[i, j]
+        upper <- cov_matrix$CI.hpd$upper[i, j]
+        
+        # Create the comparison name (e.g., "Taxa1:Taxa2")
+        comparison_name <- paste0("Taxa", i, ":Taxa", j)
+        
+        # Append this comparison to the data frame
+        results_df <- rbind(results_df, data.frame(
+          comparison = comparison_name,
+          ninetyfive_ci_lower = ninetyfive_ci_lower,
+          ninetyfive_ci_upper = ninetyfive_ci_upper,
+          minsigma_absolute_minimum_covariance = lower,
+          maxsigma_absolute_maximum_covariance = upper,
+          p_value = NA  # Placeholder, can remove or compute if needed
+        ))
+      }
+    }
+    
+    return(results_df)
+  }
+  
+  # Extract results for each sensitivity model
+  banoccresults_lo <- extract_cov_results(cov_matrix_banocc_lo, cov_matrix_banocc_CI_lo, "lo")
+  banoccresults_md <- extract_cov_results(cov_matrix_banocc_md, cov_matrix_banocc_CI_md, "md")
+  banoccresults_lg <- extract_cov_results(cov_matrix_banocc_lg, cov_matrix_banocc_CI_lg, "lg")
+
+  cat("END Banocc\n")
+  
+  #Save Banocc results
+  saveRDS(banoccresults, file = "banocc_sensitivity_results.rds")
+  saveRDS(banoccresults_lo, paste0(filename,"Banocc_results_lo.rds"))
+  saveRDS(banoccresults_md, paste0(filename,"Banocc_results_md.rds"))
+  saveRDS(banoccresults_lg, paste0(filename,"Banocc_results_lg.rds"))
+                          
   # Save PRISM results
   saveRDS(prismresults, paste0(filename,"PRISM_results.rds"))
   
@@ -223,52 +402,14 @@ prism.method_comparison <- function(Y,
   
   # Save Proportionality results
   saveRDS(proprresults, paste0(filename,"Propr_results.rds"))
-  
-  banoccresults <- data.frame(
-    comparison = character(),
-    ninetyfive_ci_lower = numeric(),
-    ninetyfive_ci_upper = numeric(),
-    minsigma_absolute_minimum_covariance = numeric(),
-    maxsigma_absolute_maximum_covariance = numeric(),
-    p_value = numeric()  # Optional, can leave out if not needed
-  )
-  
-  # Loop through the upper tri$CI.hpd$upperangle of the covariance matrix to extract comparisons
-  for (i in 1:(ncol(cov_matrix_banocc$Estimates.median) - 1)) {
-    for (j in (i + 1):ncol(cov_matrix_banocc$Estimates.median)) {
-  
-      # Extract the 95% CI bounds for the same pair
-      ninetyfive_ci_lower <- cov_matrix_banocc_CI$CI.hpd$lower[i, j]
-      ninetyfive_ci_upper <- cov_matrix_banocc_CI$CI.hpd$upper[i, j]
-      
-      # Extract the min and max bounds for the same pair
-      lower <- cov_matrix_banocc$CI.hpd$lower[i, j]
-      upper <- cov_matrix_banocc$CI.hpd$upper[i, j]
-      
-      # Create the comparison name (e.g., "Taxa1:Taxa2")
-      comparison_name <- paste0("Taxa", i, ":Taxa", j)
-  
-      # Append this comparison to the data frame
-      banoccresults <- rbind(banoccresults, data.frame(
-        comparison = comparison_name,
-        ninetyfive_ci_lower = ninetyfive_ci_lower,
-        ninetyfive_ci_upper = ninetyfive_ci_upper,
-        minsigma_absolute_minimum_covariance = lower,
-        maxsigma_absolute_maximum_covariance = upper,
-        p_value = NA  # Placeholder, can remove this if not needed
-      ))
-    }
-  }
-  
-  #Save Banocc results
-  saveRDS(banocc_results, paste0(filename,"Banocc_results.rds"))
-  
-  cat("END Banocc\n")
+
   # Visualize and save the plots
   forest_plot_filename <- paste0("simulated_forestplot_all_",uncertaintydistribution,"_",algorithm)
                         
   covarianceresults = list(PRISM = prismresults, 
-                           BanoCC = banoccresults, 
+                           BanoCC_lo = banoccresults_lo, 
+                           BanoCC_md = banoccresults_md, 
+                           BanoCC_lg = banoccresults_lg, 
                            SpiecEasi = spieceasiresults, 
                            SparCC = sparccresults, 
                            CClasso = cclassoresults, 
