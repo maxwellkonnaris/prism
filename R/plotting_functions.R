@@ -2141,7 +2141,7 @@ prism.circlenetwork <- function(data_list, metric = "covariance", pvalue = FALSE
     combined_plot <- patchwork::wrap_plots(plot_list)
     
     if (save_plot) {
-      ggsave(paste0(dir_path, filename, "_circlenetwork_combined.png"), combined_plot, width = 20, height = 15, dpi = 300)
+      ggsave(paste0(dir_path, filename, "_circlenetwork_combined.png"), combined_plot, width = 20, height = 15, dpi = 300, bg='white')
     }
     return(combined_plot)  # Return the combined plot
   } else {
@@ -2152,7 +2152,7 @@ prism.circlenetwork <- function(data_list, metric = "covariance", pvalue = FALSE
         if (!dir.exists(dir_path)) {
           dir.create(dir_path)
         }
-        ggsave(paste0(dir_path, filename, "_circlenetwork_", dataset_name, ".png"), plot, width = 10, height = 10, dpi = 300)
+        ggsave(paste0(dir_path, filename, "_circlenetwork_", dataset_name, ".png"), plot, width = 10, height = 10, dpi = 300, bg='white')
       }
     }
     return(plot_list)  # Return the list of individual plots
