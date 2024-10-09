@@ -79,6 +79,9 @@ prism.method_comparison <- function(Y,
       ))
     }
   }
+
+  spieceasiresults <- spieceasiresults %>%
+          separate(comparison, into = c("taxa1", "taxa2"), sep = ":", remove = FALSE)
   
   cat("END SpiecEasi\n")
   cat("Start SparCC\n")
@@ -111,6 +114,9 @@ prism.method_comparison <- function(Y,
       ))
     }
   }
+
+  sparccresults <- sparccresults %>%
+          separate(comparison, into = c("taxa1", "taxa2"), sep = ":", remove = FALSE)
   
   cat("END SparCC\n")
   cat("Start CClasso\n")
@@ -145,7 +151,10 @@ prism.method_comparison <- function(Y,
       ))
     }
   }
-  
+                             
+  cclassoresults <- cclassoresults %>%
+          separate(comparison, into = c("taxa1", "taxa2"), sep = ":", remove = FALSE)
+                             
   cat("END CClasso\n")
   cat("Start Propr\n")
 
@@ -190,6 +199,9 @@ prism.method_comparison <- function(Y,
       ))
     }
   }
+
+  proprresults <- proprresults %>%
+          separate(comparison, into = c("taxa1", "taxa2"), sep = ":", remove = FALSE)                        
   
   cat("Start Banocc\n")
   max_cores <- parallel::detectCores() - 1  # Reserve 1 core
@@ -246,7 +258,6 @@ prism.method_comparison <- function(Y,
   compiled_banocc_model <- rstan::stan_model(model_code = banocc::banocc_model)
   
   # Define priors and initial values for sensitivity analysis
-  
   # Priors for L (covariance matrix)
   L_prior_1 <- 1 * diag(ncol(ps))
   L_prior_2 <- 10 * diag(ncol(ps))
@@ -371,6 +382,9 @@ prism.method_comparison <- function(Y,
         ))
       }
     }
+
+    results_df <- results_df %>%
+          separate(comparison, into = c("taxa1", "taxa2"), sep = ":", remove = FALSE)
     
     return(results_df)
   }
