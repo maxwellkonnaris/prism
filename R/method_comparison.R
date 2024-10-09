@@ -258,6 +258,20 @@ prism.method_comparison <- function(Y,
   compiled_banocc_model <- rstan::stan_model(model_code = banocc::banocc_model)
   
   # Define priors and initial values for sensitivity analysis
+  ### Guidelines fo choose gamma parameters for the Glasso ###
+  # Prior covariance matrix for m ----- Scaling by 10 is a weakly informative choice, allowing moderate spread for the values of m. A higher value (e.g., 100) would imply less confidence in the prior, giving m more freedom to take extreme values.
+  # Conversely, a smaller value (e.g., 1) would shrink m closer to the prior mean.
+  #More confident priors: Use a smaller scaling factor (e.g., 𝐿=1×diag(𝑝) 
+  #Less confident priors: Increase the scaling factor (e.g., 𝐿=100×diag(𝑝) to allow for more flexibility in the model estimates.
+  
+  ### Guidelines for Choosing α\alphaα and β\betaβ:
+  #1. **Weakly Informative Priors**:
+  #   - If you do not have strong prior information about λ\lambdaλ, you can use weakly informative priors. A common choice is to set both α\alphaα and β\betaβ to values that encourage shrinkage but allow the model to explore other values.- **Suggested values**: α=0.5\alpha = 0.5α=0.5, β=0.01\beta = 0.01β=0.01
+  #        - This choice places significant probability mass near zero, encouraging shrinkage while not completely ruling out larger values of λ\lambdaλ.2. **Based on Prior Knowledge**:
+  #   - If you have domain knowledge or previous studies that suggest what values of λ\lambdaλ are reasonable, you can adjust α\alphaα and β\betaβ to reflect that.
+  #        - For example, if you know λ\lambdaλ is likely to be small but nonzero, you might use α=1\alpha = 1α=1 and β=0.1\beta = 0.1β=0.1, leading to a prior that concentrates around small positive values.3. **Controlling Shrinkage**:
+  #    - If you want more aggressive shrinkage (forcing λ\lambdaλ closer to zero), set a small value for α\alphaα (e.g., α=0.1\alpha = 0.1α=0.1) and a larger β\betaβ (e.g., β=1\beta = 1β=1).- If you want to reduce the amount of shrinkage and give the model more freedom, you can increase α\alphaα (e.g., α=2\alpha = 2α=2) and set β\betaβ to a smaller value (e.g., β=0.5\beta = 0.5β=0.5).
+
   # Priors for L (covariance matrix)
   L_prior_1 <- 1 * diag(ncol(ps))
   L_prior_2 <- 10 * diag(ncol(ps))
