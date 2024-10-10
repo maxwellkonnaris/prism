@@ -2298,17 +2298,21 @@ plot_confusion_matrix <- function(confusion_data_list, outputdirectory, save) {
   # Initialize an empty dataframe to combine all methods
   combined_data <- data.frame()
   
+  # Define the factor levels and labels for Color_Code (do this before the loop)
+  color_levels <- c("grey", "blue", "red", "green")
+  color_labels <- c("Doesnt match sign | 95%CI covers zero | Not Identified", 
+                    "Matches sign | 95%CI doesnt cover zero", 
+                    "Doesnt match sign | 95%CI doesnt cover zero", 
+                    "True Value within 95%CI")
+  
   # Loop through each confusion data frame in the list
   for (method_name in names(confusion_data_list)) {
     confusion_data <- confusion_data_list[[method_name]]
     
     # Ensure that Color_Code is treated as a factor for plotting
     confusion_data$Color_Code <- factor(confusion_data$Color_Code, 
-                                         levels = c("grey", "blue", "red", "green"), 
-                                         labels = c("Doesnt match sign | 95%CI covers zero | Not Identified", 
-                                                    "Matches sign | 95%CI doesnt cover zero", 
-                                                    "Doesnt match sign | 95%CI doesnt cover zero", 
-                                                    "True Value within 95%CI"))
+                                        levels = color_levels, 
+                                        labels = color_labels)
     
     # Summarize the counts for each Color_Code by Method
     summary_data <- confusion_data %>%
@@ -2322,38 +2326,39 @@ plot_confusion_matrix <- function(confusion_data_list, outputdirectory, save) {
   
   # Ensure that the x-axis labels (Method) are plotted in the original order provided in the data
   combined_data$Method <- factor(combined_data$Method, levels = unique(combined_data$Method))
-
-  # Create a single plot with stacked bars for each method
+  
+  # Now create the plot with the correct legend mapping
   p <- ggplot(combined_data, aes(x = Method, y = Count, fill = Color_Code)) +
-	  geom_bar(stat = "identity", position = "stack") +  # Stacked bar chart for all methods
-	  scale_fill_manual(values = c("grey", "blue", "red", "green"),
-	                    guide = guide_legend(nrow = 2, byrow = TRUE)) +  # Split legend into 2 rows
-	  labs(title = "True Correlations vs 95% CI",
-	       x = NULL,  # Remove x-axis title
-	       y = "Count",
-	       fill = NULL) +
-	  theme_minimal(base_size = 18) +  # Increase base size for font
-	  theme(
-	    text = element_text(size = 16, family = "Arial"),  # Increased text size
-	    plot.title = element_text(hjust = 0.5, face = "bold", size = 20),  # Increased title size
-	    axis.title.x = element_blank(),  # Remove x-axis title
-	    axis.title.y = element_text(face = "bold", size = 16, margin = margin(r = 15)),  # Y-axis title size and space
-	    axis.text.x = element_text(face = "bold", size = 16),  # Bold the x-axis labels
-	    legend.position = "top",  # Keep the legend at the top
-	    legend.direction = "horizontal",  # Make the legend horizontal
-	    panel.grid.major = element_line(color = "grey80"),
-	    panel.grid.minor = element_blank()
-  )
+    geom_bar(stat = "identity", position = "stack") +  # Stacked bar chart for all methods
+    scale_fill_manual(values = setNames(color_levels, color_labels),  # Correct mapping of color to legend
+                      guide = guide_legend(nrow = 2, byrow = TRUE)) +  # Split legend into 2 rows
+    labs(title = "True Correlations vs 95% CI",
+         x = NULL,  # Remove x-axis title
+         y = "Count",
+         fill = NULL) +
+    theme_minimal(base_size = 18) +  # Increase base size for font
+    theme(
+      text = element_text(size = 16, family = "Arial"),  # Increased text size
+      plot.title = element_text(hjust = 0.5, face = "bold", size = 20),  # Increased title size
+      axis.title.x = element_blank(),  # Remove x-axis title
+      axis.title.y = element_text(face = "bold", size = 16, margin = margin(r = 15)),  # Y-axis title size and space
+      axis.text.x = element_text(face = "bold", size = 16),  # Bold the x-axis labels
+      legend.position = "top",  # Keep the legend at the top
+      legend.direction = "horizontal",  # Make the legend horizontal
+      panel.grid.major = element_line(color = "grey80"),
+      panel.grid.minor = element_blank()
+    )
 
   if (save) {
-  # Save the combined plot as a PNG file
-  ggsave(filename = paste0(outputdirectory, "prism_confusionplot.png"), 
-         plot = p, dpi = 300, width = 10, bg = 'white', height = 10)
+    # Save the combined plot as a PNG file
+    ggsave(filename = paste0(outputdirectory, "prism_confusionplot.png"), 
+           plot = p, dpi = 300, width = 10, bg = 'white', height = 10)
   }
   
   # Optionally display the plot
   print(p)
 }
+
 
 
 #' Plot Pairwise Covariance Densities with Confidence Intervals
