@@ -89,34 +89,36 @@ prism.method_comparison <- function(Y,
   sparcc_result <- tryCatch(PRISM::SparCC_count(x = t(Y)), 
                             error = function(e) stop("SparCC failed: ", e$message))
   
-  cov_matrix_sparcc <- sparcc_result$cor_w
+  cov_matrix_sparcc <- sparcc_result$cov_w
+  cov_matrix_sparcc_95lower <- sparcc_result$cov_ci_lower
+  cov_matrix_sparcc_95upper <- sparcc_result$cov_ci_upper
   
   sparccresults <- data.frame(
-    comparison = character(),
-    ninetyfive_ci_lower = numeric(),
-    ninetyfive_ci_upper = numeric(),
-    minsigma_absolute_minimum_covariance = numeric(),
-    maxsigma_absolute_maximum_covariance = numeric(),
-    p_value = numeric()
-  )
-  
+      comparison = character(),
+      ninetyfive_ci_lower = numeric(),
+      ninetyfive_ci_upper = numeric(),
+      minsigma_absolute_minimum_covariance = numeric(),
+      maxsigma_absolute_maximum_covariance = numeric(),
+      p_value = numeric()
+    )
+    
   for (i in 1:(ncol(cov_matrix_sparcc) - 1)) {
-    for (j in (i + 1):ncol(cov_matrix_sparcc)) {
-      cov_value <- cov_matrix_sparcc[i, j]
-      comparison_name <- paste0("Taxa", i, ":Taxa", j)
-      sparccresults <- rbind(sparccresults, data.frame(
-        comparison = comparison_name,
-        ninetyfive_ci_lower = cov_value,
-        ninetyfive_ci_upper = cov_value,
-        minsigma_absolute_minimum_covariance = cov_value,
-        maxsigma_absolute_maximum_covariance = cov_value,
-        p_value = NA
-      ))
-    }
+      for (j in (i + 1):ncol(cov_matrix_sparcc)) {
+        cov_value <- cov_matrix_sparcc[i, j]
+        comparison_name <- paste0("Taxa", i, ":Taxa", j)
+        sparccresults <- rbind(sparccresults, data.frame(
+          comparison = comparison_name,
+          ninetyfive_ci_lower = cov_matrix_sparcc_95lower[i,j],
+          ninetyfive_ci_upper = cov_matrix_sparcc_95upper[i,j],
+          minsigma_absolute_minimum_covariance = cov_value,
+          maxsigma_absolute_maximum_covariance = cov_value,
+          p_value = NA
+        ))
+      }
   }
-
+  
   sparccresults <- sparccresults %>%
-          separate(comparison, into = c("taxa1", "taxa2"), sep = ":", remove = FALSE)
+            separate(comparison, into = c("taxa1", "taxa2"), sep = ":", remove = FALSE)
   
   cat("END SparCC\n")
   cat("Start CClasso\n")
