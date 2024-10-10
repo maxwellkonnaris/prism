@@ -2471,6 +2471,9 @@ prism.density <- function(data, filename = "prism_density", dir = "./plots/", ta
 	  
 	  combined_stats <- combined_stats %>%
 	    filter(d1 %in% selected_taxa & d2 %in% selected_taxa)
+    
+    combined_data <- combined_data %>%
+	    filter(d1 %in% selected_taxa & d2 %in% selected_taxa)
   }
 
   
@@ -2554,7 +2557,7 @@ prism.density <- function(data, filename = "prism_density", dir = "./plots/", ta
   if (!dir.exists(dir)) {
     dir.create(dir, recursive = TRUE)
   }
-  ggsave(filename = paste0(dir, "/", filename, ".png"), plot = plot, dpi = 300, bg = "white")
+  ggsave(filename = paste0(dir, "/", filename, ".png"), plot = plot, width=15, height=15, dpi = 300, bg = "white")
   
   return(plot)
 }
