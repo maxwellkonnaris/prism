@@ -2459,12 +2459,20 @@ prism.density <- function(data, filename = "prism_density", dir = "./plots/", ta
     )
   
   # Filter by selected taxa if specified
-  if (taxa != "all") {
-    taxa_names <- unique(c(data$d1, data$d2))
-    selected_taxa <- taxa_names[taxa]
-    combined_stats <- combined_stats %>%
-      filter(d1 %in% selected_taxa & d2 %in% selected_taxa)
+  if (!identical(taxa, "all")) {
+	  taxa_names <- unique(c(data$d1, data$d2))
+	  
+	  # If taxa is numeric, use indices to select the taxa names
+	  if (is.numeric(taxa)) {
+	    selected_taxa <- taxa_names[taxa]
+	  } else {
+	    selected_taxa <- taxa
+	  }
+	  
+	  combined_stats <- combined_stats %>%
+	    filter(d1 %in% selected_taxa & d2 %in% selected_taxa)
   }
+
   
   # Define CI categories
   get_ci_category <- function(minsigma_values, maxsigma_values) {
