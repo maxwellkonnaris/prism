@@ -71,8 +71,33 @@ SparCC_count <- function(x, imax = 20, kmax = 10, alpha = 0.1, Vmin = 1e-4) {
   diag(cov_w) <- diag(cov_w) / 2;
   cor_w <- cor_w + t(cor_w);
   diag(cor_w) <- 1;
+  # 
+  # Maxwell Edits to Sparcc below -- to extract uncertainty estimates for the model above:
+  # Calculate 95% CI (2.5% and 97.5% quantiles)
+  cor_ci_lower <- matrix(0, p, p);
+  cor_ci_upper <- matrix(0, p, p);
+  cov_ci_lower <- matrix(0, p, p);
+  cov_ci_upper <- matrix(0, p, p);
   #
-  return(list(cov_w = cov_w, cor_w = cor_w));
+  # Correlation confidence intervals
+  cor_ci_lower[indLow] <- apply(cors, 1, quantile, probs = 0.025);
+  cor_ci_upper[indLow] <- apply(cors, 1, quantile, probs = 0.975);
+  cor_ci_lower <- cor_ci_lower + t(cor_ci_lower);
+  cor_ci_upper <- cor_ci_upper + t(cor_ci_upper);
+  diag(cor_ci_lower) <- diag(cor_ci_upper) <- 1;
+  #
+  # Covariance confidence intervals
+  cov_ci_lower[indLow] <- apply(covs, 1, quantile, probs = 0.025);
+  cov_ci_upper[indLow] <- apply(covs, 1, quantile, probs = 0.975);
+  cov_ci_lower <- cov_ci_lower + t(cov_ci_lower);
+  cov_ci_upper <- cov_ci_upper + t(cov_ci_upper);
+  diag(cov_ci_lower) <- diag(cov_ci_upper) <- diag(cov_w) / 2;
+  #
+  return(list(
+    cov_w = cov_w, cor_w = cor_w, 
+    cor_ci_lower = cor_ci_lower, cor_ci_upper = cor_ci_upper, 
+    cov_ci_lower = cov_ci_lower, cov_ci_upper = cov_ci_upper
+  ));
 }
 #-------------------------------------------------------------------------------
 # SparCC for fractions known
