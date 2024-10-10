@@ -2355,3 +2355,171 @@ plot_confusion_matrix <- function(confusion_data_list, outputdirectory, save) {
   print(p)
 }
 
+
+#' Plot Pairwise Covariance Densities with Confidence Intervals
+#'
+#' This function generates a density plot of pairwise covariances between `d1` and `d2` using the minimum and maximum covariance values.
+#' It includes confidence intervals (CI) to visualize whether they cover zero, indicating statistical significance. 
+#' The function supports facet grids for pairwise comparisons, error bars to display CI, and allows filtering by specific taxa.
+#'
+#' @param data A data frame containing at least the following columns: `d1`, `d2`, `minsigma_absolute_minimum_covariance`, and `maxsigma_absolute_maximum_covariance`. These represent the pairwise comparisons and covariance values.
+#' @param filename A character string specifying the output file name (without extension) for the plot. Default is `"prism_density"`.
+#' @param dir A character string specifying the directory to save the output plot. Default is `"./plots/"`. The directory will be created if it doesn't exist.
+#' @param taxa Either `"all"` (the default), or a vector of taxa names or indices to filter which taxa pairs are included in the plot.
+#'
+#' @return The function returns a ggplot object representing the density plot of pairwise covariances with confidence intervals.
+#' The plot is also saved as a PNG file in the specified directory.
+#'
+#' @details The function works as follows:
+#' \itemize{
+#'   \item Renames the covariance columns to `Minimum Covariance` and `Maximum Covariance`.
+#'   \item Adds diagonal data for consistency in the grid (where `d1 == d2`).
+#'   \item Mirrors the data for all pairwise comparisons (where `d1 != d2`), ensuring both directions of comparison are included.
+#'   \item Calculates confidence intervals (95% CI) for the pairwise covariances and determines whether the CI covers zero.
+#'   \item Plots density estimates of the covariance values, colored based on the CI coverage (positive, negative, or covering zero).
+#'   \item Displays error bars for the confidence intervals and facets the plot by `d1` and `d2` pairings.
+#' }
+#'
+#' @note Error bars are included for each pairwise comparison, regardless of the number of comparisons.
+#'
+#' @examples
+#' \dontrun{
+#'   # Example usage:
+#'   prism_density(data = my_data, filename = "my_prism_density", dir = "./my_plots/", taxa = c("Taxa1", "Taxa2"))
+#' }
+#'
+#' @import ggplot2 dplyr tidyr
+#' @importFrom scales pretty_breaks
+#' @export				   
+prism.density <- function(data, filename = "prism_density", dir = "./plots/", taxa = "all") {
+
+  data <- data %>%
+    rename(
+      `Minimum Covariance` = minsigma_absolute_minimum_covariance,
+      `Maximum Covariance` = maxsigma_absolute_maximum_covariance
+    )
+  
+  required_columns <- c("d1", "d2", "Minimum Covariance", "Maximum Covariance")
+  missing_columns <- setdiff(required_columns, names(data))
+  if (length(missing_columns) > 0) {
+    stop(paste("Missing required columns:", paste(missing_columns, collapse = ", ")))
+  }
+
+  unique_d <- unique(c(data$d1, data$d2))
+  diagonal_data <- data.frame(
+    d1 = unique_d,
+    d2 = unique_d,
+    `Minimum Covariance` = NA_real_,
+    `Maximum Covariance` = NA_real_
+  )
+
+  mirrored_data <- data %>%
+    filter(d1 != d2) %>%
+    mutate(d1_temp = d2, d2 = d1, d1 = d1_temp) 
+
+  combined_data <- bind_rows(data, mirrored_data, diagonal_data) %>%
+    filter(!is.na(d1) & !is.na(d2)) 
+
+  combined_stats <- combined_data %>%
+    group_by(d1, d2) %>%
+    summarise(
+      lower_bound = quantile(`Minimum Covariance`, 0.025, na.rm = TRUE),
+      upper_bound = quantile(`Maximum Covariance`, 0.975, na.rm = TRUE),
+      median_value = median(c(`Minimum Covariance`, `Maximum Covariance`), na.rm = TRUE),
+      ci_coverage = ifelse(
+        quantile(`Minimum Covariance`, 0.025, na.rm = TRUE) > 0 | quantile(`Maximum Covariance`, 0.975, na.rm = TRUE) < 0,
+        "CI does not cover zero",
+        "CI covers zero"
+      ),
+      .groups = "drop"
+    )
+
+  if (taxa != "all") {
+    taxa_names <- unique(c(data$d1, data$d2))
+    selected_taxa <- taxa_names[taxa]
+
+    combined_stats <- combined_stats %>%
+      filter(d1 %in% selected_taxa & d2 %in% selected_taxa)
+  }
+
+  get_ci_category <- function(minsigma_values, maxsigma_values) {
+    cilower <- quantile(minsigma_values, probs = 0.025, na.rm = TRUE)
+    ciupper <- quantile(maxsigma_values, probs = 0.975, na.rm = TRUE)
+    
+    if (is.na(cilower) | is.na(ciupper)) {
+      return("CI covers zero")
+    } else if (cilower > 0) {
+      return("Positive CI")
+    } else if (ciupper < 0) {
+      return("Negative CI")
+    } else {
+      return("CI covers zero")
+    }
+  }
+
+  combined_data <- combined_data %>%
+    group_by(d1, d2) %>%
+    mutate(ci_category = get_ci_category(`Minimum Covariance`, `Maximum Covariance`)) %>%
+    ungroup()
+
+  combined_data_long <- combined_data %>%
+    pivot_longer(
+      cols = c(`Minimum Covariance`, `Maximum Covariance`),
+      names_to = "Covariance Type",
+      values_to = "covariance_value"
+    )
+
+  plot <- ggplot(combined_data_long, aes(x = covariance_value, color = `Covariance Type`, fill = ci_category)) +
+    geom_density(alpha = 0.7, na.rm = TRUE) +
+    facet_grid(d1 ~ d2, scales = "free_y") +  
+    geom_vline(xintercept = 0, linetype = "dotted", color = "black", size = 1) +
+    geom_errorbarh(
+      data = combined_stats,
+      aes(y = 0.3, xmin = lower_bound, xmax = upper_bound, x = median_value),
+      height = 0.2,
+      inherit.aes = FALSE,
+      color = "black",
+      size = 0.7
+    ) +
+    theme_minimal(base_size = 17) +
+    theme(
+      legend.position = "top",
+      strip.text.x = element_text(face = "bold", size = 14),
+      strip.text.y = element_text(face = "bold", size = 14),
+      axis.text = element_text(size = 12),
+      panel.border = element_rect(color = "black", fill = NA, size = 2),
+      plot.title = element_text(face = "bold", size = 20),
+      panel.spacing = unit(0.1, "lines")
+    ) +
+    scale_color_manual(
+      values = c("Minimum Covariance" = "#143d80", "Maximum Covariance" = "#80141f"),
+      name = "Covariance Type"
+    ) +
+    scale_fill_manual(
+      values = c("CI covers zero" = "grey", "Positive CI" = "#143d80", "Negative CI" = "#80141f"),
+      name = "CI Coverage",
+      labels = c(
+        "CI covers zero" = "Grey: CI covers zero", 
+        "Positive CI" = "Blue: Positive CI", 
+        "Negative CI" = "Red: Negative CI"
+      )
+    ) +
+    scale_x_continuous(breaks = scales::pretty_breaks(n = 3)) +  
+    scale_y_continuous(breaks = scales::pretty_breaks(n = 3)) +  
+    labs(
+      title = "Intervals for Pairwise Covariance",
+      x = "Log Scale Covariance",
+      y = "Density"
+    ) +
+    guides(
+      color = guide_legend(title = " "),
+      fill = guide_legend(title = " ")
+    )
+
+  if (!dir.exists(dir)) {
+    dir.create(dir, recursive = TRUE)
+  }
+  ggsave(filename = paste0(dir, "/", filename, ".png"), plot = plot, dpi = 300, bg = "white")
+  
+  return(plot)
+}
