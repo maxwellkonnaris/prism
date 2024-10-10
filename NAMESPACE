@@ -15,6 +15,7 @@ export(prism.spsd)
 export(prism.proportions)
 export(prism.method_comparison)
 export(prism.assessment)
+export(prism.density)
 export(cclasso)
 export(SparCC_count)
 
