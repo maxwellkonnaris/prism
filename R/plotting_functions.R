@@ -2360,12 +2360,14 @@ plot_confusion_matrix <- function(confusion_data_list, outputdirectory, save) {
 #'
 #' This function generates a density plot of pairwise covariances between `d1` and `d2` using the minimum and maximum covariance values.
 #' It includes confidence intervals (CI) to visualize whether they cover zero, indicating statistical significance. 
-#' The function supports facet grids for pairwise comparisons, error bars to display CI, and allows filtering by specific taxa.
+#' The function supports facet grids for pairwise comparisons, error bars to display CI, and allows filtering by specific taxa and significance.
 #'
 #' @param data A data frame containing at least the following columns: `d1`, `d2`, `minsigma_absolute_minimum_covariance`, and `maxsigma_absolute_maximum_covariance`. These represent the pairwise comparisons and covariance values.
 #' @param filename A character string specifying the output file name (without extension) for the plot. Default is `"prism_density"`.
 #' @param dir A character string specifying the directory to save the output plot. Default is `"./plots/"`. The directory will be created if it doesn't exist.
 #' @param taxa Either `"all"` (the default), or a vector of taxa names or indices to filter which taxa pairs are included in the plot.
+#' @param group_by_taxonomy Either `NULL` (the default), or a character string specifying a higher-level taxonomy column by which to group comparisons. If provided, pairwise comparisons will be grouped by this column.
+#' @param filter_significant Either `NULL` (the default), or a numeric value representing the p-value threshold for filtering significant comparisons. Comparisons with p-values greater than the threshold will be excluded.
 #'
 #' @return The function returns a ggplot object representing the density plot of pairwise covariances with confidence intervals.
 #' The plot is also saved as a PNG file in the specified directory.
@@ -2378,33 +2380,54 @@ plot_confusion_matrix <- function(confusion_data_list, outputdirectory, save) {
 #'   \item Calculates confidence intervals (95% CI) for the pairwise covariances and determines whether the CI covers zero.
 #'   \item Plots density estimates of the covariance values, colored based on the CI coverage (positive, negative, or covering zero).
 #'   \item Displays error bars for the confidence intervals and facets the plot by `d1` and `d2` pairings.
+#'   \item Optionally groups pairwise comparisons by a higher-level taxonomy if specified.
+#'   \item Optionally filters the data by significant comparisons based on the `p_value` column.
 #' }
 #'
-#' @note Error bars are included for each pairwise comparison, regardless of the number of comparisons.
+#' @note Error bars are included for each pairwise comparison, regardless of the number of comparisons. Grouping by a higher-level taxonomy and filtering by significance are optional parameters.
 #'
 #' @examples
 #' \dontrun{
 #'   # Example usage:
 #'   prism_density(data = my_data, filename = "my_prism_density", dir = "./my_plots/", taxa = c("Taxa1", "Taxa2"))
+#'
+#'   # Group by taxonomy and filter by significant p-values
+#'   prism_density(data = my_data, group_by_taxonomy = "Phylum", filter_significant = 0.05)
 #' }
 #'
 #' @import ggplot2 dplyr tidyr
 #' @importFrom scales pretty_breaks
-#' @export				   
-prism.density <- function(data, filename = "prism_density", dir = "./plots/", taxa = "all") {
-
+#' @export		   
+prism.density <- function(data, filename = "prism_density", dir = "./plots/", taxa = "all", group_by_taxonomy = NULL, filter_significant = NULL) {
+  
+  # Rename columns for clarity
   data <- data %>%
     rename(
       `Minimum Covariance` = minsigma_absolute_minimum_covariance,
       `Maximum Covariance` = maxsigma_absolute_maximum_covariance
     )
   
+  # Check for required columns
   required_columns <- c("d1", "d2", "Minimum Covariance", "Maximum Covariance")
   missing_columns <- setdiff(required_columns, names(data))
   if (length(missing_columns) > 0) {
     stop(paste("Missing required columns:", paste(missing_columns, collapse = ", ")))
   }
+  
+  # Filter by significant comparisons if specified
+  if (!is.null(filter_significant)) {
+    data <- data %>% filter(p_value < filter_significant)
+  }
 
+  # Grouping by higher-level taxonomy if specified
+  if (!is.null(group_by_taxonomy)) {
+    if (!group_by_taxonomy %in% colnames(data)) {
+      stop(paste("Grouping column", group_by_taxonomy, "not found in data."))
+    }
+    data <- data %>% group_by(!!sym(group_by_taxonomy))  # Grouping by taxonomy
+  }
+
+  # Handle diagonal entries and mirrored data
   unique_d <- unique(c(data$d1, data$d2))
   diagonal_data <- data.frame(
     d1 = unique_d,
@@ -2412,14 +2435,15 @@ prism.density <- function(data, filename = "prism_density", dir = "./plots/", ta
     `Minimum Covariance` = NA_real_,
     `Maximum Covariance` = NA_real_
   )
-
+  
   mirrored_data <- data %>%
     filter(d1 != d2) %>%
-    mutate(d1_temp = d2, d2 = d1, d1 = d1_temp) 
-
+    mutate(d1_temp = d2, d2 = d1, d1 = d1_temp)
+  
   combined_data <- bind_rows(data, mirrored_data, diagonal_data) %>%
-    filter(!is.na(d1) & !is.na(d2)) 
-
+    filter(!is.na(d1) & !is.na(d2))
+  
+  # Calculate statistics
   combined_stats <- combined_data %>%
     group_by(d1, d2) %>%
     summarise(
@@ -2433,15 +2457,16 @@ prism.density <- function(data, filename = "prism_density", dir = "./plots/", ta
       ),
       .groups = "drop"
     )
-
+  
+  # Filter by selected taxa if specified
   if (taxa != "all") {
     taxa_names <- unique(c(data$d1, data$d2))
     selected_taxa <- taxa_names[taxa]
-
     combined_stats <- combined_stats %>%
       filter(d1 %in% selected_taxa & d2 %in% selected_taxa)
   }
-
+  
+  # Define CI categories
   get_ci_category <- function(minsigma_values, maxsigma_values) {
     cilower <- quantile(minsigma_values, probs = 0.025, na.rm = TRUE)
     ciupper <- quantile(maxsigma_values, probs = 0.975, na.rm = TRUE)
@@ -2456,19 +2481,20 @@ prism.density <- function(data, filename = "prism_density", dir = "./plots/", ta
       return("CI covers zero")
     }
   }
-
+  
   combined_data <- combined_data %>%
     group_by(d1, d2) %>%
     mutate(ci_category = get_ci_category(`Minimum Covariance`, `Maximum Covariance`)) %>%
     ungroup()
-
+  
   combined_data_long <- combined_data %>%
     pivot_longer(
       cols = c(`Minimum Covariance`, `Maximum Covariance`),
       names_to = "Covariance Type",
       values_to = "covariance_value"
     )
-
+  
+  # Create density plot
   plot <- ggplot(combined_data_long, aes(x = covariance_value, color = `Covariance Type`, fill = ci_category)) +
     geom_density(alpha = 0.7, na.rm = TRUE) +
     facet_grid(d1 ~ d2, scales = "free_y") +  
@@ -2515,7 +2541,8 @@ prism.density <- function(data, filename = "prism_density", dir = "./plots/", ta
       color = guide_legend(title = " "),
       fill = guide_legend(title = " ")
     )
-
+  
+  # Create directory for saving the plot if it doesn't exist
   if (!dir.exists(dir)) {
     dir.create(dir, recursive = TRUE)
   }
@@ -2523,3 +2550,4 @@ prism.density <- function(data, filename = "prism_density", dir = "./plots/", ta
   
   return(plot)
 }
+
