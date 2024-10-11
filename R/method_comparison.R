@@ -104,7 +104,7 @@ prism.method_comparison <- function(Y,
                                       rep_num = rep_num,
                                       num_edges = sum(getRefit(glspiec_easi_result)),
                                       sparsity = sum(getRefit(glspiec_easi_result)) / (ncol(t(Y)) * (ncol(t(Y)) - 1) / 2),
-                                      precision_matrix_spiec_easi = getOptiCov(glspiec_easi_result)
+                                      precision_matrix_spiec_easi = getOptiCov(glspiec_easi_result),
                                       cov_matrix_spiec_easi = getOptCov(glspiec_easi_result),
                                       cor_matrix_spiec_easi = cov2cor(getOptCov(glspiec_easi_result)),
                                       stability = getStability(glspiec_easi_result),
