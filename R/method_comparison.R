@@ -212,12 +212,13 @@ prism.method_comparison <- function(Y,
   cat("END SparCC\n")
   cat("Start CClasso\n")
   
-  cclasso_result <- tryCatch(PRISM::cclasso(t(normalized_data)), 
+  cclasso_result <- tryCatch(PRISM::cclasso(t(Y)), counts = TRUE, pseudo = 0.5, 
                              error = function(e) stop("CCLasso failed: ", e$message))
   
   variances <- cclasso_result$var_w
   correlations <- cclasso_result$cor_w
   cov_matrix_cclasso <- correlations * sqrt(outer(variances, variances))
+  pvals = cclasso_result$p_vals
   
   cclassoresults <- data.frame(
     comparison = character(),
@@ -238,7 +239,7 @@ prism.method_comparison <- function(Y,
         ninetyfive_ci_upper = cov_value,
         minsigma_absolute_minimum_covariance = cov_value,
         maxsigma_absolute_maximum_covariance = cov_value,
-        p_value = NA
+        p_value = pvals[i,j]
       ))
     }
   }
