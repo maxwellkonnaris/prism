@@ -46,10 +46,10 @@ prism.method_comparison <- function(Y,
   
   cat("Start SpiecEasi\n")
   # Define the grid of parameters to test
-  lambda_min_ratios <- c(1e-1, 1e-2, 1e-3, 1e-4)
-  nlambda_values <- c(50)
-  stars_thresholds <- c(0.01, 0.05, 0.1)
-  rep_num_values <- c(100)
+  lambda_min_ratios <- c(1e-1, 1e-2, 1e-3, 1e-4) # parameter defines the minimum ratio of the regularization path. smaller lambda min ratio will explore more sparse models (i.e., fewer edges in the network). larger lambda min ratio will allow denser networks. Smaller Networks or Less Complexity: If you expect the microbial network to be sparse (e.g., few interactions), a lower value like 1e-3 or 1e-4 might be useful. Larger Networks or Complex Interactions: If you believe there is more interaction complexity, keeping the ratio at 1e-2 or even increasing it slightly might help find more connections without overfitting.
+  nlambda_values <- c(100) # We are not converned about computational efficiency, but if you are then this is a parameter you would decrease to explore less lambda iterations. 100 is chosen for increased precision.
+  stars_thresholds <- c(0.01, 0.05, 0.1) #Low Threshold (e.g., 0.01): This means you are more strict about accepting network variability, resulting in a sparser and more stable network. High Threshold (e.g., 0.2): This is more lenient, allowing for more variability and resulting in a denser network with potentially more false positives. Default Value: A value of 0.05 is often used, which balances stability with network density. If You Want Higher Stability: A lower value like 0.01 or 0.02 ensures that the connections in the network are stable across subsamples. This is useful if you want to be conservative and prioritize stable, reliable edges. If You Are Tolerant to Unstable Edges: You might increase the threshold to 0.1 or 0.2 if you are willing to accept a denser network and more potential false positives.
+  rep_num_values <- c(100) # Again we are not concerned with computational efficiency here, so 100 is chosen for better stability from subsampling stars. specifies the minimum fraction of subsamples where an edge must appear to be considered stable.
   
   # Create a results list to store outputs
   results_mb <- list()
@@ -64,6 +64,7 @@ prism.method_comparison <- function(Y,
 
           # Run spiec.easi with the current combination of parameters
           tryCatch({
+            #regression coefficients (in neighborhood selection)
             mbspiec_easi_result <- spiec.easi(t(as.matrix(Y)), 
                                             method = "mb", 
                                             lambda.min.ratio = lambda_min, 
@@ -71,7 +72,7 @@ prism.method_comparison <- function(Y,
                                             sel.criterion = "stars",  
                                             pulsar.params = list(rep.num = rep_num_values, thresh = thresh, seed=10241994, ncores=num_cores),
                                             pulsar.select = TRUE)
-                                      
+            # precision matrix (in graphical lasso)                           
             glspiec_easi_result <- spiec.easi(t(as.matrix(Y)), 
                                             method = "glasso", 
                                             lambda.min.ratio = lambda_min, 
@@ -118,7 +119,30 @@ prism.method_comparison <- function(Y,
       }
     }
   }
+
+  # Save results_mb and results_gl to a file
+  save(results_mb, results_gl, file = "spiec_easi_results.RData")
+
+  # Define a function to select the best model
+  select_best_model <- function(results_list) {
+    best_model <- NULL
+    best_stability <- 0
+    for (res in results_list) {
+      # You may want to prioritize models with highest stability and reasonable sparsity
+      if (res$stability > best_stability && res$num_edges > 0) {
+        best_stability <- res$stability
+        best_model <- res
+      }
+    }
+    return(best_model)
+  }
   
+  # Select the best model for both methods (MB and GL)
+  best_mb_model <- select_best_model(results_mb)
+  best_gl_model <- select_best_model(results_gl)
+
+  # Extract the covariance matrix from the best GL model
+  cov_matrix_spiec_easi <- best_gl_model$cov_matrix_spiec_easi
   
   spieceasiresults <- data.frame(
     comparison = character(),
