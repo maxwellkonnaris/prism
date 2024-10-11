@@ -46,10 +46,10 @@ prism.method_comparison <- function(Y,
   
   cat("Start SpiecEasi\n")
   # Define the grid of parameters to test
-  lambda_min_ratios <- c(1e-2, 1e-3, 1e-4)
-  nlambda_values <- c(20, 50, 100)
+  lambda_min_ratios <- c(1e-1, 1e-2, 1e-3, 1e-4)
+  nlambda_values <- c(50)
   stars_thresholds <- c(0.01, 0.05, 0.1)
-  rep_num_values <- c(50, 100)
+  rep_num_values <- c(100)
   
   # Create a results list to store outputs
   results_mb <- list()
@@ -60,26 +60,24 @@ prism.method_comparison <- function(Y,
   # Loop over each combination of hyperparameters
   counter <- 1
   for (lambda_min in lambda_min_ratios) {
-    for (nlambda in nlambda_values) {
       for (thresh in stars_thresholds) {
-        for (rep_num in rep_num_values) {
-          
+
           # Run spiec.easi with the current combination of parameters
           tryCatch({
             mbspiec_easi_result <- spiec.easi(t(as.matrix(Y)), 
                                             method = "mb", 
                                             lambda.min.ratio = lambda_min, 
-                                            nlambda = nlambda,  
+                                            nlambda = nlambda_values,  
                                             sel.criterion = "stars",  
-                                            pulsar.params = list(rep.num = rep_num, thresh = thresh, seed=10241994, ncores=num_cores),
+                                            pulsar.params = list(rep.num = rep_num_values, thresh = thresh, seed=10241994, ncores=num_cores),
                                             pulsar.select = TRUE)
                                       
             glspiec_easi_result <- spiec.easi(t(as.matrix(Y)), 
                                             method = "glasso", 
                                             lambda.min.ratio = lambda_min, 
-                                            nlambda = nlambda,  
+                                            nlambda = nlambda_values,  
                                             sel.criterion = "stars",  
-                                            pulsar.params = list(rep.num = rep_num, thresh = thresh, seed=10241994, ncores=num_cores),
+                                            pulsar.params = list(rep.num = rep_num_values, thresh = thresh, seed=10241994, ncores=num_cores),
                                             pulsar.select = TRUE)
 
             # Store the spiec_easi_result and additional metrics in the results list
