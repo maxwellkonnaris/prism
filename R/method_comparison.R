@@ -185,8 +185,6 @@ prism.method_comparison <- function(Y,
           })
         }
       }
-    }
-  }
 
   # Define a function to select the best model
   select_best_model <- function(results_list) {
