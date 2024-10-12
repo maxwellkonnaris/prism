@@ -43,6 +43,9 @@ prism.method_comparison <- function(Y,
   }
   
   normalized_data <- normalize_counts(as.matrix(rdat3))
+
+  ps <- phyloseq::phyloseq(otu_table(normalized_data, taxa_are_rows = TRUE))
+  ps <- t(ps)
   
   cat("Start SpiecEasi\n")
   # Define the grid of parameters to test
@@ -250,53 +253,104 @@ prism.method_comparison <- function(Y,
   cat("END CClasso\n")
   cat("Start Propr\n")
 
-  prop_result <- tryCatch(propr(t(Y), metric = "phi", ivar = "clr", p = 100),
-                              error = function(e) stop("Proportionality failed: ", e$message))
-  pr <- updateCutoffs(
-          prop_result,
-          custom_cutoffs = c(0.1),  # number of cutoffs to estimate FDR
-          tails = 'right',  # consider only the positive values ('right') or both sides ('both')
-          ncores = 4  # parallelize here
-        ) 
-  corr_matrix_proportionality <- pr@matrix
-  
-  
-  proprresults <- data.frame(
-    comparison = character(),
-    ninetyfive_ci_lower = numeric(),
-    ninetyfive_ci_upper = numeric(),
-    minsigma_absolute_minimum_covariance = numeric(),
-    maxsigma_absolute_maximum_covariance = numeric(),
-    p_value = numeric()  # Optional, can leave out if not needed
-  )
-  
-  # Loop through the upper triangle of the covariance matrix to extract comparisons
-  for (i in 1:(ncol(corr_matrix_proportionality) - 1)) {
-    for (j in (i + 1):ncol(corr_matrix_proportionality)) {
-      # Extract the covariance value
-      cov_value <- corr_matrix_proportionality[i, j]
-  
-      # Create the comparison name (e.g., "Taxa1:Taxa2")
-      comparison_name <- paste0(colnames(corr_matrix_proportionality)[i], ":", colnames(corr_matrix_proportionality)[j])
-      comparison_name <- paste0("Taxa",i, ":", "Taxa",j) # fix and remove
+  # Function to calculate proportionality metrics and store results in a list
+  calculate_proportionality <- function(normalized_data) {
+    
+    metrics <- c("rho", "phi", "phs")  # Define the metrics to be used
+    tails_options <- c("both", "right", "right")  # Different tails options for rho, phi, and phs
+    
+    results_list <- list()  # Empty list to store results
+    
+    for (k in 1:length(metrics)) {
       
-      # Append this comparison to the data frame
-      proprresults <- rbind(proprresults, data.frame(
-        comparison = comparison_name,
-        ninetyfive_ci_lower = cov_value,
-        ninetyfive_ci_upper = cov_value,
-        minsigma_absolute_minimum_covariance = cov_value,
-        maxsigma_absolute_maximum_covariance = cov_value,
-        p_value = NA  # Placeholder, can remove this if not needed
-      ))
+      metric <- metrics[k]
+      tails <- tails_options[k]
+      
+      # Try-Catch block to handle proportionality calculation errors
+      prop_obj <- tryCatch(propr(t(normalized_data), metric = metric, ivar = "clr", alpha=0, p = 100),
+                           error = function(e) stop("Proportionality failed: ", e$message))
+      
+      # Apply cutoff criteria
+      pr_obj <- updateCutoffs(
+      prop_obj,
+      tails = tails,  # 'both' for rho, 'right' for phi and phs
+      ncores = num_cores  # Parallel processing
+      )
+  
+      # Assuming pr_obj is the propr object
+      corr_matrix_proportionality <- getMatrix(pr_obj)
+  
+      # Get the data from getResults() for the corresponding metric (rho, phs, etc.)
+      results_data <- getSignificantResultsFDR(pr_obj)
+  
+      # Create a comparison column in results_data to facilitate merging
+      results_data$comparison <- paste0(results_data$Pair, ":", results_data$Partner)
+  
+      # Initialize an empty data frame to store the results
+      propr_results <- data.frame(
+        comparison = character(),
+        ninetyfive_ci_lower = numeric(),
+        ninetyfive_ci_upper = numeric(),
+        minsigma_absolute_minimum_covariance = numeric(),
+        maxsigma_absolute_maximum_covariance = numeric(),
+        p_value = numeric()  # Optional, placeholder for p-values if needed
+      )
+  
+      # Loop through the upper triangle of the covariance matrix to extract comparisons
+      for (i in 1:(ncol(corr_matrix_proportionality) - 1)) {
+        for (j in (i + 1):ncol(corr_matrix_proportionality)) {
+          
+          # Create the comparison name (e.g., "Taxa1:Taxa2")
+          comparison_name <- paste0("Taxa", i, ":", "Taxa", j)
+          
+          # Check if this comparison exists in the results_data table
+          if (comparison_name %in% results_data$comparison) {
+            # If present, extract the propr value from results_data
+            propr_value <- results_data$propr[results_data$comparison == comparison_name]
+          } else {
+            # If not present, set propr_value as NA
+            propr_value <- NaN
+          }
+          
+          # Append the result to the data frame
+          propr_results <- rbind(propr_results, data.frame(
+            comparison = comparison_name,
+            ninetyfive_ci_lower = propr_value,  # Fill this with propr_value
+            ninetyfive_ci_upper = propr_value,  # Fill this with propr_value
+            minsigma_absolute_minimum_covariance = propr_value,
+            maxsigma_absolute_maximum_covariance = propr_value,
+            p_value = NA  # Placeholder, can be removed if p-values are not needed
+          ))
+        }
+      }
+  
+      # Separate the comparison column into taxa1 and taxa2 columns
+  
+      propr_results <- propr_results %>%
+        separate(comparison, into = c("taxa1", "taxa2"), sep = ":", remove = FALSE)
+  
+      
+      # Store the results in the list
+      results_list[[metric]] <- list(
+        dataframe = propr_results,
+        pr_object = pr_obj
+      )
     }
+    
+    # Return the list containing results for rho, phi, and phs
+    return(results_list)
   }
+  
+  # Example usage with your normalized data
+  proportionality_results <- calculate_proportionality(normalized_data)
+  
+  # Accessing the results for rho, phi, and phs
+  proprresults_rho <- proportionality_results[["rho"]][["dataframe"]]
+  proprresults_phi <- proportionality_results[["phi"]][["dataframe"]]
+  proprresults_phs <- proportionality_results[["phs"]][["dataframe"]]       
 
-  proprresults <- proprresults %>%
-          separate(comparison, into = c("taxa1", "taxa2"), sep = ":", remove = FALSE)                        
   
   cat("Start Banocc\n")
-  max_cores <- parallel::detectCores() - 1  # Reserve 1 core
   ### BANOCC Model ###
 
   # Define the function to run sensitivity analysis with different priors and initial values
@@ -363,7 +417,8 @@ prism.method_comparison <- function(Y,
   #   - If you have domain knowledge or previous studies that suggest what values of λ\lambdaλ are reasonable, you can adjust α\alphaα and β\betaβ to reflect that.
   #        - For example, if you know λ\lambdaλ is likely to be small but nonzero, you might use α=1\alpha = 1α=1 and β=0.1\beta = 0.1β=0.1, leading to a prior that concentrates around small positive values.3. **Controlling Shrinkage**:
   #    - If you want more aggressive shrinkage (forcing λ\lambdaλ closer to zero), set a small value for α\alphaα (e.g., α=0.1\alpha = 0.1α=0.1) and a larger β\betaβ (e.g., β=1\beta = 1β=1).- If you want to reduce the amount of shrinkage and give the model more freedom, you can increase α\alphaα (e.g., α=2\alpha = 2α=2) and set β\betaβ to a smaller value (e.g., β=0.5\beta = 0.5β=0.5).
-
+  
+                          
   # Priors for L (covariance matrix)
   L_prior_1 <- 1 * diag(ncol(ps))
   L_prior_2 <- 10 * diag(ncol(ps))
@@ -413,7 +468,7 @@ prism.method_comparison <- function(Y,
                                     chains = 4,
                                     iter = 6000,
                                     warmup = 3000,
-                                    cores = max_cores)
+                                    cores = num_cores)
   
   # Access the results for each model
   fit_results <- banoccresults$fit_results
@@ -513,15 +568,17 @@ prism.method_comparison <- function(Y,
   
   # Save SpiecEasi results
   saveRDS(spieceasiresults, paste0(filename,"SpiecEasi_results.rds"))
-  
+  save(results_gl, file = "SpiecEasi_results_gl.RData")
+  save(results_mb, file = "SpiecEasi_results_mb.RData")
+                           
   # Save SparCC results
   saveRDS(sparccresults, paste0(filename,"SparCC_results.rds"))
   
   # Save CClasso results
   saveRDS(cclassoresults, paste0(filename,"CClasso_results.rds"))
-  
-  # Save Proportionality results
-  saveRDS(proprresults, paste0(filename,"Propr_results.rds"))
+
+  # Save the entire proportionality_results list to an RData file
+  save(proportionality_results, file = "proportionality_results.RData")
 
   # Visualize and save the plots
   forest_plot_filename <- paste0("simulated_forestplot_all_",uncertaintydistribution,"_",algorithm)
@@ -533,7 +590,9 @@ prism.method_comparison <- function(Y,
                            SpiecEasi = spieceasiresults, 
                            SparCC = sparccresults, 
                            CClasso = cclassoresults, 
-                           Propr = proprresults)
+                           Propr_rho = proprresults_rho,
+                           Propr_phi = proprresults_phi,
+                           Propr_phs = proprresults_phs)
   
   if (!is.null(trueabundances)) { 
     covarianceresults$TrueAbundances = trueabundances
