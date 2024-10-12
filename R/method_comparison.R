@@ -87,11 +87,8 @@ prism.method_comparison <- function(Y,
       
       # Assign the final results list to prismresults
       prismresults <- result_list
-    }
-    
-    # Return the final results (or list of results)
-    return(prismresults)
   }
+    
 
   if (is.list(externalscalemeasurements)) {
     for (i in seq_along(prismresults)) {
