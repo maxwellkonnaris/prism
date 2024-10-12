@@ -1250,8 +1250,8 @@ optimize_sigma <- function(algorithm, taxa1relativesd, taxa2relativesd, relative
                )
              
              # Append the rpars to the file for this pair
-             pair_file_name <- paste0("gridresults_taxa_", d1, "_", d2, ".txt")
-             append_to_pair_file(rpars, pair_file_name, outputdirectory)
+             ## pair_file_name <- paste0("gridresults_taxa_", d1, "_", d2, ".txt")
+             ## append_to_pair_file(rpars, pair_file_name, outputdirectory)
              
              # Filter rows where SPSD is >= 0
              rpars <- rpars %>%
