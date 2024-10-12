@@ -673,6 +673,42 @@ calculate_mcse <- function(bootstrap_estimates) {
     )
 }
 
+
+#' Generate Flow Cytometry Data
+#'
+#' This function simulates flow cytometry data by generating random values based on 
+#' specified totals and a standard deviation. The generated values are normally 
+#' distributed with a mean equal to the totals and a specified standard deviation.
+#' Any negative values are set to zero.
+#'
+#' @param totals A numeric vector of total values for each sample. These represent the means of the normal distributions from which flow cytometry data is generated.
+#' @param replicates A numeric value indicating the number of replicates for each sample.
+#' @param flow_sd A numeric value representing the standard deviation used for generating random flow cytometry values.
+#'
+#' @return A data frame containing the simulated flow cytometry data. The data frame has two columns:
+#' \item{sample}{An integer indicating the sample number, repeated for each replicate.}
+#' \item{flow}{The generated flow cytometry values, with any negative values set to zero.}
+#'
+#' @examples
+#' # Simulate flow cytometry data for 3 samples with 5 replicates each and a standard deviation of 10.
+#' flow_cytometry(totals = c(100, 150, 200), replicates = 5, flow_sd = 10)
+#'
+#' @export                              
+flow_cytometry <- function(totals, replicates, flow_sd) {
+    flow_vals <- sapply(totals, function(total) {
+        rnorm(replicates, mean = total, sd = flow_sd)
+    })
+    
+    # Handle negative values by setting them to zero
+    flow_vals[flow_vals < 0] <- 0
+    
+    flow_data <- data.frame(
+        sample = rep(1:length(totals), each = replicates),
+        flow = as.vector(flow_vals)
+    )
+    return(flow_data)
+    }
+
 #' Simulate sparse correlated microbiome data with Poisson-distributed true abundances and flow cytometry data
 #'
 #' This function generates simulated microbiome count data with user-defined 
@@ -860,21 +896,6 @@ prism.simulate_prepost <- function(
   dummy <- as.data.frame(W_counts)
   colnames(dummy) <- paste0("Taxa", 1:ncol(W_counts)) 
   dummy$Condition <- Condition
-
-  flow_cytometry <- function(totals, replicates, flow_sd) {
-    flow_vals <- sapply(totals, function(total) {
-        rnorm(replicates, mean = total, sd = flow_sd)
-    })
-    
-    # Handle negative values by setting them to zero
-    flow_vals[flow_vals < 0] <- 0
-    
-    flow_data <- data.frame(
-        sample = rep(1:length(totals), each = replicates),
-        flow = as.vector(flow_vals)
-    )
-    return(flow_data)
-    }
   
   W.perp <- rowSums(W_counts)
   flow_data <- flow_cytometry(W.perp, replicates, flow_sd)
