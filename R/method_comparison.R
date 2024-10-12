@@ -63,7 +63,7 @@ prism.method_comparison <- function(Y,
         cat("Processing external scale measurement", i, "\n")
         
         # Extract the current external scale measurement vector (it could be a data frame column or vector)
-        current_measurement <- externalscalemeasurements[[i]]
+        current_measurement <- as.matrix(externalscalemeasurements[[i]])
         
         # Run PRISM for each vector of external scale measurements
         results <- PRISM::prism.covariance(Y = Y, S = S, uncertaintydistribution = uncertaintydistribution,  
