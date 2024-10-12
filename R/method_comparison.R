@@ -21,20 +21,88 @@ prism.method_comparison <- function(Y,
                                     uncertaintydistribution = "multinomiallognormal",
                                     logfile = "log_prismcovariance.txt",
                                     pvalue = FALSE) {
-  cat("Start PRISM\n")
+    cat("Start PRISM\n")
+    
+    # Check if externalscalemeasurements is NULL
+    if (is.null(externalscalemeasurements)) {
+      stop("External scale measurements cannot be NULL")
+    }
+    
+    # Initialize a list to store results if we have multiple external scale measurements
+    result_list <- list()
+    
+    # If externalscalemeasurements is a single vector (or data frame column)
+    if (!is.list(externalscalemeasurements)) {
+      cat("Single external scale measurement provided\n")
+      
+      # Perform PRISM analysis with a single vector of external scale measurements
+      results <- PRISM::prism.covariance(Y = Y, S = S, uncertaintydistribution = uncertaintydistribution,  
+                                         externalscalemeasurements = externalscalemeasurements, algorithm = algorithm, 
+                                         outputdirectory = output_directory, prefix=filename, pvalue=pvalue, logfile = logfile)
+      
+      # Generate filenames for final and inner results
+      final_results_filename <- paste0(filename, "finalresults_", uncertaintydistribution, "_", algorithm, ".csv")
+      all_inner_results_filename <- paste0(filename, "allinnerresults_", uncertaintydistribution, "_", algorithm, ".csv")
+      
+      # Save results to CSV files
+      write.csv(results$final_results, file = file.path(output_directory, final_results_filename))
+      write.csv(results$all_inner_results, file = file.path(output_directory, all_inner_results_filename))
+      
+      # Optionally generate and save forest plot filename (if needed)
+      forest_plot_filename <- paste0(filename, "forestplot_", uncertaintydistribution, "_", algorithm)
+      
+      # Store the final results
+      prismresults <- results$final_results
+      
+    } else {
+      # If externalscalemeasurements is a list of vectors/data frame columns
+      cat("Multiple external scale measurements provided\n")
+      
+      # Iterate over the list of vectors and run PRISM on each
+      for (i in seq_along(externalscalemeasurements)) {
+        cat("Processing external scale measurement", i, "\n")
+        
+        # Extract the current external scale measurement vector (it could be a data frame column or vector)
+        current_measurement <- externalscalemeasurements[[i]]
+        
+        # Run PRISM for each vector of external scale measurements
+        results <- PRISM::prism.covariance(Y = Y, S = S, uncertaintydistribution = uncertaintydistribution,  
+                                           externalscalemeasurements = current_measurement, algorithm = algorithm, 
+                                           outputdirectory = output_directory, prefix=filename, pvalue=pvalue, logfile = logfile)
+        
+        # Append iteration number to filenames to avoid overwriting
+        final_results_filename <- paste0(filename, "finalresults_", uncertaintydistribution, "_", algorithm, "_", i, ".csv")
+        all_inner_results_filename <- paste0(filename, "allinnerresults_", uncertaintydistribution, "_", algorithm, "_", i, ".csv")
+        
+        # Save the results to CSV files
+        write.csv(results$final_results, file = file.path(output_directory, final_results_filename))
+        write.csv(results$all_inner_results, file = file.path(output_directory, all_inner_results_filename))
+        
+        # Optionally generate and save forest plot filename for each iteration (if needed)
+        forest_plot_filename <- paste0(filename, "forestplot_", uncertaintydistribution, "_", algorithm, "_", i)
+        
+        # Store the results for this iteration in the result list
+        result_list[[i]] <- results$final_results
+      }
+      
+      # Assign the final results list to prismresults
+      prismresults <- result_list
+    }
+    
+    # Return the final results (or list of results)
+    return(prismresults)
+  }
+
+  if (is.list(externalscalemeasurements)) {
+    for (i in seq_along(prismresults)) {
+      # Dynamically create a variable name like prismresults_1, prismresults_2, etc.
+      variable_name <- paste0("prismresults_", i)
+      
+      # Assign each element of prismresults to the dynamically created variable name
+      assign(variable_name, prismresults[[i]], envir = .GlobalEnv)
+    }
+  }
   
-  results <- PRISM::prism.covariance(Y = Y, S = S, uncertaintydistribution = uncertaintydistribution,  
-                                     externalscalemeasurements = externalscalemeasurements, algorithm = algorithm, 
-                                     outputdirectory = output_directory, prefix=filename, pvalue=pvalue, logfile = logfile)
-  
-  final_results_filename <- paste0(filename, "finalresults_", uncertaintydistribution, "_", algorithm, ".csv")
-  all_inner_results_filename <- paste0(filename, "allinnerresults_", uncertaintydistribution, "_", algorithm, ".csv")
-  
-  write.csv(results$final_results, file = file.path(output_directory, final_results_filename))
-  write.csv(results$all_inner_results, file = file.path(output_directory, all_inner_results_filename))
-  
-  forest_plot_filename <- paste0(filename, "forestplot_", uncertaintydistribution, "_", algorithm)
-  prismresults = results$final_results
   cat("END PRISM\n")
   
   rdat3 <- Y + 0.5
@@ -122,9 +190,6 @@ prism.method_comparison <- function(Y,
       }
     }
   }
-
-  # Save results_mb and results_gl to a file
-  save(results_mb, results_gl, file = "spiec_easi_results.RData")
 
   # Define a function to select the best model
   select_best_model <- function(results_list) {
@@ -564,12 +629,11 @@ prism.method_comparison <- function(Y,
   saveRDS(banoccresults_lg, paste0(filename,"Banocc_results_lg.rds"))
                           
   # Save PRISM results
-  saveRDS(prismresults, paste0(filename,"PRISM_results.rds"))
+  save(prismresults, paste0(filename,"PRISM_results.Rdata"))
   
   # Save SpiecEasi results
   saveRDS(spieceasiresults, paste0(filename,"SpiecEasi_results.rds"))
-  save(results_gl, file = "SpiecEasi_results_gl.RData")
-  save(results_mb, file = "SpiecEasi_results_mb.RData")
+  save(results_mb, results_gl, file = "spiec_easi_results.RData")
                            
   # Save SparCC results
   saveRDS(sparccresults, paste0(filename,"SparCC_results.rds"))
@@ -583,16 +647,43 @@ prism.method_comparison <- function(Y,
   # Visualize and save the plots
   forest_plot_filename <- paste0("simulated_forestplot_all_",uncertaintydistribution,"_",algorithm)
                         
-  covarianceresults = list(PRISM = prismresults, 
-                           BanoCC_lo = banoccresults_lo, 
-                           BanoCC_md = banoccresults_md, 
-                           BanoCC_lg = banoccresults_lg, 
-                           SpiecEasi = spieceasiresults, 
-                           SparCC = sparccresults, 
-                           CClasso = cclassoresults, 
-                           Propr_rho = proprresults_rho,
-                           Propr_phi = proprresults_phi,
-                           Propr_phs = proprresults_phs)
+  # Initialize covarianceresults with the fixed components first
+  covarianceresults <- list(
+    BanoCC_lo = banoccresults_lo, 
+    BanoCC_md = banoccresults_md, 
+    BanoCC_lg = banoccresults_lg, 
+    SpiecEasi = spieceasiresults, 
+    SparCC = sparccresults, 
+    CClasso = cclassoresults, 
+    Propr_rho = proprresults_rho,
+    Propr_phi = proprresults_phi,
+    Propr_phs = proprresults_phs
+  )
+  
+  # Add the PRISM results dynamically based on the length of prismresults
+  if (is.list(prismresults)) {
+    for (i in seq_along(prismresults)) {
+      # Create a name for each PRISM result, first is 'PRISM', the rest 'PRISM_2', 'PRISM_3', etc.
+      if (i == 1) {
+        result_name <- "PRISM"
+      } else {
+        result_name <- paste0("PRISM_", i)
+      }
+      
+      # Add each PRISM result to the covarianceresults list
+      covarianceresults[[result_name]] <- prismresults[[i]]
+    }
+  }
+
+  # Extract only the PRISM results from covarianceresults
+  prism_results <- covarianceresults[grepl("^PRISM", names(covarianceresults))]
+  
+  # Extract the remaining (non-PRISM) results from covarianceresults
+  other_results <- covarianceresults[!grepl("^PRISM", names(covarianceresults))]
+  
+  # Combine them, putting PRISM results first
+  covarianceresults <- c(prism_results, other_results)
+
   
   if (!is.null(trueabundances)) { 
     covarianceresults$TrueAbundances = trueabundances
