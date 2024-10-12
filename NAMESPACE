@@ -16,6 +16,7 @@ export(prism.proportions)
 export(prism.method_comparison)
 export(prism.assessment)
 export(prism.density)
+export(flow_cytometry)
 export(cclasso)
 export(SparCC_count)
 
