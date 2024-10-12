@@ -154,7 +154,7 @@ prism.method_comparison <- function(Y,
                                       lambda_min = lambda_min,
                                       nlambda = nlambda_values,
                                       thresh = thresh,
-                                      rep_num = rep_num,
+                                      rep_num = rep_num_values,
                                       num_edges = sum(getRefit(mbspiec_easi_result)),
                                       sparsity = sum(getRefit(mbspiec_easi_result)) / (ncol(t(Y)) * (ncol(t(Y)) - 1) / 2),
                                       beta_matrix_spiec_easi = getOptBeta(mbspiec_easi_result),
@@ -168,7 +168,7 @@ prism.method_comparison <- function(Y,
                                       lambda_min = lambda_min,
                                       nlambda = nlambda_values,
                                       thresh = thresh,
-                                      rep_num = rep_num,
+                                      rep_num = rep_num_values,
                                       num_edges = sum(getRefit(glspiec_easi_result)),
                                       sparsity = sum(getRefit(glspiec_easi_result)) / (ncol(t(Y)) * (ncol(t(Y)) - 1) / 2),
                                       precision_matrix_spiec_easi = getOptiCov(glspiec_easi_result),
@@ -181,7 +181,7 @@ prism.method_comparison <- function(Y,
             counter <- counter + 1
             
           }, error = function(e) {
-            message(paste("Error with lambda_min:", lambda_min, "nlambda:", nlambda_values, "thresh:", thresh, "rep_num:", rep_num))
+            message(paste("Error with lambda_min:", lambda_min, "nlambda:", nlambda_values, "thresh:", thresh, "rep_num:", rep_num_values))
           })
         }
       }
