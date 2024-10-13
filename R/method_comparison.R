@@ -114,10 +114,10 @@ prism.method_comparison <- function(Y,
   
   cat("Start SpiecEasi\n")
 
-  lambda_min_ratios <- c(1e-1, 1e-2, 1e-3, 1e-4) # parameter defines the minimum ratio of the regularization path. smaller lambda min ratio will explore more sparse models (i.e., fewer edges in the network). larger lambda min ratio will allow denser networks. Smaller Networks or Less Complexity: If you expect the microbial network to be sparse (e.g., few interactions), a lower value like 1e-3 or 1e-4 might be useful. Larger Networks or Complex Interactions: If you believe there is more interaction complexity, keeping the ratio at 1e-2 or even increasing it slightly might help find more connections without overfitting.
-  nlambda_values <- 100 # We are not converned about computational efficiency, but if you are then this is a parameter you would decrease to explore less lambda iterations. 100 is chosen for increased precision.
-  stars_thresholds <- c(0.01, 0.05, 0.1) #Low Threshold (e.g., 0.01): This means you are more strict about accepting network variability, resulting in a sparser and more stable network. High Threshold (e.g., 0.2): This is more lenient, allowing for more variability and resulting in a denser network with potentially more false positives. Default Value: A value of 0.05 is often used, which balances stability with network density. If You Want Higher Stability: A lower value like 0.01 or 0.02 ensures that the connections in the network are stable across subsamples. This is useful if you want to be conservative and prioritize stable, reliable edges. If You Are Tolerant to Unstable Edges: You might increase the threshold to 0.1 or 0.2 if you are willing to accept a denser network and more potential false positives.
-  rep_num_values <- 100 # Again we are not concerned with computational efficiency here, so 100 is chosen for better stability from subsampling stars. specifies the minimum fraction of subsamples where an edge must appear to be considered stable.
+  lambda_min_ratios <- c(1e-1, 1e-2, 1e-3, 1e-4) ## parameter defines the minimum ratio of the regularization path. smaller lambda min ratio will explore more sparse models (i.e., fewer edges in the network). larger lambda min ratio will allow denser networks. Smaller Networks or Less Complexity: If you expect the microbial network to be sparse (e.g., few interactions), a lower value like 1e-3 or 1e-4 might be useful. Larger Networks or Complex Interactions: If you believe there is more interaction complexity, keeping the ratio at 1e-2 or even increasing it slightly might help find more connections without overfitting.
+  nlambda_values <- 100 ## We are not converned about computational efficiency, but if you are then this is a parameter you would decrease to explore less lambda iterations. 100 is chosen for increased precision.
+  stars_thresholds <- c(0.01, 0.05, 0.1) ## Low Threshold (e.g., 0.01): This means you are more strict about accepting network variability, resulting in a sparser and more stable network. High Threshold (e.g., 0.2): This is more lenient, allowing for more variability and resulting in a denser network with potentially more false positives. Default Value: A value of 0.05 is often used, which balances stability with network density. If You Want Higher Stability: A lower value like 0.01 or 0.02 ensures that the connections in the network are stable across subsamples. This is useful if you want to be conservative and prioritize stable, reliable edges. If You Are Tolerant to Unstable Edges: You might increase the threshold to 0.1 or 0.2 if you are willing to accept a denser network and more potential false positives.
+  rep_num_values <- 100 ## Again we are not concerned with computational efficiency here, so 100 is chosen for better stability from subsampling stars. specifies the minimum fraction of subsamples where an edge must appear to be considered stable.
 
   results_mb <- list()
   results_gl <- list()
@@ -125,20 +125,34 @@ prism.method_comparison <- function(Y,
   cl <- parallel::makeCluster(num_cores)
   on.exit(parallel::stopCluster(cl), add = TRUE)
 
+ # Define the grid of parameters to test
+  lambda_min_ratios <- c(1e-1, 1e-2, 1e-3, 1e-4) # parameter defines the minimum ratio of the regularization path. smaller lambda min ratio will explore more sparse models (i.e., fewer edges in the network). larger lambda min ratio will allow denser networks. Smaller Networks or Less Complexity: If you expect the microbial network to be sparse (e.g., few interactions), a lower value like 1e-3 or 1e-4 might be useful. Larger Networks or Complex Interactions: If you believe there is more interaction complexity, keeping the ratio at 1e-2 or even increasing it slightly might help find more connections without overfitting.
+  nlambda_values <- 100 # We are not converned about computational efficiency, but if you are then this is a parameter you would decrease to explore less lambda iterations. 100 is chosen for increased precision.
+  stars_thresholds <- c(0.01, 0.05, 0.1) #Low Threshold (e.g., 0.01): This means you are more strict about accepting network variability, resulting in a sparser and more stable network. High Threshold (e.g., 0.2): This is more lenient, allowing for more variability and resulting in a denser network with potentially more false positives. Default Value: A value of 0.05 is often used, which balances stability with network density. If You Want Higher Stability: A lower value like 0.01 or 0.02 ensures that the connections in the network are stable across subsamples. This is useful if you want to be conservative and prioritize stable, reliable edges. If You Are Tolerant to Unstable Edges: You might increase the threshold to 0.1 or 0.2 if you are willing to accept a denser network and more potential false positives.
+  rep_num_values <- 100 # Again we are not concerned with computational efficiency here, so 100 is chosen for better stability from subsampling stars. specifies the minimum fraction of subsamples where an edge must appear to be considered stable.
+  
+  # Create a results list to store outputs
+  results_mb <- list()
+  results_gl <- list()
+  num_cores <- parallel::detectCores() - 1
+  cl <- parallel::makeCluster(num_cores)
+  on.exit(parallel::stopCluster(cl), add = TRUE)
+  
+  # Loop over each combination of hyperparameters
   counter <- 1
   for (lambda_min in lambda_min_ratios) {
       for (thresh in stars_thresholds) {
 
-
+          # Run spiec.easi with the current combination of parameters
           tryCatch({
-            # reression coefficients (in neighborhood selection)
+            #regression coefficients (in neighborhood selection)
             mbspiec_easi_result <- spiec.easi(t(as.matrix(Y)), 
                                             method = "mb", 
                                             lambda.min.ratio = lambda_min, 
                                             nlambda = nlambda_values,  
                                             sel.criterion = "stars",  
                                             pulsar.params = list(rep.num = rep_num_values, thresh = thresh, seed=10241994, ncores=num_cores),
-                                            pulsar.select = TRUE, 
+                                            pulsar.select = TRUE,
                                             verbose = TRUE)
             # precision matrix (in graphical lasso)                           
             glspiec_easi_result <- spiec.easi(t(as.matrix(Y)), 
@@ -147,9 +161,9 @@ prism.method_comparison <- function(Y,
                                             nlambda = nlambda_values,  
                                             sel.criterion = "stars",  
                                             pulsar.params = list(rep.num = rep_num_values, thresh = thresh, seed=10241994, ncores=num_cores),
-                                            pulsar.select = TRUE,
-                                            verbose = TRUE)
+                                            pulsar.select = TRUE)
 
+            # Store the spiec_easi_result and additional metrics in the results list
             results_mb[[counter]] <- list(method = "mb",
                                       lambda_min = lambda_min,
                                       nlambda = nlambda_values,
@@ -161,8 +175,9 @@ prism.method_comparison <- function(Y,
                                       symmetricbeta_matrix_spiec_easi = symBeta(getOptBeta(mbspiec_easi_result), mode='maxabs'),
                                       stability = getStability(mbspiec_easi_result),
                                       num_edges_pair = sum(getRefit(mbspiec_easi_result))/2,
-                                      spiec_easi_result = mbspiec_easi_result) 
-
+                                      spiec_easi_result = mbspiec_easi_result)  # Store full spiec_easi result
+            
+            # Store the spiec_easi_result and additional metrics in the results list
             results_gl[[counter]] <- list(method = "glasso",
                                       lambda_min = lambda_min,
                                       nlambda = nlambda_values,
@@ -172,10 +187,9 @@ prism.method_comparison <- function(Y,
                                       sparsity = sum(getRefit(glspiec_easi_result)) / (ncol(t(Y)) * (ncol(t(Y)) - 1) / 2),
                                       precision_matrix_spiec_easi = getOptiCov(glspiec_easi_result),
                                       cov_matrix_spiec_easi = getOptCov(glspiec_easi_result),
-                                      cor_matrix_spiec_easi = cov2cor(getOptCov(glspiec_easi_result)),
                                       stability = getStability(glspiec_easi_result),
                                       num_edges_pair = sum(getRefit(glspiec_easi_result))/2,
-                                      spiec_easi_result = glspiec_easi_result) 
+                                      spiec_easi_result = glspiec_easi_result)  # Store full spiec_easi result
             
             counter <- counter + 1
             
@@ -275,7 +289,7 @@ prism.method_comparison <- function(Y,
   cat("END SparCC\n")
   cat("Start CClasso\n")
   
-  cclasso_result <- tryCatch(PRISM::cclasso(t(Y)), counts = TRUE, pseudo = 0.5, 
+  cclasso_result <- tryCatch(PRISM::cclasso(t(Y), counts = TRUE, pseudo = 0.5, k_cv = 10, lam_int = c(1e-4, 10), k_max = 100, n_boot = 100), 
                              error = function(e) stop("CCLasso failed: ", e$message))
   
   variances <- cclasso_result$var_w
