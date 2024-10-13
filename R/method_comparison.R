@@ -138,7 +138,8 @@ prism.method_comparison <- function(Y,
                                             nlambda = nlambda_values,  
                                             sel.criterion = "stars",  
                                             pulsar.params = list(rep.num = rep_num_values, thresh = thresh, seed=10241994, ncores=num_cores),
-                                            pulsar.select = TRUE)
+                                            pulsar.select = TRUE, 
+                                            verbose = TRUE)
             # precision matrix (in graphical lasso)                           
             glspiec_easi_result <- spiec.easi(t(as.matrix(Y)), 
                                             method = "glasso", 
@@ -146,7 +147,8 @@ prism.method_comparison <- function(Y,
                                             nlambda = nlambda_values,  
                                             sel.criterion = "stars",  
                                             pulsar.params = list(rep.num = rep_num_values, thresh = thresh, seed=10241994, ncores=num_cores),
-                                            pulsar.select = TRUE)
+                                            pulsar.select = TRUE,
+                                            verbose = TRUE)
 
             results_mb[[counter]] <- list(method = "mb",
                                       lambda_min = lambda_min,
