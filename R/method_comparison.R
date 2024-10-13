@@ -423,7 +423,7 @@ prism.method_comparison <- function(Y,
   proprresults_phi <- proportionality_results[["phi"]][["dataframe"]]
   proprresults_phs <- proportionality_results[["phs"]][["dataframe"]]       
 
-  
+  cat("END Propr\n")
   cat("Start Banocc\n")
   ### BANOCC Model ###
 
@@ -443,7 +443,7 @@ prism.method_comparison <- function(Y,
     for (i in seq_along(L_list)) {
       
       # Print progress message
-      cat("Running model", i, "with L =", L_list[[i]], "a =", a_list[[i]], "b =", b_list[[i]], "\n")
+      cat("Running model", i, "\nwith L =", L_list[[i]], "\na =", a_list[[i]], "\nb =", b_list[[i]], "\n")
       
       # Run the BAnOCC model with the specified priors and initial values
       fit <- banocc::run_banocc(C = C,
