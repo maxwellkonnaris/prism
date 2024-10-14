@@ -1,0 +1,122 @@
+# Snakefile
+
+# Define the final outputs
+rule all:
+    input:
+        "results/covariance_comparisons.rds",
+        "results/banocc_sensitivity_results.rds",
+        "results/proportionality_results.RData",
+        "results/prism_results.rds",
+        "results/spieceasi_results.rds",
+        "results/sparcc_results.rds",
+        "results/cclasso_results.rds",
+        "data/abundances.RData",
+        "data/externalscalemeasurements.RData",
+        "data/forest_plot_data.RData",
+        "plots/forest_plot.png"
+
+# Rule to simulate data
+rule simulate_data:
+    output:
+        "data/abundances.RData",
+        "data/externalscalemeasurements.RData",
+        "data/forest_plot_data.RData"
+    conda:
+        "envs/r_env.yaml"
+    script:
+        "scripts/simulate_data.R"
+
+# Rule to run PRISM method
+rule run_prism:
+    input:
+        abundances="data/abundances.RData",
+        externalscale="data/externalscalemeasurements.RData"
+    output:
+        "results/prism_results.rds"
+    conda:
+        "envs/r_env.yaml"
+    script:
+        "scripts/run_prism.R"
+
+# Rule to run BAnOCC method
+rule run_banocc:
+    input:
+        abundances="data/abundances.RData"
+    output:
+        "results/banocc_sensitivity_results.rds"
+    conda:
+        "envs/r_env.yaml"
+    script:
+        "scripts/run_banocc.R"
+
+# Rule to run SpiecEasi method
+rule run_spieceasi:
+    input:
+        abundances="data/abundances.RData"
+    output:
+        "results/spieceasi_results.rds"
+    conda:
+        "envs/r_env.yaml"
+    script:
+        "scripts/run_spieceasi.R"
+
+# Rule to run SparCC method
+rule run_sparcc:
+    input:
+        abundances="data/abundances.RData"
+    output:
+        "results/sparcc_results.rds"
+    conda:
+        "envs/r_env.yaml"
+    script:
+        "scripts/run_sparcc.R"
+
+# Rule to run CClasso method
+rule run_cclasso:
+    input:
+        abundances="data/abundances.RData"
+    output:
+        "results/cclasso_results.rds"
+    conda:
+        "envs/r_env.yaml"
+    script:
+        "scripts/run_cclasso.R"
+
+# Rule to run Proportionality method
+rule run_proportionality:
+    input:
+        abundances="data/abundances.RData"
+    output:
+        "results/proportionality_results.RData"
+    conda:
+        "envs/r_env.yaml"
+    script:
+        "scripts/run_proportionality.R"
+
+# Rule to combine all results
+rule combine_results:
+    input:
+        prism_results="results/prism_results.rds",
+        banocc_results="results/banocc_sensitivity_results.rds",
+        spieceasi_results="results/spieceasi_results.rds",
+        sparcc_results="results/sparcc_results.rds",
+        cclasso_results="results/cclasso_results.rds",
+        proportionality_results="results/proportionality_results.RData",
+        forest_plot_data="data/forest_plot_data.RData"
+    output:
+        "results/covariance_comparisons.rds"
+    conda:
+        "envs/r_env.yaml"
+    script:
+        "scripts/combine_results.R"
+
+# Rule to generate plots
+rule generate_plots:
+    input:
+        "results/covariance_comparisons.rds"
+    output:
+        "plots/forest_plot.png"
+    conda:
+        "envs/r_env.yaml"
+    script:
+        "scripts/generate_plots.R"
