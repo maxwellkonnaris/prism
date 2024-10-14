@@ -176,7 +176,7 @@ prism.method_comparison <- function(Y,
     }
     
     # Compile BAnOCC model
-    compiled_banocc_model <- banocc::banocc_model
+    compiled_banocc_model <- rstan::stan_model(model_code = banocc::banocc_model)
     
     # Run the sensitivity analysis function
     banoccresults <- run_banocc_sensitivity(
