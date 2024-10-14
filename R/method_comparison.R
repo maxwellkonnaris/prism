@@ -21,12 +21,260 @@ prism.method_comparison <- function(Y,
                                     uncertaintydistribution = "multinomiallognormal",
                                     logfile = "log_prismcovariance.txt",
                                     pvalue = FALSE) {
-    cat("Start PRISM\n")
-    
-    # Check if externalscalemeasurements is NULL
+
+        # Check if externalscalemeasurements is NULL
     if (is.null(externalscalemeasurements)) {
       stop("External scale measurements cannot be NULL")
     }
+
+    num_cores <- parallel::detectCores() - 1
+    cl <- parallel::makeCluster(num_cores)
+    on.exit(parallel::stopCluster(cl), add = TRUE)
+
+    rdat3 <- Y + 0.5
+    normalize_counts <- function(count_matrix) {
+      return(sweep(count_matrix, 2, colSums(count_matrix), "/"))
+    }
+    
+    normalized_data <- normalize_counts(as.matrix(rdat3))
+  
+    ps <- phyloseq::phyloseq(otu_table(normalized_data, taxa_are_rows = TRUE))
+    ps <- t(ps)
+
+    cat("Start Banocc\n")
+    ### BANOCC Model ###
+  
+    
+    # Define priors and initial values for sensitivity analysis
+    ### Guidelines fo choose gamma parameters for the Glasso ###
+    # Prior covariance matrix for m ----- Scaling by 10 is a weakly informative choice, allowing moderate spread for the values of m. A higher value (e.g., 100) would imply less confidence in the prior, giving m more freedom to take extreme values.
+    # Conversely, a smaller value (e.g., 1) would shrink m closer to the prior mean.
+    #More confident priors: Use a smaller scaling factor (e.g., 𝐿=1×diag(𝑝) 
+    #Less confident priors: Increase the scaling factor (e.g., 𝐿=100×diag(𝑝) to allow for more flexibility in the model estimates.
+    
+    ### Guidelines for Choosing α\alphaα and β\betaβ:
+    #1. **Weakly Informative Priors**:
+    #   - If you do not have strong prior information about λ\lambdaλ, you can use weakly informative priors. A common choice is to set both α\alphaα and β\betaβ to values that encourage shrinkage but allow the model to explore other values.- **Suggested values**: α=0.5\alpha = 0.5α=0.5, β=0.01\beta = 0.01β=0.01
+    #        - This choice places significant probability mass near zero, encouraging shrinkage while not completely ruling out larger values of λ\lambdaλ.2. **Based on Prior Knowledge**:
+    #   - If you have domain knowledge or previous studies that suggest what values of λ\lambdaλ are reasonable, you can adjust α\alphaα and β\betaβ to reflect that.
+    #        - For example, if you know λ\lambdaλ is likely to be small but nonzero, you might use α=1\alpha = 1α=1 and β=0.1\beta = 0.1β=0.1, leading to a prior that concentrates around small positive values.3. **Controlling Shrinkage**:
+    #    - If you want more aggressive shrinkage (forcing λ\lambdaλ closer to zero), set a small value for α\alphaα (e.g., α=0.1\alpha = 0.1α=0.1) and a larger β\betaβ (e.g., β=1\beta = 1β=1).- If you want to reduce the amount of shrinkage and give the model more freedom, you can increase α\alphaα (e.g., α=2\alpha = 2α=2) and set β\betaβ to a smaller value (e.g., β=0.5\beta = 0.5β=0.5).
+  
+    # Define priors for L
+    L_list <- list(
+      L_prior_1 = 10 * diag(ncol(ps)),
+      L_prior_2 = 100 * diag(ncol(ps))
+    )
+    
+    # Define priors for alpha and beta (Gamma distribution parameters)
+    alpha_list <- c(0.1, 0.5, 1, 2)
+    beta_list <- c(0.1, 0.5, 1, 2)
+    
+    # Define fixed initial values
+    init_fixed <- list(
+      m = rep(0, ncol(ps)),   # Mean vector fixed at zero
+      O = diag(ncol(ps)),     # Identity matrix
+      lambda = 0.02           # Fixed lambda
+    )
+  
+    # Create a data frame of all combinations
+    param_grid <- expand.grid(
+      L = names(L_list),
+      alpha = alpha_list,
+      beta = beta_list,
+      stringsAsFactors = FALSE
+    )
+  
+    # Select 'lo' as the combination with the smallest values
+    lo_index <- which(
+      param_grid$L == "L_prior_1" &
+      param_grid$alpha == min(alpha_list) &
+      param_grid$beta == min(beta_list)
+    )
+    
+    # Select 'md' as the combination with the middle values
+    # We'll choose alpha and beta equal to 1
+    md_index <- which(
+      param_grid$L == "L_prior_1" &
+      param_grid$alpha == 0.5 &
+      param_grid$beta == 0.5
+    )
+    
+    # Select 'lg' as the combination with the largest values
+    lg_index <- which(
+      param_grid$L == "L_prior_2" &
+      param_grid$alpha == max(alpha_list) &
+      param_grid$beta == max(beta_list)
+    )
+    
+    # Ensure we have only one index for each
+    lo_index <- lo_index[1]
+    md_index <- md_index[1]
+    lg_index <- lg_index[1]
+                            
+    # Extract the L matrices corresponding to the grid
+    L_values <- L_list[param_grid$L]
+    
+    # Repeat the fixed initial values for each combination
+    init_list <- replicate(nrow(param_grid), init_fixed, simplify = FALSE)
+    
+    # Prepare the lists for alpha and beta
+    a_list <- param_grid$alpha
+    b_list <- param_grid$beta
+  
+    # Define the function to run sensitivity analysis with different priors and initial values
+    run_banocc_sensitivity <- function(C, compiled_model, n_prior, L_list, a_list, b_list, init_list, chains = 4, iter = 4000, warmup = 2000, cores = num_cores) {
+      
+      # Ensure the lists of priors are the same length
+      n_runs <- length(L_list)
+      if (n_runs != length(a_list) || n_runs != length(b_list) || n_runs != length(init_list)) {
+        stop("L_list, a_list, b_list, and init_list must have the same length!")
+      }
+      
+      # Store results in a list
+      results_list <- list()
+      output_list <- list()
+      
+      # Loop over each set of priors and initial values
+      for (i in seq_len(n_runs)) {
+        
+        # Get the current L, a, b, and init
+        L_current <- L_list[[i]]
+        a_current <- a_list[i]
+        b_current <- b_list[i]
+        init_current <- init_list[[i]]
+        
+        # Print progress message
+        cat("Running model", i, "of", n_runs, "\n",
+            "L =", names(L_list)[i], "\n",
+            "alpha =", a_current, "\n",
+            "beta =", b_current, "\n")
+        
+        # Run the BAnOCC model with the specified priors and initial values
+        fit <- banocc::run_banocc(C = C,
+                                  compiled_banocc_model = compiled_model,
+                                  n = n_prior,
+                                  L = L_current,   # L for this model run
+                                  a = a_current,   # alpha (shape) for this model run
+                                  b = b_current,   # beta (rate) for this model run
+                                  init = init_current, # Initial values for this model run
+                                  chains = chains,   # Number of chains
+                                  iter = iter,       # Total iterations
+                                  warmup = warmup,   # Warmup iterations
+                                  cores = cores)     # Number of cores for parallel processing
+        
+        # Store the fit result in the results list
+        results_list[[paste0("model_", i)]] <- fit
+        
+        # Extract the covariance matrix and credible intervals
+        cov_matrix <- banocc::get_banocc_output(banoccfit = fit, conf_alpha = 0)
+        cov_matrix_CI <- banocc::get_banocc_output(banoccfit = fit, conf_alpha = 0.05)
+        
+        # Store them in output list
+        output_list[[paste0("cov_matrix_", i)]] <- cov_matrix
+        output_list[[paste0("cov_matrix_CI_", i)]] <- cov_matrix_CI
+      }
+      
+      # Return the list of results and the extracted covariance matrices
+      return(list(fit_results = results_list, cov_matrices = output_list))
+    }
+  
+    # Compile BAnOCC model
+    compiled_banocc_model <- rstan::stan_model(model_code = banocc::banocc_model)
+  
+    # Run the sensitivity analysis function
+    banoccresults <- run_banocc_sensitivity(
+      C = ps,
+      compiled_model = compiled_banocc_model,
+      n_prior = rep(0, ncol(ps)),
+      L_list = L_values,
+      a_list = a_list,
+      b_list = b_list,
+      init_list = init_list,
+      chains = 4,
+      iter = 4000,
+      warmup = 2000,
+      cores = num_cores
+    )
+  
+    # Access the results for each model
+    fit_results <- banoccresults$fit_results
+    cov_matrices <- banoccresults$cov_matrices
+    
+    # Extract the indices for lo, md, lg
+    lo_model_index <- lo_index
+    md_model_index <- md_index
+    lg_model_index <- lg_index
+    
+    # Extract the covariance matrices and credible intervals
+    cov_matrix_model_lo <- cov_matrices[[paste0("cov_matrix_", lo_model_index)]]
+    cov_matrix_CI_model_lo <- cov_matrices[[paste0("cov_matrix_CI_", lo_model_index)]]
+    
+    cov_matrix_model_md <- cov_matrices[[paste0("cov_matrix_", md_model_index)]]
+    cov_matrix_CI_model_md <- cov_matrices[[paste0("cov_matrix_CI_", md_model_index)]]
+    
+    cov_matrix_model_lg <- cov_matrices[[paste0("cov_matrix_", lg_model_index)]]
+    cov_matrix_CI_model_lg <- cov_matrices[[paste0("cov_matrix_CI_", lg_model_index)]]
+  
+    
+    # Function to extract results into a data frame
+    extract_cov_results <- function(cov_matrix, cov_matrix_CI, label) {
+      results_df <- data.frame(
+        comparison = character(),
+        ninetyfive_ci_lower = numeric(),
+        ninetyfive_ci_upper = numeric(),
+        minsigma_absolute_minimum_covariance = numeric(),
+        maxsigma_absolute_maximum_covariance = numeric()
+      )
+      
+      # Loop through the upper triangular part of the covariance matrix to extract comparisons
+      for (i in 1:(ncol(cov_matrix$Estimates.median) - 1)) {
+        for (j in (i + 1):ncol(cov_matrix$Estimates.median)) {
+          
+          # Extract the 95% CI bounds for the same pair
+          ninetyfive_ci_lower <- cov_matrix_CI$CI.hpd$lower[i, j]
+          ninetyfive_ci_upper <- cov_matrix_CI$CI.hpd$upper[i, j]
+          
+          # Extract the min and max bounds for the same pair
+          lower <- cov_matrix$CI.hpd$lower[i, j]
+          upper <- cov_matrix$CI.hpd$upper[i, j]
+          
+          # Create the comparison name using actual taxa names if available
+          if (!is.null(colnames(cov_matrix$Estimates.median))) {
+            taxa_i <- colnames(cov_matrix$Estimates.median)[i]
+            taxa_j <- colnames(cov_matrix$Estimates.median)[j]
+          } else {
+            taxa_i <- paste0("Taxa", i)
+            taxa_j <- paste0("Taxa", j)
+          }
+          comparison_name <- paste0(taxa_i, ":", taxa_j)
+          
+          # Append this comparison to the data frame
+          results_df <- rbind(results_df, data.frame(
+            comparison = comparison_name,
+            ninetyfive_ci_lower = ninetyfive_ci_lower,
+            ninetyfive_ci_upper = ninetyfive_ci_upper,
+            minsigma_absolute_minimum_covariance = lower,
+            maxsigma_absolute_maximum_covariance = upper
+          ))
+        }
+      }
+      
+      # Split the comparison into taxa1 and taxa2
+      results_df <- results_df %>%
+        separate(comparison, into = c("taxa1", "taxa2"), sep = ":", remove = FALSE)
+      
+      return(results_df)
+    }
+    
+    # Extract results for each sensitivity model
+    banoccresults_lo <- extract_cov_results(cov_matrix_model_lo, cov_matrix_CI_model_lo, "lo")
+    banoccresults_md <- extract_cov_results(cov_matrix_model_md, cov_matrix_CI_model_md, "md")
+    banoccresults_lg <- extract_cov_results(cov_matrix_model_lg, cov_matrix_CI_model_lg, "lg")
+  
+    cat("END Banocc\n")
+  
+    cat("Start PRISM\n")
     
     # Initialize a list to store results if we have multiple external scale measurements
     result_list <- list()
@@ -101,16 +349,10 @@ prism.method_comparison <- function(Y,
   }
   
   cat("END PRISM\n")
-  
-  rdat3 <- Y + 0.5
-  normalize_counts <- function(count_matrix) {
-    return(sweep(count_matrix, 2, colSums(count_matrix), "/"))
-  }
-  
-  normalized_data <- normalize_counts(as.matrix(rdat3))
 
-  ps <- phyloseq::phyloseq(otu_table(normalized_data, taxa_are_rows = TRUE))
-  ps <- t(ps)
+  num_cores <- parallel::detectCores() - 1
+  cl <- parallel::makeCluster(num_cores)
+  on.exit(parallel::stopCluster(cl), add = TRUE)
   
   cat("Start SpiecEasi\n")
 
@@ -121,9 +363,6 @@ prism.method_comparison <- function(Y,
 
   results_mb <- list()
   results_gl <- list()
-  num_cores <- parallel::detectCores() - 1
-  cl <- parallel::makeCluster(num_cores)
-  on.exit(parallel::stopCluster(cl), add = TRUE)
 
  # Define the grid of parameters to test
   lambda_min_ratios <- c(1e-1, 1e-2, 1e-3, 1e-4) # parameter defines the minimum ratio of the regularization path. smaller lambda min ratio will explore more sparse models (i.e., fewer edges in the network). larger lambda min ratio will allow denser networks. Smaller Networks or Less Complexity: If you expect the microbial network to be sparse (e.g., few interactions), a lower value like 1e-3 or 1e-4 might be useful. Larger Networks or Complex Interactions: If you believe there is more interaction complexity, keeping the ratio at 1e-2 or even increasing it slightly might help find more connections without overfitting.
@@ -424,238 +663,6 @@ prism.method_comparison <- function(Y,
   proprresults_phs <- proportionality_results[["phs"]][["dataframe"]]       
 
   cat("END Propr\n")
-  cat("Start Banocc\n")
-  ### BANOCC Model ###
-
-  
-  # Define priors and initial values for sensitivity analysis
-  ### Guidelines fo choose gamma parameters for the Glasso ###
-  # Prior covariance matrix for m ----- Scaling by 10 is a weakly informative choice, allowing moderate spread for the values of m. A higher value (e.g., 100) would imply less confidence in the prior, giving m more freedom to take extreme values.
-  # Conversely, a smaller value (e.g., 1) would shrink m closer to the prior mean.
-  #More confident priors: Use a smaller scaling factor (e.g., 𝐿=1×diag(𝑝) 
-  #Less confident priors: Increase the scaling factor (e.g., 𝐿=100×diag(𝑝) to allow for more flexibility in the model estimates.
-  
-  ### Guidelines for Choosing α\alphaα and β\betaβ:
-  #1. **Weakly Informative Priors**:
-  #   - If you do not have strong prior information about λ\lambdaλ, you can use weakly informative priors. A common choice is to set both α\alphaα and β\betaβ to values that encourage shrinkage but allow the model to explore other values.- **Suggested values**: α=0.5\alpha = 0.5α=0.5, β=0.01\beta = 0.01β=0.01
-  #        - This choice places significant probability mass near zero, encouraging shrinkage while not completely ruling out larger values of λ\lambdaλ.2. **Based on Prior Knowledge**:
-  #   - If you have domain knowledge or previous studies that suggest what values of λ\lambdaλ are reasonable, you can adjust α\alphaα and β\betaβ to reflect that.
-  #        - For example, if you know λ\lambdaλ is likely to be small but nonzero, you might use α=1\alpha = 1α=1 and β=0.1\beta = 0.1β=0.1, leading to a prior that concentrates around small positive values.3. **Controlling Shrinkage**:
-  #    - If you want more aggressive shrinkage (forcing λ\lambdaλ closer to zero), set a small value for α\alphaα (e.g., α=0.1\alpha = 0.1α=0.1) and a larger β\betaβ (e.g., β=1\beta = 1β=1).- If you want to reduce the amount of shrinkage and give the model more freedom, you can increase α\alphaα (e.g., α=2\alpha = 2α=2) and set β\betaβ to a smaller value (e.g., β=0.5\beta = 0.5β=0.5).
-
-  # Define priors for L
-  L_list <- list(
-    L_prior_1 = 10 * diag(ncol(ps)),
-    L_prior_2 = 100 * diag(ncol(ps))
-  )
-  
-  # Define priors for alpha and beta (Gamma distribution parameters)
-  alpha_list <- c(0.1, 0.5, 1, 2)
-  beta_list <- c(0.1, 0.5, 1, 2)
-  
-  # Define fixed initial values
-  init_fixed <- list(
-    m = rep(0, ncol(ps)),   # Mean vector fixed at zero
-    O = diag(ncol(ps)),     # Identity matrix
-    lambda = 0.02           # Fixed lambda
-  )
-
-  # Create a data frame of all combinations
-  param_grid <- expand.grid(
-    L = names(L_list),
-    alpha = alpha_list,
-    beta = beta_list,
-    stringsAsFactors = FALSE
-  )
-
-  # Select 'lo' as the combination with the smallest values
-  lo_index <- which(
-    param_grid$L == "L_prior_1" &
-    param_grid$alpha == min(alpha_list) &
-    param_grid$beta == min(beta_list)
-  )
-  
-  # Select 'md' as the combination with the middle values
-  # We'll choose alpha and beta equal to 1
-  md_index <- which(
-    param_grid$L == "L_prior_1" &
-    param_grid$alpha == 0.5 &
-    param_grid$beta == 0.5
-  )
-  
-  # Select 'lg' as the combination with the largest values
-  lg_index <- which(
-    param_grid$L == "L_prior_2" &
-    param_grid$alpha == max(alpha_list) &
-    param_grid$beta == max(beta_list)
-  )
-  
-  # Ensure we have only one index for each
-  lo_index <- lo_index[1]
-  md_index <- md_index[1]
-  lg_index <- lg_index[1]
-                          
-  # Extract the L matrices corresponding to the grid
-  L_values <- L_list[param_grid$L]
-  
-  # Repeat the fixed initial values for each combination
-  init_list <- replicate(nrow(param_grid), init_fixed, simplify = FALSE)
-  
-  # Prepare the lists for alpha and beta
-  a_list <- param_grid$alpha
-  b_list <- param_grid$beta
-
-  # Define the function to run sensitivity analysis with different priors and initial values
-  run_banocc_sensitivity <- function(C, compiled_model, n_prior, L_list, a_list, b_list, init_list, chains = 4, iter = 4000, warmup = 2000, cores = num_cores) {
-    
-    # Ensure the lists of priors are the same length
-    n_runs <- length(L_list)
-    if (n_runs != length(a_list) || n_runs != length(b_list) || n_runs != length(init_list)) {
-      stop("L_list, a_list, b_list, and init_list must have the same length!")
-    }
-    
-    # Store results in a list
-    results_list <- list()
-    output_list <- list()
-    
-    # Loop over each set of priors and initial values
-    for (i in seq_len(n_runs)) {
-      
-      # Get the current L, a, b, and init
-      L_current <- L_list[[i]]
-      a_current <- a_list[i]
-      b_current <- b_list[i]
-      init_current <- init_list[[i]]
-      
-      # Print progress message
-      cat("Running model", i, "of", n_runs, "\n",
-          "L =", names(L_list)[i], "\n",
-          "alpha =", a_current, "\n",
-          "beta =", b_current, "\n")
-      
-      # Run the BAnOCC model with the specified priors and initial values
-      fit <- banocc::run_banocc(C = C,
-                                compiled_banocc_model = compiled_model,
-                                n = n_prior,
-                                L = L_current,   # L for this model run
-                                a = a_current,   # alpha (shape) for this model run
-                                b = b_current,   # beta (rate) for this model run
-                                init = init_current, # Initial values for this model run
-                                chains = chains,   # Number of chains
-                                iter = iter,       # Total iterations
-                                warmup = warmup,   # Warmup iterations
-                                cores = cores)     # Number of cores for parallel processing
-      
-      # Store the fit result in the results list
-      results_list[[paste0("model_", i)]] <- fit
-      
-      # Extract the covariance matrix and credible intervals
-      cov_matrix <- banocc::get_banocc_output(banoccfit = fit, conf_alpha = 0)
-      cov_matrix_CI <- banocc::get_banocc_output(banoccfit = fit, conf_alpha = 0.05)
-      
-      # Store them in output list
-      output_list[[paste0("cov_matrix_", i)]] <- cov_matrix
-      output_list[[paste0("cov_matrix_CI_", i)]] <- cov_matrix_CI
-    }
-    
-    # Return the list of results and the extracted covariance matrices
-    return(list(fit_results = results_list, cov_matrices = output_list))
-  }
-
-  # Compile BAnOCC model
-  compiled_banocc_model <- rstan::stan_model(model_code = banocc::banocc_model)
-
-  # Run the sensitivity analysis function
-  banoccresults <- run_banocc_sensitivity(
-    C = ps,
-    compiled_model = compiled_banocc_model,
-    n_prior = rep(0, ncol(ps)),
-    L_list = L_values,
-    a_list = a_list,
-    b_list = b_list,
-    init_list = init_list,
-    chains = 4,
-    iter = 4000,
-    warmup = 2000,
-    cores = num_cores
-  )
-
-  # Access the results for each model
-  fit_results <- banoccresults$fit_results
-  cov_matrices <- banoccresults$cov_matrices
-  
-  # Extract the indices for lo, md, lg
-  lo_model_index <- lo_index
-  md_model_index <- md_index
-  lg_model_index <- lg_index
-  
-  # Extract the covariance matrices and credible intervals
-  cov_matrix_model_lo <- cov_matrices[[paste0("cov_matrix_", lo_model_index)]]
-  cov_matrix_CI_model_lo <- cov_matrices[[paste0("cov_matrix_CI_", lo_model_index)]]
-  
-  cov_matrix_model_md <- cov_matrices[[paste0("cov_matrix_", md_model_index)]]
-  cov_matrix_CI_model_md <- cov_matrices[[paste0("cov_matrix_CI_", md_model_index)]]
-  
-  cov_matrix_model_lg <- cov_matrices[[paste0("cov_matrix_", lg_model_index)]]
-  cov_matrix_CI_model_lg <- cov_matrices[[paste0("cov_matrix_CI_", lg_model_index)]]
-
-  
-  # Function to extract results into a data frame
-  extract_cov_results <- function(cov_matrix, cov_matrix_CI, label) {
-    results_df <- data.frame(
-      comparison = character(),
-      ninetyfive_ci_lower = numeric(),
-      ninetyfive_ci_upper = numeric(),
-      minsigma_absolute_minimum_covariance = numeric(),
-      maxsigma_absolute_maximum_covariance = numeric()
-    )
-    
-    # Loop through the upper triangular part of the covariance matrix to extract comparisons
-    for (i in 1:(ncol(cov_matrix$Estimates.median) - 1)) {
-      for (j in (i + 1):ncol(cov_matrix$Estimates.median)) {
-        
-        # Extract the 95% CI bounds for the same pair
-        ninetyfive_ci_lower <- cov_matrix_CI$CI.hpd$lower[i, j]
-        ninetyfive_ci_upper <- cov_matrix_CI$CI.hpd$upper[i, j]
-        
-        # Extract the min and max bounds for the same pair
-        lower <- cov_matrix$CI.hpd$lower[i, j]
-        upper <- cov_matrix$CI.hpd$upper[i, j]
-        
-        # Create the comparison name using actual taxa names if available
-        if (!is.null(colnames(cov_matrix$Estimates.median))) {
-          taxa_i <- colnames(cov_matrix$Estimates.median)[i]
-          taxa_j <- colnames(cov_matrix$Estimates.median)[j]
-        } else {
-          taxa_i <- paste0("Taxa", i)
-          taxa_j <- paste0("Taxa", j)
-        }
-        comparison_name <- paste0(taxa_i, ":", taxa_j)
-        
-        # Append this comparison to the data frame
-        results_df <- rbind(results_df, data.frame(
-          comparison = comparison_name,
-          ninetyfive_ci_lower = ninetyfive_ci_lower,
-          ninetyfive_ci_upper = ninetyfive_ci_upper,
-          minsigma_absolute_minimum_covariance = lower,
-          maxsigma_absolute_maximum_covariance = upper
-        ))
-      }
-    }
-    
-    # Split the comparison into taxa1 and taxa2
-    results_df <- results_df %>%
-      separate(comparison, into = c("taxa1", "taxa2"), sep = ":", remove = FALSE)
-    
-    return(results_df)
-  }
-  
-  # Extract results for each sensitivity model
-  banoccresults_lo <- extract_cov_results(cov_matrix_model_lo, cov_matrix_CI_model_lo, "lo")
-  banoccresults_md <- extract_cov_results(cov_matrix_model_md, cov_matrix_CI_model_md, "md")
-  banoccresults_lg <- extract_cov_results(cov_matrix_model_lg, cov_matrix_CI_model_lg, "lg")
-
-  cat("END Banocc\n")
   
   #Save Banocc results
   saveRDS(banoccresults, file = "banocc_sensitivity_results.rds")
