@@ -71,17 +71,18 @@ prism.method_comparison <- function(Y,
                        alpha_prior_2 = 0.5, 
                        alpha_prior_3 = 1, 
                        alpha_prior_4 = 2)
-    beta_list <- c(beta_prior_1 = 0.1, 
+    beta_list <- list(beta_prior_1 = 0.1, 
                    beta_prior_2 = 0.5, 
                    beta_prior_3 = 1, 
                    beta_prior_4 = 2)
     
     # Define fixed initial values
-    init_fixed <- list(
-      m = rep(0, ncol(ps)),   # Mean vector fixed at zero
-      O = diag(ncol(ps)),     # Identity matrix
-      lambda = 0.02           # Fixed lambda
-    )
+    init_list <- list(
+                  list(m = rep(0, ncol(ps)), O = diag(ncol(ps)), lambda = 0.5),
+                  list(m = rep(-1, ncol(ps)), O = diag(ncol(ps)), lambda = 0.5),
+                  list(m = rep(1, ncol(ps)), O = diag(ncol(ps)), lambda = 0.5),
+                  list(m = rep(0, ncol(ps)), O = diag(ncol(ps)), lambda = 1)
+                  )
   
     # Create a data frame of all combinations
     param_grid <- expand.grid(
@@ -99,7 +100,6 @@ prism.method_comparison <- function(Y,
     )
     
     # Select 'md' as the combination with the middle values
-    # We'll choose alpha and beta equal to 1
     md_index <- which(
       param_grid$L == "L_prior_1" &
       param_grid$alpha == "alpha_prior_2" &
@@ -117,16 +117,6 @@ prism.method_comparison <- function(Y,
     lo_index <- lo_index[1]
     md_index <- md_index[1]
     lg_index <- lg_index[1]
-                            
-    # Extract the L matrices corresponding to the grid
-    L_values <- L_list[param_grid$L]
-    
-    # Repeat the fixed initial values for each combination
-    init_list <- replicate(nrow(param_grid), init_fixed, simplify = FALSE)
-    
-    # Prepare the lists for alpha and beta
-    a_list <- param_grid$alpha
-    b_list <- param_grid$beta
   
     # Define the function to run sensitivity analysis with different priors and initial values
     run_banocc_sensitivity <- function(C, compiled_model, n_prior, L_list, a_list, b_list, init_list, chains = 4, iter = 4000, warmup = 2000, cores = num_cores) {
@@ -193,9 +183,9 @@ prism.method_comparison <- function(Y,
       C = ps,
       compiled_model = compiled_banocc_model,
       n_prior = rep(0, ncol(ps)),
-      L_list = L_values,
-      a_list = a_list,
-      b_list = b_list,
+      L_list = L_list,
+      a_list = alpha_list,
+      b_list = beta_list,
       init_list = init_list,
       chains = 4,
       iter = 4000,
@@ -230,7 +220,8 @@ prism.method_comparison <- function(Y,
         ninetyfive_ci_lower = numeric(),
         ninetyfive_ci_upper = numeric(),
         minsigma_absolute_minimum_covariance = numeric(),
-        maxsigma_absolute_maximum_covariance = numeric()
+        maxsigma_absolute_maximum_covariance = numeric(),
+        p_value = numeric()
       )
       
       # Loop through the upper triangular part of the covariance matrix to extract comparisons
@@ -244,15 +235,9 @@ prism.method_comparison <- function(Y,
           # Extract the min and max bounds for the same pair
           lower <- cov_matrix$CI.hpd$lower[i, j]
           upper <- cov_matrix$CI.hpd$upper[i, j]
-          
-          # Create the comparison name using actual taxa names if available
-          if (!is.null(colnames(cov_matrix$Estimates.median))) {
-            taxa_i <- colnames(cov_matrix$Estimates.median)[i]
-            taxa_j <- colnames(cov_matrix$Estimates.median)[j]
-          } else {
-            taxa_i <- paste0("Taxa", i)
-            taxa_j <- paste0("Taxa", j)
-          }
+
+          taxa_i <- paste0("Taxa", i)
+          taxa_j <- paste0("Taxa", j)
           comparison_name <- paste0(taxa_i, ":", taxa_j)
           
           # Append this comparison to the data frame
@@ -261,7 +246,8 @@ prism.method_comparison <- function(Y,
             ninetyfive_ci_lower = ninetyfive_ci_lower,
             ninetyfive_ci_upper = ninetyfive_ci_upper,
             minsigma_absolute_minimum_covariance = lower,
-            maxsigma_absolute_maximum_covariance = upper
+            maxsigma_absolute_maximum_covariance = upper,
+            p_value = NA
           ))
         }
       }
