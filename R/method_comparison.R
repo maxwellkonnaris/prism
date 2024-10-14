@@ -133,12 +133,6 @@ prism.method_comparison <- function(Y,
     # Define the function to run sensitivity analysis with different priors and initial values
     run_banocc_sensitivity <- function(C, compiled_model, n_prior, L_list, a_list, b_list, init_list, chains = 4, iter = 4000, warmup = 2000, cores = num_cores) {
       
-      # Ensure the lists of priors are the same length
-      n_runs <- length(L_list)
-      if (n_runs != length(a_list) || n_runs != length(b_list) || n_runs != length(init_list)) {
-        stop("L_list, a_list, b_list, and init_list must have the same length!")
-      }
-      
       # Store results in a list
       results_list <- list()
       output_list <- list()
