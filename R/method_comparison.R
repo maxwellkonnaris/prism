@@ -61,18 +61,18 @@ prism.method_comparison <- function(Y,
     #    - If you want more aggressive shrinkage (forcing λ\lambdaλ closer to zero), set a small value for α\alphaα (e.g., α=0.1\alpha = 0.1α=0.1) and a larger β\betaβ (e.g., β=1\beta = 1β=1).- If you want to reduce the amount of shrinkage and give the model more freedom, you can increase α\alphaα (e.g., α=2\alpha = 2α=2) and set β\betaβ to a smaller value (e.g., β=0.5\beta = 0.5β=0.5).
   
     # Define priors for L
-    L_list <- list(
+    L_val <- list(
       L_prior_1 = 10 * diag(ncol(ps)),
       L_prior_2 = 100 * diag(ncol(ps))
     )
     
     # Define priors for alpha and beta (Gamma distribution parameters)
-    alpha_list <- list(alpha_prior_1 = 0.1, 
+    alpha_val <- list(alpha_prior_1 = 0.1, 
                        alpha_prior_2 = 0.5, 
                        alpha_prior_3 = 1, 
                        alpha_prior_4 = 2)
   
-    beta_list <- list(beta_prior_1 = 0.1, 
+    beta_val <- list(beta_prior_1 = 0.1, 
                    beta_prior_2 = 0.5, 
                    beta_prior_3 = 1, 
                    beta_prior_4 = 2)
@@ -87,9 +87,9 @@ prism.method_comparison <- function(Y,
   
     # Create a data frame of all combinations
     param_grid <- expand.grid(
-      L = names(L_list),
-      alpha = names(alpha_list),
-      beta = names(beta_list),
+      L = names(L_val),
+      alpha = names(alpha_val),
+      beta = names(beta_val),
       stringsAsFactors = FALSE
     )
   
@@ -118,46 +118,41 @@ prism.method_comparison <- function(Y,
     lo_index <- lo_index[1]
     md_index <- md_index[1]
     lg_index <- lg_index[1]
-
-    # Extract the list of L values
-    L_list <- param_grid$L
-    
-    # Extract the list of alpha values
-    alpha_list<- param_grid$alpha
-    
-    # Extract the list of beta values
-    beta_list <- param_grid$beta
-    
-        
+      
   
     # Define the function to run sensitivity analysis with different priors and initial values
-    run_banocc_sensitivity <- function(C, compiled_model, n_prior, L_list, a_list, b_list, init_list, chains = 4, iter = 4000, warmup = 2000, cores = num_cores) {
+    run_banocc_sensitivity <- function(C, compiled_model, n_prior, L_val, alpha_val, beta_val, param_grid, init_list, chains = 4, iter = 4000, warmup = 2000, cores = num_cores) {
       
       # Store results in a list
       results_list <- list()
       output_list <- list()
+    
+      # Extract the list of value names
+      L_list <- param_grid$L
+      alpha_list <- param_grid$alpha
+      beta_list <- param_grid$beta
       
       # Loop over each set of priors 
-      for (i in seq_len(length(L_list))) {
+      for (i in seq_len(nrow(param_grid))) {
         
-        # Get the current L, a, b, and init
-        L_current <- L_list[[i]]
-        a_current <- a_list[[i]]
-        b_current <- b_list[[i]]
+        # Get the current L, alpha, beta, and initial values
+        L_current <- L_val[[L_list[i]]]
+        a_current <- alpha_val[[alpha_list[i]]]
+        b_current <- beta_val[[beta_list[i]]]
         
         # Print progress message
-        cat("Running model", i, "of", n_runs, "\n",
-            "L =", names(L_list)[i], "\n",
-            "alpha =", a_current, "\n",
-            "beta =", b_current, "\n")
+        cat("Running model", i, "of", nrow(param_grid), "\n",
+            "L =", L_list[i], "\n",
+            "alpha =", alpha_list[i], "\n",
+            "beta =", beta_list[i], "\n")
         
         # Run the BAnOCC model with the specified priors and initial values
         fit <- banocc::run_banocc(C = C,
                                   compiled_banocc_model = compiled_model,
                                   n = n_prior,
-                                  L = L_current,   # L for this model run
-                                  a = a_current,   # alpha (shape) for this model run
-                                  b = b_current,   # beta (rate) for this model run
+                                  L = L_current,     # L for this model run
+                                  a = a_current,     # alpha (shape) for this model run
+                                  b = b_current,     # beta (rate) for this model run
                                   init = init_list, # Initial values for this model run
                                   chains = chains,   # Number of chains
                                   iter = iter,       # Total iterations
@@ -179,24 +174,26 @@ prism.method_comparison <- function(Y,
       # Return the list of results and the extracted covariance matrices
       return(list(fit_results = results_list, cov_matrices = output_list))
     }
-  
+    
     # Compile BAnOCC model
-    compiled_banocc_model <- rstan::stan_model(model_code = banocc::banocc_model)
-  
+    compiled_banocc_model <- banocc::banocc_model
+    
     # Run the sensitivity analysis function
     banoccresults <- run_banocc_sensitivity(
       C = ps,
       compiled_model = compiled_banocc_model,
       n_prior = rep(0, ncol(ps)),
-      L_list = L_list,
-      a_list = alpha_list,
-      b_list = beta_list,
+      L_val = L_val,
+      alpha_val = alpha_val,
+      beta_val = beta_val,
+      param_grid = param_grid,
       init_list = init_list,
       chains = 4,
       iter = 4000,
       warmup = 2000,
       cores = num_cores
     )
+
   
     # Access the results for each model
     fit_results <- banoccresults$fit_results
