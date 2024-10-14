@@ -307,11 +307,6 @@ prism.method_comparison <- function(Y,
   
   cat("Start SpiecEasi\n")
 
-  lambda_min_ratios <- c(1e-1, 1e-2, 1e-3, 1e-4) ## parameter defines the minimum ratio of the regularization path. smaller lambda min ratio will explore more sparse models (i.e., fewer edges in the network). larger lambda min ratio will allow denser networks. Smaller Networks or Less Complexity: If you expect the microbial network to be sparse (e.g., few interactions), a lower value like 1e-3 or 1e-4 might be useful. Larger Networks or Complex Interactions: If you believe there is more interaction complexity, keeping the ratio at 1e-2 or even increasing it slightly might help find more connections without overfitting.
-  nlambda_values <- 100 ## We are not converned about computational efficiency, but if you are then this is a parameter you would decrease to explore less lambda iterations. 100 is chosen for increased precision.
-  stars_thresholds <- c(0.01, 0.05, 0.1) ## Low Threshold (e.g., 0.01): This means you are more strict about accepting network variability, resulting in a sparser and more stable network. High Threshold (e.g., 0.2): This is more lenient, allowing for more variability and resulting in a denser network with potentially more false positives. Default Value: A value of 0.05 is often used, which balances stability with network density. If You Want Higher Stability: A lower value like 0.01 or 0.02 ensures that the connections in the network are stable across subsamples. This is useful if you want to be conservative and prioritize stable, reliable edges. If You Are Tolerant to Unstable Edges: You might increase the threshold to 0.1 or 0.2 if you are willing to accept a denser network and more potential false positives.
-  rep_num_values <- 100 ## Again we are not concerned with computational efficiency here, so 100 is chosen for better stability from subsampling stars. specifies the minimum fraction of subsamples where an edge must appear to be considered stable.
-
   results_mb <- list()
   results_gl <- list()
 
