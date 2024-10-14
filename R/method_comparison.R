@@ -71,6 +71,7 @@ prism.method_comparison <- function(Y,
                        alpha_prior_2 = 0.5, 
                        alpha_prior_3 = 1, 
                        alpha_prior_4 = 2)
+  
     beta_list <- list(beta_prior_1 = 0.1, 
                    beta_prior_2 = 0.5, 
                    beta_prior_3 = 1, 
@@ -117,6 +118,17 @@ prism.method_comparison <- function(Y,
     lo_index <- lo_index[1]
     md_index <- md_index[1]
     lg_index <- lg_index[1]
+
+    # Extract the list of L values
+    L_list <- param_grid$L
+    
+    # Extract the list of alpha values
+    alpha_list<- param_grid$alpha
+    
+    # Extract the list of beta values
+    beta_list <- param_grid$beta
+    
+        
   
     # Define the function to run sensitivity analysis with different priors and initial values
     run_banocc_sensitivity <- function(C, compiled_model, n_prior, L_list, a_list, b_list, init_list, chains = 4, iter = 4000, warmup = 2000, cores = num_cores) {
@@ -138,7 +150,6 @@ prism.method_comparison <- function(Y,
         L_current <- L_list[[i]]
         a_current <- a_list[[i]]
         b_current <- b_list[[i]]
-        init_current <- init_list[[i]]
         
         # Print progress message
         cat("Running model", i, "of", n_runs, "\n",
@@ -153,7 +164,7 @@ prism.method_comparison <- function(Y,
                                   L = L_current,   # L for this model run
                                   a = a_current,   # alpha (shape) for this model run
                                   b = b_current,   # beta (rate) for this model run
-                                  init = init_current, # Initial values for this model run
+                                  init = init_list, # Initial values for this model run
                                   chains = chains,   # Number of chains
                                   iter = iter,       # Total iterations
                                   warmup = warmup,   # Warmup iterations
