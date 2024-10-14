@@ -137,8 +137,8 @@ prism.method_comparison <- function(Y,
       results_list <- list()
       output_list <- list()
       
-      # Loop over each set of priors and initial values
-      for (i in seq_len(n_runs)) {
+      # Loop over each set of priors 
+      for (i in seq_len(L_list)) {
         
         # Get the current L, a, b, and init
         L_current <- L_list[[i]]
