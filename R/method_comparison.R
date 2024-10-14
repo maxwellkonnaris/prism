@@ -67,8 +67,14 @@ prism.method_comparison <- function(Y,
     )
     
     # Define priors for alpha and beta (Gamma distribution parameters)
-    alpha_list <- c(0.1, 0.5, 1, 2)
-    beta_list <- c(0.1, 0.5, 1, 2)
+    alpha_list <- list(alpha_prior_1 = 0.1, 
+                       alpha_prior_2 = 0.5, 
+                       alpha_prior_3 = 1, 
+                       alpha_prior_4 = 2)
+    beta_list <- c(beta_prior_1 = 0.1, 
+                   beta_prior_2 = 0.5, 
+                   beta_prior_3 = 1, 
+                   beta_prior_4 = 2)
     
     # Define fixed initial values
     init_fixed <- list(
@@ -80,31 +86,31 @@ prism.method_comparison <- function(Y,
     # Create a data frame of all combinations
     param_grid <- expand.grid(
       L = names(L_list),
-      alpha = alpha_list,
-      beta = beta_list,
+      alpha = names(alpha_list),
+      beta = names(beta_list),
       stringsAsFactors = FALSE
     )
   
     # Select 'lo' as the combination with the smallest values
     lo_index <- which(
       param_grid$L == "L_prior_1" &
-      param_grid$alpha == min(alpha_list) &
-      param_grid$beta == min(beta_list)
+      param_grid$alpha == "alpha_prior_1" &
+      param_grid$beta == "beta_prior_1"
     )
     
     # Select 'md' as the combination with the middle values
     # We'll choose alpha and beta equal to 1
     md_index <- which(
       param_grid$L == "L_prior_1" &
-      param_grid$alpha == 0.5 &
-      param_grid$beta == 0.5
+      param_grid$alpha == "alpha_prior_2" &
+      param_grid$beta == "beta_prior_2"
     )
     
     # Select 'lg' as the combination with the largest values
     lg_index <- which(
       param_grid$L == "L_prior_2" &
-      param_grid$alpha == max(alpha_list) &
-      param_grid$beta == max(beta_list)
+      param_grid$alpha == "alpha_prior_4" &
+      param_grid$beta == "beta_prior_4"
     )
     
     # Ensure we have only one index for each
@@ -140,8 +146,8 @@ prism.method_comparison <- function(Y,
         
         # Get the current L, a, b, and init
         L_current <- L_list[[i]]
-        a_current <- a_list[i]
-        b_current <- b_list[i]
+        a_current <- a_list[[i]]
+        b_current <- b_list[[i]]
         init_current <- init_list[[i]]
         
         # Print progress message
