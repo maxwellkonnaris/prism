@@ -284,7 +284,7 @@ prism.method_comparison <- function(Y,
         forest_plot_filename <- paste0(filename, "forestplot_", uncertaintydistribution, "_", algorithm, "_", i)
         
         # Store the results for this iteration in the result list
-        result_list[[i]] <- results$final_results
+        result_list[[i]] <- results
       }
       
       # Assign the final results list to prismresults
