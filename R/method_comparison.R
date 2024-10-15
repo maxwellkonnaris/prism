@@ -612,9 +612,10 @@ prism.method_comparison <- function(Y,
   
   #Save Banocc results
   saveRDS(banoccresults, file = "banocc_sensitivity_results.rds")
-  saveRDS(banoccresults_weak, paste0(filename,"Banocc_results_weak.rds"))
-  saveRDS(banoccresults_md, paste0(filename,"Banocc_results_md.rds"))
-  saveRDS(banoccresults_strong, paste0(filename,"Banocc_results_strong.rds"))
+  saveRDS(banoccresults_one, paste0(filename,"Banocc_results_one.rds"))
+  saveRDS(banoccresults_two, paste0(filename,"Banocc_results_two.rds"))
+  saveRDS(banoccresults_three, paste0(filename,"Banocc_results_three.rds"))
+  saveRDS(banoccresults_four, paste0(filename,"Banocc_results_four.rds"))
                           
   # Save PRISM results
   save(prismresults, paste0(filename,"PRISM_results.Rdata"))
