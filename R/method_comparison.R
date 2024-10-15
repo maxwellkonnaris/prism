@@ -55,102 +55,105 @@ prism.method_comparison <- function(Y,
     # GLASSO Shrinkage Parameter
     # We recommend using a prior with large probability mass close to zero; because λ has a gamma prior, this means that the shape parameter a should be less than one. The rate parameter b determines the variability; in cases with either small (order of 10) or very large (p > n) numbers of features b should be large so that the variance of the gamma distribution, a/b^2, is small. Otherwise, a small value of b will make the prior more uninformative.
         # Define priors for L
-    L_val <- list(
-      L_prior_1 = 100 * diag(ncol(ps)),
-      L_prior_2 = 500 * diag(ncol(ps)),
-      L_prior_3 = 100 * diag(ncol(ps)),
-      L_prior_4 = 100 * diag(ncol(ps))
-    )
+    # L_val <- list(
+    #   L_prior_1 = 100 * diag(ncol(ps)),
+    #   L_prior_2 = 500 * diag(ncol(ps)),
+    #   L_prior_3 = 100 * diag(ncol(ps)),
+    #   L_prior_4 = 100 * diag(ncol(ps))
+    # )
     
-    # Define priors for alpha and beta (Gamma distribution parameters)
-    alpha_val <- list(alpha_prior_1 = 0.5, 
-                       alpha_prior_2 = 0.5, 
-                       alpha_prior_3 = 1, 
-                       alpha_prior_4 = 2)
+    # # Define priors for alpha and beta (Gamma distribution parameters)
+    # alpha_val <- list(alpha_prior_1 = 0.5, 
+    #                    alpha_prior_2 = 0.5, 
+    #                    alpha_prior_3 = 1, 
+    #                    alpha_prior_4 = 2)
   
-    beta_val <- list(beta_prior_1 = 5, 
-                   beta_prior_2 = 5, 
-                   beta_prior_3 = 0.5, 
-                   beta_prior_4 = 0.5)
+    # beta_val <- list(beta_prior_1 = 5, 
+    #                beta_prior_2 = 5, 
+    #                beta_prior_3 = 0.5, 
+    #                beta_prior_4 = 0.5)
     
-    # Define fixed initial values
-    init_list <- list(
-                  list(m = rep(0, ncol(ps)), O = 10*diag(ncol(ps)), lambda = 0.5),
-                  list(m = rep(0, ncol(ps)), O = 100*diag(ncol(ps)), lambda = 0.5),
-                  list(m = rep(0, ncol(ps)), O = 10*diag(ncol(ps)), lambda = 0.1),
-                  list(m = rep(0, ncol(ps)), O = 100*diag(ncol(ps)), lambda = 0.1),
-                  list(m = rep(0, ncol(ps)), O = 10*diag(ncol(ps)), lambda = 1),
-                  list(m = rep(0, ncol(ps)), O = 100*diag(ncol(ps)), lambda = 1)
-                  )
+    # # Define fixed initial values
+    # init_list <- list(
+    #               list(m = rep(0, ncol(ps)), O = 10*diag(ncol(ps)), lambda = 0.5),
+    #               list(m = rep(0, ncol(ps)), O = 100*diag(ncol(ps)), lambda = 0.5),
+    #               list(m = rep(0, ncol(ps)), O = 10*diag(ncol(ps)), lambda = 0.1),
+    #               list(m = rep(0, ncol(ps)), O = 100*diag(ncol(ps)), lambda = 0.1),
+    #               list(m = rep(0, ncol(ps)), O = 10*diag(ncol(ps)), lambda = 1),
+    #               list(m = rep(0, ncol(ps)), O = 100*diag(ncol(ps)), lambda = 1)
+    #               )
       
   
-    # Define the function to run sensitivity analysis with different priors and initial values
-    run_banocc_sensitivity <- function(C, compiled_model, n_prior, L_val, alpha_val, beta_val, init_list, chains = 6, iter = 6000, warmup = 3000, cores = num_cores) {
+    # # Define the function to run sensitivity analysis with different priors and initial values
+    # run_banocc_sensitivity <- function(C, compiled_model, n_prior, L_val, alpha_val, beta_val, init_list, chains = 6, iter = 6000, warmup = 3000, cores = num_cores) {
       
-      # Store results in a list
-      results_list <- list()
-      output_list <- list()
+    #   # Store results in a list
+    #   results_list <- list()
+    #   output_list <- list()
       
-      # Loop over each set of priors 
-      for (i in seq_len(length(L_val))) {
+    #   # Loop over each set of priors 
+    #   for (i in seq_len(length(L_val))) {
         
-        # Get the current L, alpha, beta, and initial values
-        L_current <- L_val[[i]]
-        a_current <- alpha_val[[i]]
-        b_current <- beta_val[[i]]
+    #     # Get the current L, alpha, beta, and initial values
+    #     L_current <- L_val[[i]]
+    #     a_current <- alpha_val[[i]]
+    #     b_current <- beta_val[[i]]
         
-        # Print progress message
-        cat("Running model", i, "of", length(L_val), "\n",
-            "L =", names(L_val)[i], "\n",
-            "alpha =", names(alpha_val)[i], "\n",
-            "beta =", names(beta_val)[i], "\n")
+    #     # Print progress message
+    #     cat("Running model", i, "of", length(L_val), "\n",
+    #         "L =", names(L_val)[i], "\n",
+    #         "alpha =", names(alpha_val)[i], "\n",
+    #         "beta =", names(beta_val)[i], "\n")
         
-        # Run the BAnOCC model with the specified priors and initial values
-        fit <- banocc::run_banocc(C = C,
-                                  compiled_banocc_model = compiled_model,
-                                  n = n_prior,
-                                  L = L_current,     # L for this model run
-                                  a = a_current,     # alpha (shape) for this model run
-                                  b = b_current,     # beta (rate) for this model run
-                                  init = init_list, # Initial values for this model run
-                                  chains = chains,   # Number of chains
-                                  iter = iter,       # Total iterations
-                                  warmup = warmup,   # Warmup iterations
-                                  cores = cores)     # Number of cores for parallel processing
+    #     # Run the BAnOCC model with the specified priors and initial values
+    #     fit <- banocc::run_banocc(C = C,
+    #                               compiled_banocc_model = compiled_model,
+    #                               n = n_prior,
+    #                               L = L_current,     # L for this model run
+    #                               a = a_current,     # alpha (shape) for this model run
+    #                               b = b_current,     # beta (rate) for this model run
+    #                               init = init_list, # Initial values for this model run
+    #                               chains = chains,   # Number of chains
+    #                               iter = iter,       # Total iterations
+    #                               warmup = warmup,   # Warmup iterations
+    #                               cores = cores)     # Number of cores for parallel processing
         
-        # Store the fit result in the results list
-        results_list[[paste0("model_", i)]] <- fit
+    #     # Store the fit result in the results list
+    #     results_list[[paste0("model_", i)]] <- fit
         
-        # Extract the covariance matrix and credible intervals
-        cov_matrix <- banocc::get_banocc_output(banoccfit = fit, conf_alpha = 0)
-        cov_matrix_CI <- banocc::get_banocc_output(banoccfit = fit, conf_alpha = 0.05)
+    #     # Extract the covariance matrix and credible intervals
+    #     cov_matrix <- banocc::get_banocc_output(banoccfit = fit, conf_alpha = 0)
+    #     cov_matrix_CI <- banocc::get_banocc_output(banoccfit = fit, conf_alpha = 0.05)
         
-        # Store them in output list
-        output_list[[paste0("cov_matrix_", i)]] <- cov_matrix
-        output_list[[paste0("cov_matrix_CI_", i)]] <- cov_matrix_CI
-      }
+    #     # Store them in output list
+    #     output_list[[paste0("cov_matrix_", i)]] <- cov_matrix
+    #     output_list[[paste0("cov_matrix_CI_", i)]] <- cov_matrix_CI
+    #   }
       
-      # Return the list of results and the extracted covariance matrices
-      return(list(fit_results = results_list, cov_matrices = output_list))
-    }
+    #   # Return the list of results and the extracted covariance matrices
+    #   return(list(fit_results = results_list, cov_matrices = output_list))
+    # }
     
-    # Compile BAnOCC model
-    compiled_banocc_model <- rstan::stan_model(model_code = banocc::banocc_model)
+    # # Compile BAnOCC model
+    # compiled_banocc_model <- rstan::stan_model(model_code = banocc::banocc_model)
     
-    # Run the sensitivity analysis function
-    banoccresults <- run_banocc_sensitivity(
-      C = ps,
-      compiled_model = compiled_banocc_model,
-      n_prior = rep(0, ncol(ps)),
-      L_val = L_val,
-      alpha_val = alpha_val,
-      beta_val = beta_val,
-      init_list = init_list,
-      chains = 6,
-      iter = 6000,
-      warmup = 3000,
-      cores = num_cores
-    )
+    # # Run the sensitivity analysis function
+    # banoccresults <- run_banocc_sensitivity(
+    #   C = ps,
+    #   compiled_model = compiled_banocc_model,
+    #   n_prior = rep(0, ncol(ps)),
+    #   L_val = L_val,
+    #   alpha_val = alpha_val,
+    #   beta_val = beta_val,
+    #   init_list = init_list,
+    #   chains = 6,
+    #   iter = 6000,
+    #   warmup = 3000,
+    #   cores = num_cores
+    # )
+
+    # Load the RDS file and assign it to banoccresults
+    banoccresults <- readRDS("banocc_sensitivity_results.rds")
 
   
     # Access the results for each model
@@ -611,7 +614,7 @@ prism.method_comparison <- function(Y,
   cat("END Propr\n")
   
   #Save Banocc results
-  saveRDS(banoccresults, file = "banocc_sensitivity_results.rds")
+  #saveRDS(banoccresults, file = "banocc_sensitivity_results.rds")
   saveRDS(banoccresults_one, paste0(filename,"Banocc_results_one.rds"))
   saveRDS(banoccresults_two, paste0(filename,"Banocc_results_two.rds"))
   saveRDS(banoccresults_three, paste0(filename,"Banocc_results_three.rds"))
