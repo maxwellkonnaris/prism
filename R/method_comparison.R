@@ -590,7 +590,8 @@ prism.method_comparison <- function(Y,
   proprresults_phs <- proportionality_results[["phs"]][["dataframe"]]       
 
   cat("END Propr\n")
-  
+
+  cat("Saving...\n")
   #Save Banocc results
   #saveRDS(banoccresults, file = "banocc_sensitivity_results.rds")
   saveRDS(banoccresults_one, paste0(filename,"Banocc_results_one.rds"))
@@ -613,7 +614,7 @@ prism.method_comparison <- function(Y,
 
   # Save the entire proportionality_results list to an RData file
   save(proportionality_results, file = "proportionality_results.RData")
-
+  cat("Saving......\n")
   # Visualize and save the plots
   forest_plot_filename <- paste0("simulated_forestplot_all_",uncertaintydistribution,"_",algorithm)
                         
@@ -662,7 +663,7 @@ prism.method_comparison <- function(Y,
   
   # Save the results as RDS files
   saveRDS(covarianceresults, file = file.path(paste0(filename, "covariance_comparisons.rds")))
-  
+  cat("Saving......DONE\n")
   # Create forest plot and save
   PRISM::prism.forestplot(covarianceresults, 
                           save = "png", 
