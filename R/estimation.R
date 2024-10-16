@@ -255,6 +255,8 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
       ## END ACCOUNTING FOR UNCERTAINTY IN FINITE SAMPLING -----------------------------------------------------------------------------------------------------
       
       ## ACCOUNTING FOR UNCERTAINTY IN OBSERVED RELATIVE ABUNDANCES --------------------------------------------------------------------------------------------
+      message(paste("Start Proportional Sampling via:", uncertaintydistribution))
+      wparastart = Sys.time()
       # Dimensions: (n_taxa, n_samples, n_iter) -- populate matrix of NAs
       rWparaoriginal <- array(NA, dim = c(D, N, S))
       
@@ -290,8 +292,12 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
         
       # Log transform relative abundances
       rWparaoriginal <- log(rWparaoriginal)
-    
-      prism.posteriorsamples(rWparaoriginal, filename = prefix)
+      wparaend = Sys.time()
+      elapsed_time = wparaend - wparastart
+      message(sprintf("Proportional Sampling Total time taken %s", format_elapsed_time(elapsed_time)))
+      message(paste("End Proportional Sampling via:", uncertaintydistribution))
+  
+      ## prism.posteriorsamples(rWparaoriginal, filename = prefix)
       ## END ACCOUNTING FOR UNCERTAINTY IN OBSERVED RELATIVE ABUNDANCES ---------------------------------------------------------------------------------------
       
       ## ESTIMATING RHO AND SD --------------------------------------------------------------------------------------------------------------------------------
