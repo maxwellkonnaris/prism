@@ -12,7 +12,7 @@
 #' @import ggplot2
 #' @import dplyr
 #' @export
-prism.forestplot <- function(data_list, bg = "white", save = NULL, filename = NULL, dir_path = "./plots/", color_y_axis_by_ci = FALSE) {
+prism.forestplot <- function(data_list, indexlist= NULL, bg = "white", save = NULL, filename = NULL, dir_path = "./plots/", color_y_axis_by_ci = FALSE) {
 
   # Check if input is a data frame, convert to a named list if true
   if (is.data.frame(data_list)) {
@@ -32,8 +32,11 @@ prism.forestplot <- function(data_list, bg = "white", save = NULL, filename = NU
   data_frames <- list()
   
   # First dataset (for reordering comparison levels)
-  first_data <- data_list[[1]]  # Always use the first dataframe for comparison reordering
-  
+  if (!is.null(indexlist)) {
+	 first_data <- indexlist 
+  } else {
+  	 first_data <- data_list[[1]]  # Always use the first dataframe for comparison reordering
+  }
   # Ensure the first data has the necessary columns
   if (!all(required_columns %in% colnames(first_data))) {
     stop(paste("First data frame must contain columns:", paste(required_columns, collapse = ", ")))
