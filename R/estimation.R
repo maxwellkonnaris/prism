@@ -302,15 +302,18 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
       
       ## ESTIMATING RHO AND SD --------------------------------------------------------------------------------------------------------------------------------
       message("Start SD and Rho estimation")  
-    
+      rhosdstart = Sys.time()
       result_rho_sd <- estimate_rho_and_sd(externalscalemeasurements = externalscalemeasurements, Y = Y, S = S, D = D, rWparaoriginal = rWparaoriginal,
                                            bootstrap_samples = bootstrap_samples, alpha = alpha, prefix = prefix)
+      rhosdend = Sys.time()
+      elapsed_time = rhosdend - rhosdstart
     
       # Access the results if the function did not return NULL
       if (!is.null(result_rho_sd)) {
         scalestdev <- result_rho_sd$scalestdev
         rhobounds <- result_rho_sd$rhobounds
         message("End SD and Rho estimation") 
+        message(sprintf("SD and Rho estimation Total time taken %s", format_elapsed_time(elapsed_time)))
       } else {
         print("SD and Rho estimation was incorrectly performed, returned NULL.")
       }           
