@@ -18,7 +18,6 @@ prism.method_comparison <- function(Y,
                                     S = 4000, 
                                     output_directory = getwd(),
                                     algorithm = "GRID_SEARCH",
-                                    uncertaintydistribution = "multinomiallognormal",
                                     logfile = "log_prismcovariance.txt",
                                     pvalue = FALSE) {
 
@@ -232,11 +231,19 @@ prism.method_comparison <- function(Y,
     # If externalscalemeasurements is a single vector (or data frame column)
     if (!is.list(externalscalemeasurements)) {
       cat("Single external scale measurement provided\n")
-      
-      # Perform PRISM analysis with a single vector of external scale measurements
-      prismresults <- PRISM::prism.covariance(Y = Y, S = S, uncertaintydistribution = uncertaintydistribution,  
-                                         externalscalemeasurements = externalscalemeasurements, algorithm = algorithm, 
-                                         outputdirectory = output_directory, prefix=filename, pvalue=pvalue, logfile = logfile)
+
+              # Run PRISM for each vector of external scale measurements
+      results_log <- PRISM::prism.covariance(Y = Y, S = S, uncertaintydistribution = "multinomiallognormal",  
+                                           externalscalemeasurements = externalscalemeasurements, algorithm = algorithm, 
+                                           outputdirectory = output_directory, prefix=filename, pvalue=pvalue, logfile = logfile)
+
+                # Run PRISM for each vector of external scale measurements
+      results_dir <- PRISM::prism.covariance(Y = Y, S = S, uncertaintydistribution = "multinomialdirichlet",  
+                                           externalscalemeasurements = current_measurement, algorithm = algorithm, 
+                                           outputdirectory = output_directory, prefix=filename, pvalue=pvalue, logfile = logfile)
+        
+      # Store the results for this iteration in the result list
+      prismresults <- list(lognormal = results_log, dirichlet = results_dir)
       
       # Optionally generate and save forest plot filename (if needed)
       forest_plot_filename <- paste0(filename, "forestplot_", uncertaintydistribution, "_", algorithm)
@@ -253,12 +260,18 @@ prism.method_comparison <- function(Y,
         current_measurement <- as.matrix(externalscalemeasurements[[i]])
         
         # Run PRISM for each vector of external scale measurements
-        results <- PRISM::prism.covariance(Y = Y, S = S, uncertaintydistribution = uncertaintydistribution,  
+        results_log <- PRISM::prism.covariance(Y = Y, S = S, uncertaintydistribution = "multinomiallognormal",  
+                                           externalscalemeasurements = current_measurement, algorithm = algorithm, 
+                                           outputdirectory = output_directory, prefix=filename, pvalue=pvalue, logfile = logfile)
+
+                # Run PRISM for each vector of external scale measurements
+        results_dir <- PRISM::prism.covariance(Y = Y, S = S, uncertaintydistribution = "multinomialdirichlet",  
                                            externalscalemeasurements = current_measurement, algorithm = algorithm, 
                                            outputdirectory = output_directory, prefix=filename, pvalue=pvalue, logfile = logfile)
         
         # Store the results for this iteration in the result list
-        prismresults[[i]] <- results
+        prismresults[[i]] <- list(lognormal = results_log, dirichlet = results_dir)
+
       }
 
       forest_plot_filename <- paste0(filename, "forestplot_", uncertaintydistribution, "_", algorithm, "_", i)
@@ -636,15 +649,19 @@ prism.method_comparison <- function(Y,
   # Add the PRISM results dynamically based on the length of prismresults
   if (is.list(prismresults)) {
     for (i in seq_along(prismresults)) {
-      # Create a name for each PRISM result, first is 'PRISM', the rest 'PRISM_2', 'PRISM_3', etc.
+      
+      # Create names for each PRISM result
       if (i == 1) {
-        result_name <- "PRISM"
+        lognormal_name <- "PRISM_lognormal"
+        dirichlet_name <- "PRISM_dirichlet"
       } else {
-        result_name <- paste0("PRISM_", i)
+        lognormal_name <- paste0("PRISM_", i, "_lognormal")
+        dirichlet_name <- paste0("PRISM_", i, "_dirichlet")
       }
       
-      # Add each PRISM result to the covarianceresults list
-      covarianceresults[[result_name]] <- prismresults[[i]]
+      # Add each PRISM result (lognormal and dirichlet) to the covarianceresults list
+      covarianceresults[[lognormal_name]] <- prismresults[[i]]$lognormal
+      covarianceresults[[dirichlet_name]] <- prismresults[[i]]$dirichlet
     }
   }
 
@@ -665,12 +682,7 @@ prism.method_comparison <- function(Y,
   # Save the results as RDS files
   saveRDS(covarianceresults, file = file.path(paste0(filename, "covariance_comparisons.rds")))
   cat("Saving......DONE\n")
-  # Create forest plot and save
-  PRISM::prism.forestplot(covarianceresults, 
-                          save = "png", 
-                          filename = file.path(output_directory, filename, forest_plot_filename), 
-                          color_y_axis_by_ci = TRUE)
-
+                           
   PRISM::prism.circlenetwork(covarianceresults, metric = "covariance", combine_plots = TRUE, filename=filename)
   
   cat("Pipeline complete.\n")
