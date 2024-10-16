@@ -601,7 +601,12 @@ prism.method_comparison <- function(Y,
                           
   # Save PRISM results
   save(prismresults, file = paste0(filename, "_PRISM_results.Rdata"))
- 
+  if (is.list(externalscalemeasurements)) {
+    for (i in seq_along(prismresults)) {
+      saveRDS(prismresults[[i]], paste0(filename,"_PRISM_results_",i,".rds"))
+      }
+  }
+    
   # Save SpiecEasi results
   saveRDS(spieceasiresults, paste0(filename,"SpiecEasi_results.rds"))
   save(results_mb, results_gl, file = "spiec_easi_results.RData")
