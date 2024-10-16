@@ -231,30 +231,19 @@ prism.method_comparison <- function(Y,
     cat("Start PRISM\n")
     
     # Initialize a list to store results if we have multiple external scale measurements
-    result_list <- list()
+    prismresults <- list()
     
     # If externalscalemeasurements is a single vector (or data frame column)
     if (!is.list(externalscalemeasurements)) {
       cat("Single external scale measurement provided\n")
       
       # Perform PRISM analysis with a single vector of external scale measurements
-      results <- PRISM::prism.covariance(Y = Y, S = S, uncertaintydistribution = uncertaintydistribution,  
+      prismresults <- PRISM::prism.covariance(Y = Y, S = S, uncertaintydistribution = uncertaintydistribution,  
                                          externalscalemeasurements = externalscalemeasurements, algorithm = algorithm, 
                                          outputdirectory = output_directory, prefix=filename, pvalue=pvalue, logfile = logfile)
       
-      # Generate filenames for final and inner results
-      final_results_filename <- paste0(filename, "finalresults_", uncertaintydistribution, "_", algorithm, ".csv")
-      all_inner_results_filename <- paste0(filename, "allinnerresults_", uncertaintydistribution, "_", algorithm, ".csv")
-      
-      # Save results to CSV files
-      write.csv(results$final_results, file = file.path(output_directory, final_results_filename))
-      write.csv(results$all_inner_results, file = file.path(output_directory, all_inner_results_filename))
-      
       # Optionally generate and save forest plot filename (if needed)
       forest_plot_filename <- paste0(filename, "forestplot_", uncertaintydistribution, "_", algorithm)
-      
-      # Store the final results
-      prismresults <- results$final_results
       
     } else {
       # If externalscalemeasurements is a list of vectors/data frame columns
@@ -272,23 +261,12 @@ prism.method_comparison <- function(Y,
                                            externalscalemeasurements = current_measurement, algorithm = algorithm, 
                                            outputdirectory = output_directory, prefix=filename, pvalue=pvalue, logfile = logfile)
         
-        # Append iteration number to filenames to avoid overwriting
-        final_results_filename <- paste0(filename, "finalresults_", uncertaintydistribution, "_", algorithm, "_", i, ".csv")
-        all_inner_results_filename <- paste0(filename, "allinnerresults_", uncertaintydistribution, "_", algorithm, "_", i, ".csv")
-        
-        # Save the results to CSV files
-        write.csv(results$final_results, file = file.path(output_directory, final_results_filename))
-        write.csv(results$all_inner_results, file = file.path(output_directory, all_inner_results_filename))
-        
-        # Optionally generate and save forest plot filename for each iteration (if needed)
-        forest_plot_filename <- paste0(filename, "forestplot_", uncertaintydistribution, "_", algorithm, "_", i)
-        
         # Store the results for this iteration in the result list
-        result_list[[i]] <- results
+        prismresults[[i]] <- results
       }
+
+      forest_plot_filename <- paste0(filename, "forestplot_", uncertaintydistribution, "_", algorithm, "_", i)
       
-      # Assign the final results list to prismresults
-      prismresults <- result_list
   }
     
 
