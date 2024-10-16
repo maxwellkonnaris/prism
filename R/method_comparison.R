@@ -599,8 +599,8 @@ prism.method_comparison <- function(Y,
   saveRDS(banoccresults_four, paste0(filename,"Banocc_results_four.rds"))
                           
   # Save PRISM results
-  save(prismresults, paste0(filename,"PRISM_results.Rdata"))
-  
+  save(prismresults, file = paste0(filename, "_PRISM_results.Rdata"))
+ 
   # Save SpiecEasi results
   saveRDS(spieceasiresults, paste0(filename,"SpiecEasi_results.rds"))
   save(results_mb, results_gl, file = "spiec_easi_results.RData")
