@@ -33,12 +33,14 @@ prism.forestplot <- function(data_list, indexlist = NULL, bg = "white", save = N
   	 first_data <- data_list[[1]] 
   }
 	
-  for (i in seq_slong(data_list)) {	
+  for (i in seq_along(data_list)) {	
 	  # Ensure the data has the necessary columns
-	  if (!all(required_columns %in% colnames(data_list[[i]]))) {
-	    stop(paste(i,"data frame must contain columns:", paste(required_columns, collapse = ", ")))
+	  missing_columns <- setdiff(required_columns, colnames(data_list[[i]]))
+	  if (length(missing_columns) > 0) {
+	    stop(paste("Data frame at position", i, "is missing columns:", paste(missing_columns, collapse = ", ")))
 	  }
   }
+
   # Reorder the comparison names in the first dataset by the lower bound of the 95% confidence interval
   comparison_order <- first_data %>%
     arrange(ninetyfive_ci_lower) %>%
