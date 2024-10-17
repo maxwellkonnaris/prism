@@ -2023,6 +2023,10 @@ prism.circlenetwork <- function(data_list, metric = "covariance", pvalue = FALSE
     stop("Invalid metric. Please specify either 'covariance' or 'correlation'.")
   }
   
+  # Initialize color labels
+  color_labels <- c("Positive" = "#143d80", 
+                    "Negative" = "#80141f")
+  
   # Initialize all_taxa to store unique taxa names
   all_taxa <- unique(unlist(lapply(data_list, function(x) unique(c(x$taxa1, x$taxa2)))))
   
@@ -2090,32 +2094,43 @@ prism.circlenetwork <- function(data_list, metric = "covariance", pvalue = FALSE
     # Normalize edge width based on global min and max
     edges$width <- pmin(pmax(0.1, (edges$average_ci - global_min_ci) / (global_max_ci - global_min_ci) * 0.9 + 0.1), 1)
     
+    # Add color for the edges based on the CI
+    edges$color <- ifelse(edges$ci_lower > 0 & edges$ci_upper > 0, "Positive",  # Positive effect
+                          ifelse(edges$ci_lower < 0 & edges$ci_upper < 0, "Negative",  # Negative effect
+                                 "None"))  # No effect
+    
+    # Remove edges where the 95% CI covers zero (i.e., "No effect")
+    edges <- edges[edges$color != "None", ]
+    
     # Ensure all taxa in the edges exist in the all_taxa list
     valid_edges <- edges[edges$from %in% all_taxa & edges$to %in% all_taxa, ]
     
     # Create an igraph object
     graph <- igraph::graph_from_data_frame(valid_edges, directed = FALSE, vertices = all_taxa)
     
+    # Set edge properties
+    igraph::E(graph)$color <- valid_edges$color
+    igraph::E(graph)$width <- valid_edges$width
+    
     # Fix node positions to maintain the same layout order for each plot
     layout_fixed <- ggraph::create_layout(graph, layout = "circle")
     
-    # Create the plot
     plot_object <- ggraph::ggraph(layout_fixed) +
-      ggraph::geom_edge_link(aes(edge_width = width, edge_color = average_ci), show.legend = (i == 1 || !combine_plots)) +  # Show legend only for the first plot
-      ggraph::geom_node_point(size = 5) +
-      ggraph::geom_node_text(aes(label = name), repel = TRUE, size = 6, hjust = 2, vjust = 2) +  # Repel and nudge labels outside
-      ggraph::scale_edge_colour_gradient2(low = "red", mid = "white", high = "blue", midpoint = 0, limits = c(global_min_ci, global_max_ci)) +  # Heatmap-like coloring
-      ggraph::scale_edge_width(range = c(0.1, 1)) +  # Correct function for edge width scale
-      labs(edge_width = "Association Strength", edge_color = "Covariance") +  # Set the legend titles
-      coord_fixed() +
-      theme_void() +
-      theme(
-        legend.position = ifelse(i == 1 || !combine_plots, "top", "none"),  # Only show legend in the first plot when combining
-        legend.title = element_text(size = 14, face = "bold"),  # Legend title font size and style
-        legend.text = element_text(size = 12),  # Legend item font size
-        plot.title = element_text(hjust = 0.5, size = 25, face = "bold")  # Large centered title
-      ) +
-      ggtitle(dataset_name)  # Title with dataset name
+	  ggraph::geom_edge_link(aes(edge_width = width, color = color), show.legend = (i == 1 || !combine_plots)) +  # Show legend only for the first plot
+	  ggraph::geom_node_point(size = 5) +
+	  ggraph::geom_node_text(aes(label = name), repel = TRUE, size = 6, hjust = 2, vjust = 2) +  # Repel and nudge labels outside
+	  ggraph::scale_edge_colour_manual(values = color_labels) +  # Proper mapping of edge colors
+	  ggraph::scale_edge_width(range = c(0.1, 1)) +  # Correct function for edge width scale
+	  labs(edge_width = "Association Strength", color = "Association Sign") +  # Set the legend titles
+	  coord_fixed() +
+	  theme_void() +
+	  theme(
+	    legend.position = ifelse(i == 1 || !combine_plots, "top", "none"),  # Only show legend in the first plot when combining
+	    legend.title = element_text(size = 14, face = "bold"),  # Legend title font size and style
+	    legend.text = element_text(size = 12),  # Legend item font size
+	    plot.title = element_text(hjust = 0.5, size = 25, face = "bold")  # Large centered title
+	  ) +
+	  ggtitle(dataset_name)  # Title with dataset name
 
     
     # Add the plot to the list
