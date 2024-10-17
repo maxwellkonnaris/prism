@@ -12,13 +12,8 @@
 #' @import ggplot2
 #' @import dplyr
 #' @export
-prism.forestplot <- function(data_list, indexlist= NULL, bg = "white", save = NULL, filename = NULL, dir_path = "./plots/", color_y_axis_by_ci = FALSE) {
+prism.forestplot <- function(data_list, indexlist = NULL, bg = "white", save = NULL, filename = NULL, dir_path = "./plots/", color_y_axis_by_ci = FALSE) {
 
-  # Check if input is a data frame, convert to a named list if true
-  if (is.data.frame(data_list)) {
-    data_list <- list(PRISM = data_list)
-  }
-  
   # Check that data_list is a named list of data frames
   if (!is.list(data_list)) {
     stop("data_list must be a list of data frames.")
@@ -33,15 +28,17 @@ prism.forestplot <- function(data_list, indexlist= NULL, bg = "white", save = NU
   
   # First dataset (for reordering comparison levels)
   if (!is.null(indexlist)) {
-	 first_data <- indexlist 
+	 first_data <- indexlist[[1]] 
   } else {
-  	 first_data <- data_list[[1]]  # Always use the first dataframe for comparison reordering
+  	 first_data <- data_list[[1]] 
   }
-  # Ensure the first data has the necessary columns
-  if (!all(required_columns %in% colnames(first_data))) {
-    stop(paste("First data frame must contain columns:", paste(required_columns, collapse = ", ")))
+	
+  for (i in seq_slong(data_list)) {	
+	  # Ensure the data has the necessary columns
+	  if (!all(required_columns %in% colnames(data_list[[i]]))) {
+	    stop(paste(i,"data frame must contain columns:", paste(required_columns, collapse = ", ")))
+	  }
   }
-  
   # Reorder the comparison names in the first dataset by the lower bound of the 95% confidence interval
   comparison_order <- first_data %>%
     arrange(ninetyfive_ci_lower) %>%
