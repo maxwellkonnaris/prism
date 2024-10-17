@@ -2123,7 +2123,6 @@ prism.circlenetwork <- function(data_list, metric = "covariance", pvalue = FALSE
 	  guides(
 	    edge_width = guide_legend(
 	      title = "Association Strength",  # Change legend title for edge width
-	      override.aes = list(edge_width = c(0.1, 0.5, 0.75, 1))
 	    ),
 	    edge_color = guide_legend(title = "Association Sign")  # Change legend title for edge color
 	  ) +
