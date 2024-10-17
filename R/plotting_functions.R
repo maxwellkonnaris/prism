@@ -2345,7 +2345,7 @@ plot_confusion_matrix <- function(confusion_data_list, outputdirectory, save) {
       plot.title = element_text(hjust = 0.5, face = "bold", size = 20),  # Increased title size
       axis.title.x = element_blank(),  # Remove x-axis title
       axis.title.y = element_text(face = "bold", size = 16, margin = margin(r = 15)),  # Y-axis title size and space
-      axis.text.x = element_text(face = "bold", size = 16),  # Bold the x-axis labels
+      axis.text.x = element_text(face = "bold", size = 16, angle = 90, hjust = 1),
       legend.position = "top",  # Keep the legend at the top
       legend.direction = "horizontal",  # Make the legend horizontal
       panel.grid.major = element_line(color = "grey80"),
