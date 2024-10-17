@@ -45,10 +45,12 @@ prism.forestplot <- function(data_list, indexlist = NULL, bg = "white", save = N
   comparison_order <- first_data %>%
     arrange(ninetyfive_ci_lower) %>%
     pull(comparison)
-  
+
+  colored = data_list[[1]]
+	
   # Create a mapping of comparison names to colors based on the first dataframe's CI
   if (color_y_axis_by_ci) {
-    y_axis_colors <- first_data %>%
+    y_axis_colors <- colored %>%
       mutate(color = ifelse(
         (ninetyfive_ci_lower > 0 & ninetyfive_ci_upper > 0) | (ninetyfive_ci_lower < 0 & ninetyfive_ci_upper < 0),
         "#143d80",  # Blue if the CI does not cover zero
