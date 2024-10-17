@@ -245,9 +245,6 @@ prism.method_comparison <- function(Y,
       # Store the results for this iteration in the result list
       prismresults <- list(lognormal = results_log, dirichlet = results_dir)
       
-      # Optionally generate and save forest plot filename (if needed)
-      forest_plot_filename <- paste0(filename, "forestplot_", uncertaintydistribution, "_", algorithm)
-      
     } else {
       # If externalscalemeasurements is a list of vectors/data frame columns
       cat("Multiple external scale measurements provided\n")
@@ -273,9 +270,6 @@ prism.method_comparison <- function(Y,
         prismresults[[i]] <- list(lognormal = results_log, dirichlet = results_dir)
 
       }
-
-      forest_plot_filename <- paste0(filename, "forestplot_", uncertaintydistribution, "_", algorithm, "_", i)
-      
   }
     
 
@@ -629,8 +623,6 @@ prism.method_comparison <- function(Y,
   # Save the entire proportionality_results list to an RData file
   save(proportionality_results, file = "proportionality_results.RData")
   cat("Saving......\n")
-  # Visualize and save the plots
-  forest_plot_filename <- paste0("simulated_forestplot_all_",uncertaintydistribution,"_",algorithm)
                         
   # Initialize covarianceresults with the fixed components first
   covarianceresults <- list(
