@@ -271,7 +271,7 @@ prism.covariance <- function(Y, alpha = 0.5, uncertaintydistribution = "multinom
             # Assign to the nth slice of the array
             rWparaoriginal[,n,] <- transposed_samples          # Assign D x S
         } 
-      } else if (uncertaintydistribution == "multinomiallognormal") {
+      } else if (uncertaintydistribution == "multinomiallogisticnormal") {
         # generate S Multinomial logistic Normal posterior samples for each sample (column) using fido
         otu_table = phyloseq::otu_table(Y, taxa_are_rows = TRUE)
         otu_table = otu_table + alpha
