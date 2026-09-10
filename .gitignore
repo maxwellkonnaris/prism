@@ -1,0 +1,15 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+*.Rcheck/
+..Rcheck/
+src/*.o
+src/*.so
+src/*.dll
+inst/doc
+docs/covr_report.html
+.httr-oauth
+revdep/
+vignettes/*.html
+vignettes/*.pdf

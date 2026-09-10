@@ -1,126 +1,303 @@
-# PRISM 
+# prism
 
-**Partial Rho Identification through Scale Modeling: Robust Covariance and Correlation Analysis**
+`prism` estimates identification regions and confidence intervals for absolute
+log-covariances from compositional observations and optional scale information.
+It is an R package: code under `R/` defines package functions; analysis and
+benchmark scripts are intentionally kept outside the package.
 
-**Version:** 0.1.0
+## Statistical target
 
-**Author:** Maxwell Konnaris and Justin Silverman
+For feature `d`, write absolute log abundance as
 
-**Contributer:** Michelle Nixon
-
-**Maintainer:** Maxwell Konnaris
-
-**Affiliation(s):** Pennsylvania State University
-
-## Description
-
-PRISM is an R package for running simulations and robust covariance analysis on count data using a bootstrap scale estimation approach to solve partially identified systems. This package is particularly useful for researchers working with high-dimensional data who need robust methods to estimate covariances. PRISM utilizes parallel computing for computationally efficient estimation dependent on available CPU cores, the size of matrix, and the number of bootstrap samples specified. <br>
-<br>
-Local 11 core CPUs, 10x286 matrix, and default parameters: Expected 1 minutes 32 seconds. <br>
-HPC 47 core CPUs, 10x286 matrix, and 1000 bootstrap samples: Expected 15 seconds. <br>
-
-## Installation
-
-You can install the development version of PRISM from GitHub:
-
-```r
-# install.packages("devtools")
-devtools::install_github("maxwellkonnaris/PRISM")
+```text
+log W_d = log P_d + U,
 ```
 
-PRISM is also available via CRAN:
+where `P_d` is relative abundance and `U` is log total scale. For pair `(i,j)`,
 
-```r
-install.packages("PRISM")
+```text
+Cov(log W_i, log W_j)
+  = Sigma_rel[i,j] + sigma^2
+    + sigma * (s_i * rho_i + s_j * rho_j),
 ```
 
-## Dependencies
-PRISM imports the following R packages:
+where:
 
-- **driver**: For managing simulations and workflows. (Separate install below and not auto imported)
-- **tidyverse**: A collection of R packages for data manipulation and visualization (includes `ggplot2`, `dplyr`, `tidyr`, etc.).
-- **rBeta2009**: A package for working with beta distributions.
-- **pbapply**: An alternative to `apply` functions with built-in progress bars.
-- **progress**: A package for displaying progress bars in R scripts.
-- **progressr**: Provides an API to track the progress of computations, used for longer running tasks.
-- **foreach**: For loop constructs that allow parallel and distributed execution.
-- **doSNOW**: A parallel backend for the `foreach` package, particularly for Windows users.
-- **parallel**: The core R package that supports parallel computing.
-- **stats**: A core R package for statistical functions.
-- **MCMCpack**: For performing Markov Chain Monte Carlo (MCMC) simulations.
-- **ggplot2**: Part of the tidyverse, used for advanced data visualization.
-- **profvis**: A graphical profiler for R to analyze performance bottlenecks.
-- **gridExtra**: A package for arranging multiple grid-based plots (e.g., ggplot2) on a single page.
-- **grid**: Core R package that provides low-level functions for creating and manipulating graphical objects.
-- **compositions**: Provides tools for working with compositional data, including CLR and ILR transformations.
-- **GGally**: Extends `ggplot2` with additional plotting functionality, especially for data diagnostics and visualizations.
-- **filelock**: Used to safely manage file locking when running parallel computations.
-- **nloptr**: A package for nonlinear optimization, used in optimization problems within the package.
-- **reshape2**: Used for data reshaping, particularly in preparing data for analysis.
-- **plotly**: For creating interactive visualizations.
-- **htmlwidgets**: For creating interactive web visualizations within R.
-- **viridis**: A color palette for `ggplot2` plots, optimized for perceptual uniformity and colorblind-friendliness.
-- **alphashape3d**: For 3D alpha shapes, used in visualization and analysis of 3D data.
-- **phyloseq**: For microbiome data analysis, used for Banocc covariance estimation.
-- **SpiecEasi**: For sparse inverse covariance estimation for ecological association inference. 
-- **CCLasso**: For sparse covariance estimation using compositional data using Lasso.
-- **SparCC**: For sparse covariance estimation using compositional data.
-- **propr**: For analyzing proportionality relationships in compositional data.
-- **BAnOCC**: Bayesian Analaysis Of Compositional Covariance.
+- `Sigma_rel` is the covariance of sample log compositions;
+- `sigma = SD(U)`;
+- `s_d = sqrt(Sigma_rel[d,d])`;
+- `rho_d = Cor(log P_d, U)`.
 
-<br>
+The target is the population absolute log-covariance. `Sigma_rel` and any
+sample-level scale summaries are estimated from observed samples. The package
+reports identification bounds because the absolute covariance is generally not
+point identified from compositions alone.
 
-Ensure you have these packages installed before using PRISM.
-
-## Usage
-Run Analysis on All Pairwise Combinations <br>
-<br>
-The primary function of the PRISM package is estimate_covariance, which runs a bootstrapped analysis on the input data matrix Y using scale models which account for uncertainty due to a partially identified system where the dataset does not include information about scale. <br>
-<br>
-See Scale Reliant Inference for more information: https://arxiv.org/abs/2201.03616 
+## Minimal use
 
 ```r
-results = estimate_covariance(Y, alpha = rep(0, nrow(Y)), lowerrhobound = rep(0.9, nrow(Y)), upperrhobound = rep(0.9, nrow(Y)), S = 1000, lowerscalestdev = 0.45, upperscalestdev = 0.6, outputdirectory='/tables/')
-forest_plot(results$final_results, save="png", filename="example_dataset")
-sigmaplot(results$all_inner_results, save="png", filename="example_dataset")
-calculate_bootstrap_summary(results$all_inner_results, group_col = "comparison", exclude_cols = c("d1", "d2"), save_as_csv = TRUE, csv_path = "my_summary_stats.csv")
+library(prism)
+
+fit <- prism(
+  counts = count_matrix,
+  composition = prism_composition_dirichlet(
+    pseudocount = 0.5,
+    concentration = 1
+  ),
+  bootstrap = TRUE,
+  S = 1000,
+  sigma_L = 0.2,
+  sigma_U = 0.8,
+  seed = 1
+)
+
+fit
+fit$pairwise
+fit$diagnostics
 ```
 
-## Parameters for Main Estimation Functions ( estimate_covariance() )
-- **Y**: A matrix of observed counts, where rows represent variables (e.g., taxa) and columns represent observations (samples). The matrix should have at least two rows and two columns. <br>
-- **alpha**: A numeric vector of Dirichlet priors with the same length as the number of rows in \code{Y}. If \code{alpha} is a scalar, it will be replicated for each row. Defaults to \code{0.5}. <br>
-- **lowerrhobound**: A numeric vector of lower bounds for correlation parameters (\eqn{\rho}). Each element specifies the lower bound for a row of \code{Y}. If a scalar is provided, it will be replicated for each row. Defaults to \code{-1.0}. <br>
-- **upperrhobound**: A numeric vector of upper bounds for correlation parameters (\eqn{\rho}). Each element specifies the upper bound for a row of \code{Y}. If a scalar is provided, it will be replicated for each row. Defaults to \code{1.0}. <br>
-- **S**: An integer specifying the number of bootstrap samples. Larger values reduce Monte Carlo error but increase computation time. Defaults to \code{1000}. <br>
-- **lowerscalestdev**: A numeric value specifying the lower bound of the standard deviation of the scale. Defaults to \code{0.49}. <br>
-- **upperscalestdev**: A numeric value specifying the upper bound of the standard deviation of the scale. Defaults to \code{0.51}. <br>
-- **algorithm**: A character string specifying the optimization algorithm to be used. Can be one of \code{"COBYLA"}, \code{"MMA"}, \code{"AUGLAG_COBYLA"}, \code{"AUGLAG_MMA"}, or \code{"GRID_SEARCH"}. Defaults to \code{"COBYLA"}. <br>
-- **outputdirectory**: A character string specifying the directory to save results for grid search. If \code{NULL}, the current working directory is used. Defaults to \code{NULL}.
+`bootstrap` accepts `"none"` and `"both"`. Logical `FALSE` and `TRUE` remain
+aliases for those modes. `"both"` is a paired sample bootstrap: one resampled
+sample index is applied to the count composition and its matched scale
+measurement, and all empirical covariance parameters are re-estimated from
+that draw. The former `"composition"` and `"scale"` hybrid modes are deprecated
+and unsupported because independently resampled parameter blocks need not
+define a positive-semidefinite joint covariance. Attempted, accepted, and
+rejected counts; acceptance and rejection fractions; replacement counts;
+attempts-per-draw summaries; and reason counts and fractions are returned in
+`fit$diagnostics$sampling`.
 
-## Return Value
-The function returns a list containing two data frames:<br>
-<br>
-- **final_results**: A data frame with the final results of the analysis, including estimated 95% confidence intervals, minimum and maximum values for estimated covariance, and finite sample covariances. <br>
-- **all_inner_results**: A data frame with detailed results from the inner loop of the analysis for each bootstrap sample.
+The count matrix must be features by samples. A pseudocount is added before a
+logarithm or before constructing Dirichlet parameters. A zero pseudocount is
+accepted only when it cannot produce a zero logarithm or a zero Dirichlet
+parameter.
 
-## Main Estimation Functions
-- **estimate_covariance()**: Main function for estimating the covariance of all pairwise rows using a Multinomial Dirichlet Bootstrap <br>
-- **estimate_covariance_MLN()**: Main function for estimating the covariance of all pairwise rows using a Multinomial Logistic Normal Bootstrap <br>
-- **estimate_covariance_convergence()**: Main function for estimating the covariance of all pairwise rows using a Multinomial Dirichlet Bootstrap across several different iterations of bootstrap samples <br>
+## Call flow
 
-## Main Plotting and Diagnostic Functions
-- **forest_plot()**: Plotting the range and confidence interval based on the final_results from estimate_covariance function <br>
-- **proportiondontcoverzerobars()**: Plotting the distribution of the proportion of intervals that do not cover zero based on the final_results from estimate_covariance function <br>
-- **sigmaplot()**: Plotting the relationship between prior parameters specified to minimize or maximize the covariance objective function <br>
-- **plot_bivariate_grid()**: Plotting a bivariate grid to show how each parameter contributes to the optimization of the covariance interval for a given grid search result between two taxa <br>
-- **plot_rpars_3d_scatter()**: Plotting a 3D scatter of the grid search optimization of the covariance between two taxa <br>
-- **calculate_bootstrap_summary()**: Generate a table of summary stats for a csv, more specifically applied to the results$all_inner_results if youre interested in the summary stats from the bootstrap performed <br>
+```mermaid
+flowchart TD
+    A[prism call] --> B[Validate estimator and scalar options]
+    B --> C[Validate features x samples input]
+    C --> D[Filter zero-depth samples and zero-sum features]
+    D --> E[Subset vector or matrix scale data identically]
+    E --> F[Return data diagnostics in result object]
 
+    F --> G{Composition estimator}
+    G -->|Default| H[Dirichlet-multinomial specification]
+    G -->|Fixed| I[Observed count composition]
+    G -->|Optional| J[MLN estimator in composition-mln.R]
+    G -->|Plug-in| K[User fit and draw functions]
 
-## License
-PRISM is licensed under the GPL-3 license. See the LICENSE file for more details.
+    H --> H1[Generate one seeded D x N draw on demand]
+    I --> I1[Add pseudocount, close, log]
+    J --> J1[Fit fido model and obtain posterior compositions]
+    K --> K1[Validate each returned positive D x N composition]
 
-## Contact: Bugs, Questions, or Issues
-Bug reports, questions, or issues are welcome, please direct any issues to https://github.com/maxwellkonnaris/prism/issues
+    H1 --> L{Bootstrap mode}
+    I1 --> L
+    J1 --> L
+    K1 --> L
+    L -->|none| N[Hold empirical parameter blocks fixed]
+    L -->|both| M3[Use one paired sample resample for all empirical blocks]
+    M3 --> O[Estimate Sigma_rel, sigma, and rho for draw s]
+    N --> O
 
+    O --> P{Scale information supplied}
+    P -->|None| P1[Unbounded-scale equations]
+    P -->|sigma bounds only| P2[Bounded-scale equations]
+    P -->|sigma and rho bounds| P3[Bounded-scale and correlation equations]
+    P -->|scale_log| P4[Estimate sigma and rho; apply requested CIs]
+    P -->|raw scale replicates| P5[Propagate replicate uncertainty with fixed inner budget]
 
+    P1 --> Q[Compute standard pair bounds]
+    P2 --> Q
+    P3 --> Q
+    P4 --> Q
+    P5 --> Q
+
+    Q --> Q1{Draw parameters PSD-compatible?}
+    Q1 -->|No| Q2[Record rejection and draw a replacement]
+    Q2 --> L
+    Q1 -->|Yes| R{High resolution enabled and rho interval has width?}
+    R -->|No| S[Keep standard bounds]
+    R -->|Yes| T{Policy}
+    T -->|borderline| U[Select conservative intervals near null boundary]
+    T -->|all| V[Select all requested pairs]
+    T -->|never| S
+    U --> W[Solve ellipsoid-box support inside this draw]
+    V --> W
+    W --> X[Verify sharp interval tightens conservative interval]
+    X --> S
+
+    S --> Y{Streaming active?}
+    Y -->|Yes| Z[Write draw endpoints to temporary binary chunks]
+    Y -->|No| AA[Retain full draw arrays]
+    Z --> AB[Read bounded pair blocks and aggregate]
+    AA --> AC[Aggregate arrays]
+    AB --> AD[Endpoint quantiles and pairwise p values]
+    AC --> AD
+    AD --> AE[BH correction across complete tested pair family]
+    AE --> AF[Construct prism_result]
+```
+
+High-resolution refinement is performed inside each selected bootstrap draw.
+It is not applied after final confidence endpoints have already been computed.
+An audited external screening step may pass a two-column integer matrix through
+`high_resolution_pair_index`. Those requested pairs replace automatic
+policy-based selection, but PRISM still regenerates the seeded stochastic
+draws, refines each requested pair within each draw, and recomputes BH across
+the complete pair family. The indices refer to the retained feature order after
+PRISM filtering.
+
+## Composition estimators
+
+The default is:
+
+```r
+prism_composition_dirichlet(pseudocount = 1, concentration = 1)
+```
+
+This uses independent sample-level Dirichlet distributions with parameters
+
+```text
+concentration * (counts[, n] + pseudocount).
+```
+
+Fixed observed compositions are requested explicitly:
+
+```r
+prism_composition_fixed(pseudocount = 0.5)
+```
+
+MLN is optional and isolated from the PRISM estimator:
+
+```r
+prism_composition_mln(
+  tune_draws = 200,
+  max_hessian_gb = 4
+)
+```
+
+It requires `fido`. It is not the default and PRISM does not currently rely on
+it for its standard composition estimator.
+
+A custom estimator has two functions:
+
+```r
+my_estimator <- prism_composition_estimator(
+  name = "my_model",
+  fit = function(counts, n_draws, seed, verbose) {
+    # Return fitted state.
+  },
+  draw = function(fit, draw) {
+    # Return one finite, positive D x N composition matrix.
+  }
+)
+```
+
+Every custom draw is checked and reclosed before covariance estimation. The
+plug-in is responsible for the statistical validity and uncertainty calibration
+of its draws.
+
+## Scale regimes
+
+The package selects equations from the information supplied:
+
+| Information | Regime | Result |
+|---|---|---|
+| no scale information | unbounded scale | finite lower bound, infinite upper bound |
+| `sigma_L`, `sigma_U` | bounded scale | closed-form sharp bounds |
+| sigma bounds plus fixed rho | fixed correlation | closed-form sharp bounds after PSD compatibility check |
+| sigma bounds plus rho intervals | bounded correlation | fast conservative standard bounds |
+| previous row plus `high_resolution=TRUE` | bounded correlation | sharp numerical bounds for selected pairs |
+| sample-level `scale_log` | estimated sigma and rho | point or bounded values according to `scale_log_ci_level` |
+| raw scale vector or replicates | propagated scale uncertainty | draw-level sigma and rho intervals |
+
+Supplying rho bounds without sigma bounds is an error. Sigma bounds are checked
+against `[0, Inf)` and rho bounds against `[-1, 1]`. Fixed rho values must be
+compatible with the positive-semidefinite relative covariance geometry. A
+genuine rho interval must contain at least one single, joint rho vector in the
+global ellipsoid-box intersection; satisfying each coordinate or feature pair
+separately is not enough.
+
+For sample-level `scale_log`, the empirical same-draw rho is retained as a
+feasibility witness and each Fisher-z interval is forced to contain that point
+estimate. For raw replicate-scale uncertainty, a witness is used only when one
+actual inner draw lies inside every reported marginal rho interval. Otherwise,
+PRISM certifies the full intersection numerically. Rank-deficient covariance
+matrices are supported; CVXR is needed only when neither a valid witness nor a
+rho box containing zero resolves a rank-deficient feasibility check.
+
+## Result object
+
+`prism()` returns a `prism_result` with:
+
+- `ci_lower`, `ci_upper`: symmetric absolute-covariance CI endpoint matrices;
+- `point_lower`, `point_upper`: deterministic identification endpoints, or
+  `NULL` for stochastic analyses;
+- `pairwise`: off-diagonal tested pairs and endpoint, p-value, q-value fields;
+- `pairwise_rel`: relative covariance estimates and intervals, including the
+  diagonal;
+- `rel_draws`: optional relative-covariance draws;
+- `diagnostics`: data, scale, composition, high-resolution, and simulation
+  diagnostics;
+- `parameters`: effective estimator and computational settings;
+- `mln_fit_object`: optional only when requested in an MLN estimator.
+
+No plot is created by `prism()`. The only package plotting functions are:
+
+```r
+plot_high_resolution_ci_distribution(fit, delta = 0.1)
+plot_high_resolution_near_zero_changes(fit, delta = 0.1)
+```
+
+The first plots lower endpoints in red and upper endpoints in blue across all
+tested pairs, with dashed null thresholds. The second contains only refined
+pairs and overlays conservative gray intervals with sharp black intervals.
+Both return ggplot objects; the caller decides whether and where to save a PDF.
+
+## Computational behavior
+
+For `D` features, `N` samples, and `S` draws:
+
+- relative covariance computation is approximately `O(S * D^2 * N)`;
+- all off-diagonal output necessarily has `O(D^2)` size;
+- non-streamed endpoint arrays require `O(S * D^2)` memory;
+- streamed endpoints use temporary binary files and bounded pair blocks;
+- default composition draws use `O(D * N)` memory through draw-on-demand;
+- raw-scale propagation uses `scale_uncertainty_draws`, independent of `S`,
+  avoiding quadratic growth in `S`;
+- streamed bounds combine off-diagonal and diagonal requests so global rho-box
+  feasibility is certified once per draw;
+- high-resolution cost scales with refined pairs, draws, matrix rank, and conic
+  solver behavior.
+
+Set `return_rel_draws=TRUE` only when needed because the requested returned
+matrix itself requires `O(S * D^2)` memory.
+
+Set `return_bound_draws=TRUE` to retain the accepted draw-level lower and upper
+off-diagonal covariance bounds. They are returned as the two `S x choose(D, 2)`
+matrices in `pairwise_bound_draws`, with columns aligned to `pairwise`. For
+example, a central 90% outer interval can be reconstructed with the 5th
+percentile of `lower` and the 95th percentile of `upper`. This opt-in output
+also requires `O(S * D^2)` memory; with `S = 2000` and `D = 90`, the two
+double-precision matrices occupy about 128 MB before serialization.
+
+## Principal failure modes
+
+- zeros with a zero pseudocount;
+- noninteger values supplied as counts;
+- fewer than two valid samples or features after filtering;
+- rho information without sigma information;
+- infeasible fixed correlations or empty ellipsoid-box intersections;
+- excessive rejection when independently bootstrapped parameter blocks are
+  recombined;
+- too few valid Monte Carlo draws;
+- custom composition draws with invalid dimensions or values;
+- ill-conditioned or excessively large optional MLN fits;
+- unavailable CVXR solver for high-resolution refinement or an unresolved
+  rank-deficient rho-box feasibility check.
+
+The conclusion should be reconsidered if composition draws are miscalibrated,
+scale bounds are not scientifically defensible, bootstrap samples are not
+exchangeable, or numerical refinement fails its interval-tightening check.

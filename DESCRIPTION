@@ -1,54 +1,36 @@
-Package: PRISM
+Package: prism
 Type: Package
-Title: Partial Rho Identification through Scale Modeling: Robust Covariance Analysis
+Title: Covariance Identification Bounds for Scaled Compositional Systems
 Version: 0.1.0
-Author(s): Maxwell Konnaris and Justin Silverman
-Contributor(s): Michelle Nixon
-Maintainer: Maxwell Konnaris <Maxwellkonnaris@gmail.com>
-Manuscript: 
-Description: A package for running simulations and robust covariance analysis on count data using a bootstrap scale estimation approach to solve partially identified systems. This package integrates multiple methods, including Banocc, SparCC (through Python integration), SPIEC-EASI, CCLasso, and Proportionality, along with CLR and ILR transformations for compositional data.
+Authors@R: person(
+    "Maxwell", "Konnaris",
+    role = c("aut", "cre"),
+    email = "mak6930@psu.edu"
+  )
+Author: Maxwell Konnaris [aut, cre]
+Maintainer: Maxwell Konnaris <mak6930@psu.edu>
+Description: Estimates entrywise identification regions and bootstrap
+    confidence intervals for absolute log-covariances when compositional
+    observations are accompanied by exact, bounded, or sample-level scale
+    information. Composition uncertainty is represented through replaceable
+    estimator objects. A Dirichlet-multinomial estimator is provided as the
+    default. Optional numerical refinement produces sharp pairwise bounds for
+    bounded correlation intervals.
 License: MIT + file LICENSE
-Imports: 
-    tidyverse,
-    rBeta2009,
-    pbapply,
-    progress,
-    progressr,
-    scales,
-    utils,
-    foreach,
-    doSNOW,
-    parallel,
-    stats,
-    MCMCpack,
-    ggplot2,
-    profvis,
-    gridExtra,
-    grid,
-    dplyr,
-    tidyr,
-    coda,
-    compositions,
-    GGally,
-    filelock,
-    nloptr,
-    reshape2,
-    plotly,
-    viridis,
-    htmlwidgets,
-    alphashape3d,        
-    gtools,
-    devtools,
-    BiocManager,
-    ggridges,
-    pheatmap,
-    igraph,
-    qgraph,
-    fido
-Remotes:
-    jsilve24/driver,
-    tpq/propr,
-    zdk123/SpiecEasi,
-    biobakery/banocc
-RoxygenNote: 7.3.2
 Encoding: UTF-8
+Depends:
+    R (>= 4.1.0)
+Imports:
+    stats,
+    utils
+Suggests:
+    CVXR,
+    ECOSolveR,
+    fido,
+    future,
+    future.apply,
+    ggplot2,
+    pkgload,
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
+Config/roxygen2/version: 8.0.0

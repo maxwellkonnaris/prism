@@ -1,0 +1,9 @@
+utils::globalVariables(c(
+  "ci_endpoint",
+  "endpoint",
+  "high_resolution_lower",
+  "high_resolution_upper",
+  "pair",
+  "standard_lower",
+  "standard_upper"
+))
