@@ -8,13 +8,12 @@
   draws,
   feature_names = NULL,
   ci_alpha = 0.05,
-  delta = 0.1,
+  delta = 0,
   p_adjust_method = "BH"
 )
 }
 \arguments{
-\item{draws}{Output of `.prism_bootstrap()`: `list(lower, upper, rel)`,
-each a D x D x S_eff array over accepted draws.}
+\item{draws}{Output of `.prism_bootstrap()`.}
 
 \item{feature_names}{Character vector of length D, or `NULL`.}
 

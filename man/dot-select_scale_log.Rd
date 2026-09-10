@@ -4,7 +4,12 @@
 \alias{.select_scale_log}
 \title{Select one raw scale value per sample and log it}
 \usage{
-.select_scale_log(scale_mat, sample_index, replicate_index = NULL)
+.select_scale_log(
+  scale_mat,
+  sample_index,
+  replicate_index = NULL,
+  log_transform = TRUE
+)
 }
 \arguments{
 \item{scale_mat}{N x R matrix from `.validate_scale_input()`.}
@@ -15,6 +20,9 @@ with replacement under the bootstrap).}
 \item{replicate_index}{Integer replicate indices, one per entry of
 `sample_index`, in `1:ncol(scale_mat)`. Ignored when `scale_mat` has
 one column.}
+
+\item{log_transform}{If `TRUE` (raw input), take the log of the
+selected values. If `FALSE`, `scale_mat` is already log-scale.}
 }
 \value{
 A numeric vector of log-scale values, length `length(sample_index)`.

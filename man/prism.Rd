@@ -8,23 +8,24 @@ prism(
   counts,
   composition = prism_composition_dirichlet(),
   bootstrap = TRUE,
-  S = 1000L,
+  S = 2000L,
   max_attempts_per_draw = 100L,
   prevalence = 0,
   verbose = FALSE,
   scale = NULL,
-  scale_log = NULL,
-  scale_log_ci_level = 0,
-  scale_log_rho = TRUE,
-  scale_log_lower_zero = FALSE,
-  ci_alpha = 0.05,
   sigma_L = NULL,
   sigma_U = NULL,
   rho_L = NULL,
   rho_U = NULL,
-  delta = 0.1,
+  scale_ci_level = NULL,
+  scale_estimate_rho = NULL,
+  scale_lower_zero = NULL,
+  ci_alpha = 0.05,
+  delta = 0,
   p_adjust_method = "BH",
-  seed = 1L
+  seed = 1L,
+  stream = FALSE,
+  stream_memory_limit = 2e+09
 )
 }
 \arguments{
@@ -49,42 +50,49 @@ acceptance/rejection bookkeeping.}
 
 \item{verbose}{Emit progress messages.}
 
-\item{scale}{Optional positive sample-level scale: a length-N vector
-(one raw measurement per sample) or an N-row replicate matrix (one
-row per sample, one column per replicate measurement). Mutually
-exclusive with `scale_log` and with `sigma_L`/`sigma_U`/`rho_L`/`rho_U`.}
-
-\item{scale_log}{Optional finite length-N vector of log total scale.
-Mutually exclusive with `scale` and with `sigma_L`/`sigma_U`/`rho_L`/`rho_U`.}
-
-\item{scale_log_ci_level}{Coverage for the chi-square scale-SD and
-Fisher-z correlation intervals estimated from `scale`/`scale_log`
-within each draw. `0` uses point estimates.}
-
-\item{scale_log_rho}{Estimate taxon-scale correlation from
-`scale`/`scale_log`. If `FALSE`, only scale-SD is estimated (the
-bound regime becomes bounded-scale-only).}
-
-\item{scale_log_lower_zero}{If `TRUE`, force the lower scale-SD
-endpoint to `0` instead of the chi-square lower quantile (sigma
-cannot be negative, so the two-sided lower quantile asserts a
-positive floor that is an artifact of the two-sided interval, not a
-real constraint).}
-
-\item{ci_alpha}{Tail probability for the final confidence intervals.}
+\item{scale}{Scale information; see Details.}
 
 \item{sigma_L, sigma_U}{Optional fixed scale-SD bounds,
-`0 <= sigma_L <= sigma_U`. Mutually exclusive with `scale`/`scale_log`.}
+`0 <= sigma_L <= sigma_U`. Shorthand for
+`scale = prism_scale_bounds(sigma_L, sigma_U, rho_L, rho_U)`; cannot
+be combined with a non-`NULL` `scale`.}
 
 \item{rho_L, rho_U}{Optional fixed scalar or feature-level correlation
-bounds in `[-1, 1]`; require `sigma_L`/`sigma_U`. Mutually exclusive
-with `scale`/`scale_log`.}
+bounds in `[-1, 1]`; require `sigma_L`/`sigma_U`.}
+
+\item{scale_ci_level}{Coverage for the chi-square scale-SD and
+Fisher-z correlation intervals estimated within each draw, when
+`scale` is a bare vector/matrix. `NULL` (default) uses `0` (point
+estimates).}
+
+\item{scale_estimate_rho}{Estimate taxon-scale correlation, when
+`scale` is a bare vector/matrix. `NULL` (default) uses `TRUE`. If
+`FALSE`, only scale-SD is estimated (the bound regime becomes
+bounded-scale-only).}
+
+\item{scale_lower_zero}{Force the lower scale-SD endpoint to `0`
+instead of the chi-square lower quantile, when `scale` is a bare
+vector/matrix (sigma cannot be negative, so the two-sided lower
+quantile asserts a positive floor that is an artifact of the
+two-sided interval, not a real constraint). `NULL` (default) uses
+`TRUE`.}
+
+\item{ci_alpha}{Tail probability for the final confidence intervals.}
 
 \item{delta}{Half-width of the pairwise null region used for p-values.}
 
 \item{p_adjust_method}{Method passed to [stats::p.adjust()].}
 
 \item{seed}{Reproducibility seed, or `NULL`.}
+
+\item{stream}{Stream draws to temporary disk files instead of holding
+them in memory. `FALSE` (the default) still streams automatically
+when the estimated cost of holding all draws in memory exceeds
+`stream_memory_limit`, so a large problem does not silently exhaust
+memory.}
+
+\item{stream_memory_limit}{Byte threshold for the automatic streaming
+trigger; see `stream`. Default 2e9 (2 GB).}
 }
 \value{
 A `prism_result`: `ci_lower`/`ci_upper` (D x D matrices),
@@ -102,4 +110,35 @@ from compositional data alone; `prism()` combines a composition
 uncertainty estimator (default: Dirichlet-multinomial) with whatever
 scale information is supplied and returns identification bounds,
 bootstrap confidence intervals, and pairwise inference.
+}
+\details{
+`scale` is the single argument for "what do I know about total scale?"
+and accepts, in increasing order of how much it specifies:
+
+\describe{
+  \item{`NULL` (default)}{no scale information (unbounded-scale regime),
+    unless `sigma_L`/`sigma_U`/`rho_L`/`rho_U` are also given.}
+  \item{a bare numeric vector (length N) or matrix (N rows, one column
+    per replicate measurement)}{sample-level scale data; sigma/rho are
+    estimated within each draw. Values are assumed raw (un-logged) and
+    PRISM takes the log itself, *unless* any value is non-positive (a
+    raw scale measurement cannot be), in which case the whole input is
+    treated as already log-scale. All-positive values that are already
+    log-scale are ambiguous by value alone and must be wrapped
+    explicitly with [prism_scale_log()].}
+  \item{[prism_scale_log()]}{sample-level scale data that is explicitly
+    already on the log scale, with its own `ci_level`/`estimate_rho`/
+    `lower_zero` settings.}
+  \item{[prism_scale_bounds()]}{fixed `sigma_L`/`sigma_U`/`rho_L`/`rho_U`
+    bounds, no per-sample data. `sigma_L`/`sigma_U`/`rho_L`/`rho_U` can
+    be passed directly to `prism()` as a shorthand for this -- they are
+    forwarded into a `prism_scale_bounds()` for you.}
+}
+
+`scale_ci_level`/`scale_estimate_rho`/`scale_lower_zero` configure the
+within-draw scale-SD/correlation estimate when `scale` is sample-level
+data (a bare vector/matrix); they cannot be combined with
+`scale = prism_scale_log(...)` (which carries its own settings) or with
+`scale = prism_scale_bounds(...)`/`sigma_L` etc. (fixed, nothing to
+estimate).
 }

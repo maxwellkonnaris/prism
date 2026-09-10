@@ -4,7 +4,7 @@
 \alias{.prism_filter_data}
 \title{Filter counts (and paired scale data) to a valid PRISM input}
 \usage{
-.prism_filter_data(counts, scale, scale_log, prevalence, verbose)
+.prism_filter_data(counts, scale, prevalence, verbose)
 }
 \description{
 Filter counts (and paired scale data) to a valid PRISM input

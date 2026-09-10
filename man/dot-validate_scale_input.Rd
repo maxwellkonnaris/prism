@@ -4,15 +4,21 @@
 \alias{.validate_scale_input}
 \title{Validate raw sample-level scale input}
 \usage{
-.validate_scale_input(scale, N)
+.validate_scale_input(scale, N, require_positive = TRUE)
 }
 \arguments{
-\item{scale}{Positive numeric vector (length N) or matrix (N rows).}
+\item{scale}{Numeric vector (length N) or matrix (N rows); positive if
+`require_positive`, otherwise any finite real value (already
+log-scale).}
 
 \item{N}{Expected number of samples.}
+
+\item{require_positive}{If `TRUE` (raw, un-logged input), every value
+must be strictly positive. If `FALSE` (already log-scale input), any
+finite value is allowed.}
 }
 \value{
-A finite, strictly positive N x R matrix.
+A finite N x R matrix.
 }
 \description{
 `scale` is either one raw measurement per sample (a length-N vector) or

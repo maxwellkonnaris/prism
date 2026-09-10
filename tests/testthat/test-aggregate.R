@@ -10,8 +10,31 @@ make_draws <- function(D = 3L, S = 20L, seed = 1L) {
     upper[, , s] <- m + 0.2
     rel[, , s] <- m
   }
-  list(lower = lower, upper = upper, rel = rel)
+  list(storage = "memory", D = D, S_eff = S, lower = lower, upper = upper, rel = rel)
 }
+
+make_stream_draws <- function(D = 3L, S = 20L, seed = 1L) {
+  mem <- make_draws(D, S, seed)
+  pair_index <- .upper_pairs(D)
+  handle <- .stream_open()
+  for (s in seq_len(S)) {
+    .stream_write_draw(handle, pair_index, mem$lower[, , s], mem$upper[, , s], mem$rel[, , s])
+  }
+  .stream_close(handle)
+  list(storage = "stream", D = D, S_eff = S, files = handle$files, pair_index = pair_index)
+}
+
+test_that("pair_draws returns a pairs x draws matrix for S == 1 and S > 1", {
+  arr1 <- array(c(1, 2, 3, 4), c(2, 2, 1))
+  out1 <- .pair_draws(arr1, i = c(1, 1, 2), j = c(1, 2, 2))
+  expect_equal(dim(out1), c(3L, 1L))
+  expect_equal(out1[, 1], c(arr1[1, 1, 1], arr1[1, 2, 1], arr1[2, 2, 1]))
+
+  arr3 <- array(seq_len(2 * 2 * 3), c(2, 2, 3))
+  out3 <- .pair_draws(arr3, i = c(1, 1, 2), j = c(1, 2, 2))
+  expect_equal(dim(out3), c(3L, 3L))
+  for (s in 1:3) expect_equal(out3[, s], c(arr3[1, 1, s], arr3[1, 2, s], arr3[2, 2, s]))
+})
 
 test_that("ci_lower/ci_upper are exactly the empirical quantiles of the draws", {
   draws <- make_draws(D = 3L, S = 25L, seed = 1L)
@@ -54,6 +77,7 @@ test_that("a single deterministic draw gives NA p-values and the draw itself as 
   D <- 3L
   m <- matrix(c(1, 0.2, 0.1, 0.2, 1, 0.3, 0.1, 0.3, 1), D, D)
   draws <- list(
+    storage = "memory", D = D, S_eff = 1L,
     lower = array(m - 0.1, c(D, D, 1)),
     upper = array(m + 0.1, c(D, D, 1)),
     rel = array(m, c(D, D, 1))
@@ -82,7 +106,7 @@ test_that("p-values are small when draws consistently exclude the null region", 
   m <- array(0, c(D, D, S))
   lower <- array(0.5, c(D, D, S))
   upper <- array(0.9, c(D, D, S))
-  draws <- list(lower = lower, upper = upper, rel = m)
+  draws <- list(storage = "memory", D = D, S_eff = S, lower = lower, upper = upper, rel = m)
   out <- .prism_aggregate(draws, delta = 0.1)
   expect_true(out$pairwise$p_value[1] < 0.05)
 })
@@ -93,6 +117,34 @@ test_that("input validation rejects bad ci_alpha, delta, and p_adjust_method", {
   expect_error(.prism_aggregate(draws, ci_alpha = -0.1), "ci_alpha")
   expect_error(.prism_aggregate(draws, delta = -1), "delta")
   expect_error(.prism_aggregate(draws, p_adjust_method = "not_a_method"), "p_adjust_method")
+})
+
+test_that("streamed and in-memory aggregation give identical results", {
+  mem <- make_draws(D = 5L, S = 15L, seed = 7L)
+  strm <- make_stream_draws(D = 5L, S = 15L, seed = 7L)
+  out_mem <- .prism_aggregate(mem, ci_alpha = 0.1, delta = 0.05)
+  out_strm <- .prism_aggregate(strm, ci_alpha = 0.1, delta = 0.05)
+  expect_equal(out_mem$ci_lower, out_strm$ci_lower)
+  expect_equal(out_mem$ci_upper, out_strm$ci_upper)
+  expect_equal(out_mem$pairwise, out_strm$pairwise)
+  expect_equal(out_mem$pairwise_rel, out_strm$pairwise_rel)
+  unlink(unlist(strm$files))
+})
+
+test_that("streamed aggregation handles a block boundary correctly", {
+  strm <- make_stream_draws(D = 8L, S = 6L, seed = 8L)  # 36 pairs
+  mem <- make_draws(D = 8L, S = 6L, seed = 8L)
+  out_strm <- .stream_pair_stats(strm, .upper_pairs(8L), ci_alpha = 0.05, delta = 0, block_size = 5L)
+  out_mem <- .memory_pair_stats(mem, .upper_pairs(8L), ci_alpha = 0.05, delta = 0)
+  expect_equal(out_strm, out_mem)
+  unlink(unlist(strm$files))
+})
+
+test_that("default delta is 0", {
+  draws <- make_draws(D = 2L, S = 30L, seed = 9L)
+  out <- .prism_aggregate(draws)
+  out_delta0 <- .prism_aggregate(draws, delta = 0)
+  expect_identical(out$pairwise$p_value, out_delta0$pairwise$p_value)
 })
 
 test_that("feature_names default to V1..VD when not supplied", {

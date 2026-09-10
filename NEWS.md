@@ -1,3 +1,44 @@
+# prism 0.3.0
+
+Follow-up round on the 0.2.0 rewrite, based on review feedback:
+
+- Consolidated `scale`, `scale_log`, `scale_log_ci_level`, `scale_log_rho`,
+  `scale_log_lower_zero` (5 arguments) into one `scale` argument, mirroring
+  the `composition = prism_composition_*()` pattern: `scale` now accepts
+  `NULL`, a bare vector/matrix (raw or auto-detected log-scale), a
+  [`prism_scale_log()`], or a [`prism_scale_bounds()`]. `sigma_L`/`sigma_U`/
+  `rho_L`/`rho_U` remain available as `prism()` arguments as shorthand for
+  `prism_scale_bounds()`, forwarded internally. Renamed
+  `scale_log_ci_level`/`scale_log_rho`/`scale_log_lower_zero` to
+  `scale_ci_level`/`scale_estimate_rho`/`scale_lower_zero`.
+- Auto-detects raw vs. already-log-scale for a bare `scale` vector/matrix by
+  sign (a raw measurement can't be non-positive); all-positive already-log
+  data is genuinely ambiguous and must be wrapped in `prism_scale_log()`
+  explicitly -- no magnitude-based guessing.
+- `scale_lower_zero` (and the `prism_scale_log()`/`.estimate_scale_log_bounds()`
+  default) is now `TRUE`: the lower scale-SD CI endpoint defaults to 0
+  rather than the two-sided chi-square lower quantile, since sigma cannot
+  be negative and that quantile was asserting a floor that isn't a real
+  constraint.
+- `S` default raised from 1000 to 2000. `delta` default changed from 0.1 to
+  0 (tests significance against a point null rather than a null region, by
+  default).
+- Reintroduced streaming, simplified relative to the pre-0.2.0 version (no
+  longer needs to support single-column high-resolution reads, since that
+  feature is gone): `stream = FALSE` by default, but automatically enabled
+  when the estimated in-memory cost of all draws exceeds
+  `stream_memory_limit` (2 GB default) so a large `D`/`S` cannot silently
+  exhaust memory; `stream = TRUE` forces it on. Verified numerically
+  identical to non-streamed output for the same seed.
+- Fixed a latent bug found while adding streaming support: `.pair_draws()`
+  mishandled the `S == 1` (single deterministic draw) case -- `vapply()`
+  collapses to a plain vector rather than a matrix when each call returns
+  one value, so `t()` transposed the wrong way. This path was previously
+  untested because the pre-streaming aggregation code happened to avoid
+  calling it when `S == 1`; a refactor to share aggregation logic between
+  the streamed and in-memory paths started exercising it and surfaced the
+  bug immediately.
+
 # prism 0.2.0
 
 Ground-up rewrite. The statistical target is unchanged (identification

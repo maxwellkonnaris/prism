@@ -15,6 +15,11 @@
 )
 }
 \description{
-Resolve sigma/rho for one draw from whichever scale input mode is active
+`scale_mode` is either `list(mode = "none")` (fixed `sigma_L`/etc., or
+no scale information at all) or `list(mode = "data", scale_mat = <N x
+R matrix>, log_transform = <TRUE/FALSE>, ci_level = , estimate_rho = ,
+lower_zero = )` -- one matrix shape and one estimation pathway
+regardless of whether the original input was a plain vector, a
+replicate matrix, raw, or already log-scale.
 }
 \keyword{internal}

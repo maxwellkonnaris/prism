@@ -23,15 +23,46 @@ test_that("composition must be a prism_composition_estimator", {
   expect_error(prism(counts, composition = "Dirichlet"), "prism_composition_estimator")
 })
 
-test_that("scale and scale_log are mutually exclusive with each other and with fixed bounds", {
+test_that("sigma_L/rho_L cannot be combined with a non-NULL scale", {
   counts <- random_counts(3L, 6L, seed = 32L)
   expect_error(
-    prism(counts, scale = rep(1, 6L), scale_log = rep(0, 6L), bootstrap = FALSE),
-    "at most one"
+    prism(counts, scale = rep(1, 6L), sigma_L = 0.1, sigma_U = 0.5, bootstrap = FALSE),
+    "cannot be combined"
   )
   expect_error(
-    prism(counts, scale_log = rep(0, 6L), sigma_L = 0.1, sigma_U = 0.5, bootstrap = FALSE),
+    prism(counts, scale = prism_scale_bounds(sigma_L = 0.1, sigma_U = 0.5), sigma_L = 0.2, sigma_U = 0.6, bootstrap = FALSE),
     "cannot be combined"
+  )
+})
+
+test_that("scale = prism_scale_bounds(...) is equivalent to the flat sigma_L/etc. shorthand", {
+  counts <- random_counts(4L, 10L, seed = 46L)
+  a <- prism(counts, bootstrap = FALSE, S = 5L, sigma_L = 0.2, sigma_U = 0.8, rho_L = 0.1, rho_U = 0.3, seed = 1L)
+  b <- prism(counts, bootstrap = FALSE, S = 5L, scale = prism_scale_bounds(0.2, 0.8, 0.1, 0.3), seed = 1L)
+  expect_identical(a$ci_lower, b$ci_lower)
+  expect_identical(a$pairwise, b$pairwise)
+})
+
+test_that("scale_estimate_rho and scale_lower_zero must be TRUE or FALSE", {
+  counts <- random_counts(3L, 8L, seed = 53L)
+  set.seed(53L)
+  u <- stats::rlnorm(8L)
+  expect_error(prism(counts, scale = u, scale_estimate_rho = "yes", bootstrap = FALSE), "scale_estimate_rho")
+  expect_error(prism(counts, scale = u, scale_lower_zero = "yes", bootstrap = FALSE), "scale_lower_zero")
+})
+
+test_that("scale_ci_level/estimate_rho/lower_zero require sample-level scale data", {
+  counts <- random_counts(3L, 6L, seed = 47L)
+  expect_error(prism(counts, scale_ci_level = 0.8, bootstrap = FALSE), "sample-level data")
+  expect_error(
+    prism(counts, scale = prism_scale_bounds(sigma_L = 0.1, sigma_U = 0.5), scale_ci_level = 0.8, bootstrap = FALSE),
+    "do not apply"
+  )
+  set.seed(1L)
+  u <- stats::rnorm(6L)
+  expect_error(
+    prism(counts, scale = prism_scale_log(u), scale_ci_level = 0.8, bootstrap = FALSE),
+    "already"
   )
 })
 
@@ -64,15 +95,15 @@ test_that("bootstrap = FALSE with a random composition estimator still draws S t
   expect_identical(fit$parameters$S_effective, 9L)
 })
 
-test_that("prism() accepts a raw scale vector end-to-end", {
+test_that("prism() accepts a raw (positive) scale vector, auto-detected as raw", {
   set.seed(41L)
   counts <- random_counts(3L, 10L, seed = 41L)
   raw_scale <- stats::rlnorm(10L)
   fit <- prism(
     counts, composition = prism_composition_fixed(0.5), bootstrap = FALSE,
-    scale = raw_scale, scale_log_ci_level = 0.8
+    scale = raw_scale, scale_ci_level = 0.8
   )
-  expect_identical(fit$parameters$scale_mode, "scale")
+  expect_identical(fit$parameters$scale_mode, "data")
   expect_true(all(is.finite(fit$ci_lower)))
 })
 
@@ -87,16 +118,28 @@ test_that("prism() accepts a raw scale replicate matrix end-to-end", {
   expect_true(all(is.finite(fit$ci_lower)))
 })
 
-test_that("scale/scale_log must be sample-aligned before filtering", {
-  counts <- random_counts(3L, 8L, seed = 43L)
-  expect_error(prism(counts, scale = rep(1, 5L), bootstrap = FALSE), "scale must have length N")
-  expect_error(prism(counts, scale_log = rep(0, 5L), bootstrap = FALSE), "scale_log must have length N")
+test_that("a scale vector with a non-positive value is auto-detected as already log-scale", {
+  counts <- random_counts(3L, 8L, seed = 48L)
+  set.seed(48L)
+  log_scale <- stats::rnorm(8L)  # can include negatives/zero
+  log_scale[1] <- -0.5
+  fit_auto <- prism(counts, composition = prism_composition_fixed(0.5), bootstrap = FALSE, scale = log_scale, seed = 1L)
+  fit_explicit <- prism(
+    counts, composition = prism_composition_fixed(0.5), bootstrap = FALSE,
+    scale = prism_scale_log(log_scale), seed = 1L
+  )
+  expect_equal(fit_auto$ci_lower, fit_explicit$ci_lower)
 })
 
-test_that("scale_log must be finite", {
+test_that("scale must be sample-aligned before filtering", {
+  counts <- random_counts(3L, 8L, seed = 43L)
+  expect_error(prism(counts, scale = rep(1, 5L), bootstrap = FALSE), "scale must have length N")
+})
+
+test_that("scale must be finite", {
   counts <- random_counts(3L, 8L, seed = 44L)
-  bad <- rep(0, 8L); bad[1] <- Inf
-  expect_error(prism(counts, scale_log = bad, bootstrap = FALSE), "finite")
+  bad <- rep(1, 8L); bad[1] <- Inf
+  expect_error(prism(counts, scale = bad, bootstrap = FALSE), "finite")
 })
 
 test_that("too strict a prevalence threshold errors clearly", {
@@ -126,13 +169,24 @@ test_that("counts passed to prism() must be at least 2 features by 2 samples", {
   expect_error(prism(matrix(1:4, nrow = 1L)), "at least 2 features")
 })
 
-test_that("scale_log_rho = FALSE estimates only sigma (bounded_scale regime, no rho)", {
+test_that("scale_estimate_rho = FALSE estimates only sigma (bounded_scale regime, no rho)", {
   counts <- random_counts(3L, 10L, seed = 37L)
   set.seed(37L)
+  u <- stats::rlnorm(10L)
+  fit <- prism(
+    counts, composition = prism_composition_fixed(0.5), bootstrap = FALSE,
+    scale = u, scale_ci_level = 0.9, scale_estimate_rho = FALSE
+  )
+  expect_true(all(fit$pairwise$ci_lower <= fit$pairwise$ci_upper))
+})
+
+test_that("prism_scale_log(estimate_rho = FALSE) also skips rho estimation", {
+  counts <- random_counts(3L, 10L, seed = 49L)
+  set.seed(49L)
   u <- stats::rnorm(10L)
   fit <- prism(
     counts, composition = prism_composition_fixed(0.5), bootstrap = FALSE,
-    scale_log = u, scale_log_ci_level = 0.9, scale_log_rho = FALSE
+    scale = prism_scale_log(u, ci_level = 0.9, estimate_rho = FALSE)
   )
   expect_true(all(fit$pairwise$ci_lower <= fit$pairwise$ci_upper))
 })
@@ -148,6 +202,33 @@ test_that("end-to-end bootstrap with sigma bounds gives ordered, finite CIs", {
   expect_true(all(is.finite(fit$ci_lower)))
   expect_true(all(is.finite(fit$ci_upper)))
   expect_s3_class(fit, "prism_result")
+})
+
+test_that("stream = TRUE produces the same result as stream = FALSE", {
+  counts <- random_counts(5L, 12L, seed = 50L)
+  fit_mem <- prism(counts, bootstrap = TRUE, S = 20L, sigma_L = 0.1, sigma_U = 0.5, seed = 3L, stream = FALSE)
+  fit_stream <- prism(counts, bootstrap = TRUE, S = 20L, sigma_L = 0.1, sigma_U = 0.5, seed = 3L, stream = TRUE)
+  expect_equal(fit_mem$ci_lower, fit_stream$ci_lower)
+  expect_equal(fit_mem$pairwise, fit_stream$pairwise)
+  expect_false(fit_mem$parameters$stream_active)
+  expect_true(fit_stream$parameters$stream_active)
+})
+
+test_that("stream auto-triggers when the estimated size exceeds stream_memory_limit", {
+  counts <- random_counts(5L, 12L, seed = 51L)
+  fit <- prism(
+    counts, bootstrap = TRUE, S = 20L, sigma_L = 0.1, sigma_U = 0.5, seed = 3L,
+    stream = FALSE, stream_memory_limit = 100
+  )
+  expect_true(fit$parameters$stream_active)
+})
+
+test_that("streaming leaves no temp files behind, including on an error path", {
+  counts <- random_counts(5L, 12L, seed = 52L)
+  before <- list.files(tempdir(), pattern = "\\.bin$")
+  invisible(prism(counts, bootstrap = TRUE, S = 10L, sigma_L = 0.1, sigma_U = 0.5, seed = 1L, stream = TRUE))
+  after <- list.files(tempdir(), pattern = "\\.bin$")
+  expect_identical(before, after)
 })
 
 test_that("print.prism_result runs without error", {

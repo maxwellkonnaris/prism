@@ -16,7 +16,9 @@
   S = 1000L,
   max_attempts_per_draw = 100L,
   seed = 1L,
-  verbose = FALSE
+  verbose = FALSE,
+  stream = FALSE,
+  stream_memory_limit = 2e+09
 )
 }
 \arguments{
@@ -25,8 +27,9 @@
 \item{estimator}{A `prism_composition_estimator`.}
 
 \item{scale_mode}{A list describing the active scale-information mode:
-`list(mode = "none")`, `list(mode = "scale_log", scale_log = ..., ci_level = ..., estimate_rho = ..., lower_zero = ...)`,
-or `list(mode = "scale", scale_mat = ..., ci_level = ..., estimate_rho = ..., lower_zero = ...)`.}
+`list(mode = "none")` (fixed `sigma_L`/etc., or no scale information)
+or `list(mode = "data", scale_mat = <N x R>, log_transform = ,
+ci_level = , estimate_rho = , lower_zero = )`.}
 
 \item{sigma_L, sigma_U, rho_L, rho_U}{Fixed bounds, used when `scale_mode$mode == "none"`.}
 
@@ -39,10 +42,20 @@ or `list(mode = "scale", scale_mat = ..., ci_level = ..., estimate_rho = ..., lo
 \item{seed}{Reproducibility seed, or `NULL`.}
 
 \item{verbose}{Emit progress messages.}
+
+\item{stream}{Stream draws to temporary disk files instead of holding
+them in memory. `FALSE` (the default) still streams automatically
+when the estimated in-memory cost exceeds `stream_memory_limit`.}
+
+\item{stream_memory_limit}{Byte threshold for the automatic streaming
+trigger; see `stream`.}
 }
 \value{
-A list with `lower`, `upper`, `rel` (D x D x S_eff arrays over
-  accepted draws), and `diagnostics` (sampling accept/reject bookkeeping).
+A list: `storage` (`"memory"` or `"stream"`), `D`, `S_eff`, and
+  either `lower`/`upper`/`rel` (D x D x S_eff arrays, `storage ==
+  "memory"`) or `files`/`pair_index` (`storage == "stream"`, see
+  `.stream_read_block()`), plus `diagnostics` (sampling accept/reject
+  bookkeeping).
 }
 \description{
 Resamples samples (paired across counts and scale, per `bootstrap`) and

@@ -1,3 +1,79 @@
+#' Fixed scale-SD and correlation bounds
+#'
+#' Specifies `sigma`/`rho` bounds directly (no per-sample data), for
+#' `scale = prism_scale_bounds(...)` in [prism()]. Correlation bounds
+#' require scale-SD bounds; both members of a pair must be supplied
+#' together.
+#'
+#' @param sigma_L,sigma_U Optional scale-SD bounds, `0 <= sigma_L <= sigma_U`.
+#' @param rho_L,rho_U Optional scalar or feature-level correlation bounds
+#'   in `[-1, 1]`, `rho_L <= rho_U`.
+#' @return A `prism_scale_bounds` object.
+#' @export
+prism_scale_bounds <- function(sigma_L = NULL, sigma_U = NULL, rho_L = NULL, rho_U = NULL) {
+  has_sigma <- !is.null(sigma_L) || !is.null(sigma_U)
+  has_rho <- !is.null(rho_L) || !is.null(rho_U)
+  if (has_rho && !has_sigma) {
+    stop("Correlation bounds require scale-SD bounds (sigma_L, sigma_U).", call. = FALSE)
+  }
+  if (has_sigma) {
+    if (is.null(sigma_L) || is.null(sigma_U)) {
+      stop("sigma_L and sigma_U must be supplied together.", call. = FALSE)
+    }
+    sigma_L <- .assert_scalar_finite(sigma_L, "sigma_L", lower = 0)
+    sigma_U <- .assert_scalar_finite(sigma_U, "sigma_U", lower = 0)
+    if (sigma_L > sigma_U) stop("sigma_L must be <= sigma_U.", call. = FALSE)
+  }
+  if (has_rho) {
+    if (is.null(rho_L) || is.null(rho_U)) {
+      stop("rho_L and rho_U must be supplied together.", call. = FALSE)
+    }
+    ok <- is.numeric(rho_L) && is.numeric(rho_U) && all(is.finite(rho_L)) && all(is.finite(rho_U)) &&
+      all(rho_L >= -1) && all(rho_L <= 1) && all(rho_U >= -1) && all(rho_U <= 1) && all(rho_L <= rho_U)
+    if (!ok) stop("rho_L/rho_U must be finite, within [-1, 1], and rho_L <= rho_U.", call. = FALSE)
+  }
+  structure(
+    list(sigma_L = sigma_L, sigma_U = sigma_U, rho_L = rho_L, rho_U = rho_U),
+    class = "prism_scale_bounds"
+  )
+}
+
+#' Pre-logged sample-level scale
+#'
+#' Wraps sample-level scale data that is already on the log scale (e.g. a
+#' log-qPCR estimate), for `scale = prism_scale_log(...)` in [prism()].
+#' Raw (un-logged) data should be passed directly as `scale` instead --
+#' [prism()] takes the log itself and only needs this wrapper when the
+#' values are ambiguous (all positive) and already transformed.
+#'
+#' @param values Finite numeric vector (length N) or matrix (N rows, one
+#'   column per replicate), already on the log scale.
+#' @param ci_level Interval coverage in `[0, 1)` for the scale-SD/
+#'   correlation confidence interval estimated within each draw. `0`
+#'   uses point estimates.
+#' @param estimate_rho Estimate taxon-scale correlation. If `FALSE`, only
+#'   scale-SD is estimated.
+#' @param lower_zero Force the lower scale-SD endpoint to `0` instead of
+#'   the chi-square lower quantile (see [prism()]).
+#' @return A `prism_scale_log` object.
+#' @export
+prism_scale_log <- function(values, ci_level = 0, estimate_rho = TRUE, lower_zero = TRUE) {
+  if (!is.numeric(values) || any(!is.finite(values))) {
+    stop("values must be a finite numeric vector or matrix.", call. = FALSE)
+  }
+  ci_level <- .assert_scalar_finite(ci_level, "ci_level", lower = 0, upper = 1, upper_inclusive = FALSE)
+  if (!is.logical(estimate_rho) || length(estimate_rho) != 1L || is.na(estimate_rho)) {
+    stop("estimate_rho must be TRUE or FALSE.", call. = FALSE)
+  }
+  if (!is.logical(lower_zero) || length(lower_zero) != 1L || is.na(lower_zero)) {
+    stop("lower_zero must be TRUE or FALSE.", call. = FALSE)
+  }
+  structure(
+    list(values = values, ci_level = ci_level, estimate_rho = estimate_rho, lower_zero = lower_zero),
+    class = "prism_scale_log"
+  )
+}
+
 #' Validate raw sample-level scale input
 #'
 #' `scale` is either one raw measurement per sample (a length-N vector) or
@@ -5,11 +81,16 @@
 #' replicate). Both are normalized to an N x R positive matrix so the rest
 #' of the package only has to handle one shape.
 #'
-#' @param scale Positive numeric vector (length N) or matrix (N rows).
+#' @param scale Numeric vector (length N) or matrix (N rows); positive if
+#'   `require_positive`, otherwise any finite real value (already
+#'   log-scale).
 #' @param N Expected number of samples.
-#' @return A finite, strictly positive N x R matrix.
+#' @param require_positive If `TRUE` (raw, un-logged input), every value
+#'   must be strictly positive. If `FALSE` (already log-scale input), any
+#'   finite value is allowed.
+#' @return A finite N x R matrix.
 #' @keywords internal
-.validate_scale_input <- function(scale, N) {
+.validate_scale_input <- function(scale, N, require_positive = TRUE) {
   if (is.null(dim(scale))) {
     if (length(scale) != N) {
       stop("scale must have length N (one value per sample) or N rows.", call. = FALSE)
@@ -21,8 +102,11 @@
       stop("scale must have length N (one value per sample) or N rows.", call. = FALSE)
     }
   }
-  if (!is.numeric(scale) || any(!is.finite(scale)) || any(scale <= 0)) {
-    stop("scale must be finite and strictly positive.", call. = FALSE)
+  if (!is.numeric(scale) || any(!is.finite(scale))) {
+    stop("scale must be finite.", call. = FALSE)
+  }
+  if (require_positive && any(scale <= 0)) {
+    stop("scale must be strictly positive.", call. = FALSE)
   }
   scale
 }
@@ -42,12 +126,15 @@
 #' @param replicate_index Integer replicate indices, one per entry of
 #'   `sample_index`, in `1:ncol(scale_mat)`. Ignored when `scale_mat` has
 #'   one column.
+#' @param log_transform If `TRUE` (raw input), take the log of the
+#'   selected values. If `FALSE`, `scale_mat` is already log-scale.
 #' @return A numeric vector of log-scale values, length `length(sample_index)`.
 #' @keywords internal
-.select_scale_log <- function(scale_mat, sample_index, replicate_index = NULL) {
+.select_scale_log <- function(scale_mat, sample_index, replicate_index = NULL, log_transform = TRUE) {
   R <- ncol(scale_mat)
   ri <- if (R == 1L) rep(1L, length(sample_index)) else replicate_index
-  log(scale_mat[cbind(sample_index, ri)])
+  vals <- scale_mat[cbind(sample_index, ri)]
+  if (log_transform) log(vals) else vals
 }
 
 #' Estimate scale SD and taxon-scale correlation bounds from scale_log
@@ -74,7 +161,7 @@
 #' @return A list with `sigma_L`, `sigma_U`, `rho_L`, `rho_U`, `rho_witness`.
 #' @keywords internal
 .estimate_scale_log_bounds <- function(log_proportions, scale_log, ci_level = 0,
-                                        estimate_rho = TRUE, lower_zero = FALSE) {
+                                        estimate_rho = TRUE, lower_zero = TRUE) {
   X <- as.matrix(log_proportions)
   u <- as.numeric(scale_log)
   n <- length(u)

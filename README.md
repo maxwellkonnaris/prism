@@ -40,7 +40,7 @@ fit <- prism(
   counts = count_matrix,
   composition = prism_composition_dirichlet(pseudocount = 1, concentration = 1),
   bootstrap = TRUE,
-  S = 1000,
+  S = 2000,
   sigma_L = 0.2,
   sigma_U = 0.8,
   seed = 1
@@ -61,6 +61,13 @@ since those blocks need not jointly define a positive-semidefinite covariance
 unless resampled together. Attempted, accepted, and rejected counts;
 acceptance and rejection fractions; and rejection-reason counts are returned
 in `fit$diagnostics$sampling`.
+
+Draws are held in memory by default, but streamed to temporary disk files
+when the estimated memory cost of holding all of them exceeds
+`stream_memory_limit` (2 GB by default) -- automatically, whether or not
+`stream = TRUE` was requested -- so a large `D`/`S` does not silently exhaust
+memory. Pass `stream = TRUE` to force it on for any size, or raise
+`stream_memory_limit` to opt out of the safety margin.
 
 ## Composition estimators
 
@@ -97,29 +104,40 @@ my_estimator <- prism_composition_estimator(
 Every draw is checked and reclosed before covariance estimation. A custom
 estimator is not resampled at the sample level by PRISM's bootstrap (its
 `fit()`/`draw()` own all compositional uncertainty); scale-side resampling,
-if `scale`/`scale_log` is supplied, still applies.
+if `scale` carries sample-level data, still applies.
 
-## Scale regimes
+## Scale information
 
-| Information | Regime | Result |
+`scale` is the single argument for "what do I know about total scale?" --
+it accepts, in increasing order of how much it specifies:
+
+| `scale` | Regime | Result |
 |---|---|---|
-| no scale information | unbounded scale | finite lower bound, infinite upper bound |
-| `sigma_L`, `sigma_U` | bounded scale | closed-form sharp bounds |
-| sigma bounds plus fixed rho (`rho_L == rho_U`) | fixed correlation | closed-form sharp bounds, after a PSD compatibility check |
-| sigma bounds plus rho intervals | bounded correlation | closed-form conservative (not sharp) bounds, after a box/ellipsoid feasibility check |
-| sample-level `scale_log` | estimated sigma and rho | point or bounded values according to `scale_log_ci_level` |
-| raw scale vector or replicate matrix | propagated scale uncertainty | draw-level sigma and rho, via resampled replicates |
+| `NULL` (default), no `sigma_L`/etc. either | unbounded scale | finite lower bound, infinite upper bound |
+| a bare vector (length N) or matrix (N rows, replicate columns) | estimated sigma and rho | point or bounded values according to `scale_ci_level`, with replicate columns resampled per draw when present |
+| [`prism_scale_log()`] | estimated sigma and rho, values already logged | same as above, but the vector/matrix is not re-logged, and its own `ci_level`/`estimate_rho`/`lower_zero` apply |
+| [`prism_scale_bounds()`], or the `sigma_L`/`sigma_U`/`rho_L`/`rho_U` shorthand | fixed bounds, no data | closed-form bounds (sharp if `rho_L == rho_U`, conservative otherwise), after a compatibility check |
 
-Supplying `rho_L`/`rho_U` without `sigma_L`/`sigma_U` is an error. `scale` and
-`scale_log` are mutually exclusive with each other and with
-`sigma_L`/`sigma_U`/`rho_L`/`rho_U`. Sigma bounds are checked against
-`[0, Inf)` and rho bounds against `[-1, 1]`. A fixed rho vector must keep the
-augmented covariance matrix `[[Sigma_rel, u], [u', 1]]` (with
-`u = sqrt(diag(Sigma_rel)) * rho`) positive semidefinite. A genuine rho
-interval must contain at least one such feasible point in the box; this is
-certified once via a closed-form shortcut, a supplied `rho_witness`, an
-L-BFGS-B search (`Sigma_rel` full rank), or CVXR (`Sigma_rel` rank-deficient
-and no witness works -- an optional dependency, only needed in that case).
+A bare vector/matrix is assumed raw (un-logged), and PRISM takes the log
+itself -- *unless* any value is non-positive, which a raw scale measurement
+can never be, in which case the whole input is treated as already log-scale.
+All-positive values that are already log-scale are genuinely ambiguous by
+value alone and must be wrapped explicitly with `prism_scale_log()`; there is
+no reliable magnitude-based heuristic for this and PRISM does not attempt
+one. `scale_ci_level`/`scale_estimate_rho`/`scale_lower_zero` configure the
+within-draw estimate for a bare vector/matrix; they are an error when
+combined with `prism_scale_log()` (which carries its own settings) or with
+`prism_scale_bounds()`/`sigma_L` etc. (fixed, nothing to estimate).
+
+Supplying `rho_L`/`rho_U` without `sigma_L`/`sigma_U` is an error. Sigma
+bounds are checked against `[0, Inf)` and rho bounds against `[-1, 1]`. A
+fixed rho vector must keep the augmented covariance matrix
+`[[Sigma_rel, u], [u', 1]]` (with `u = sqrt(diag(Sigma_rel)) * rho`) positive
+semidefinite. A genuine rho interval must contain at least one such feasible
+point in the box; this is certified once via a closed-form shortcut, a
+supplied `rho_witness`, an L-BFGS-B search (`Sigma_rel` full rank), or CVXR
+(`Sigma_rel` rank-deficient and no witness works -- an optional dependency,
+only needed in that case).
 
 The off-diagonal bound for a genuine (non-fixed) rho interval is a valid but
 conservative closed-form outer bound, not the tightest possible one; check

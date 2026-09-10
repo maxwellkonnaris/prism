@@ -11,6 +11,37 @@
 #' scale information is supplied and returns identification bounds,
 #' bootstrap confidence intervals, and pairwise inference.
 #'
+#' @details
+#' `scale` is the single argument for "what do I know about total scale?"
+#' and accepts, in increasing order of how much it specifies:
+#'
+#' \describe{
+#'   \item{`NULL` (default)}{no scale information (unbounded-scale regime),
+#'     unless `sigma_L`/`sigma_U`/`rho_L`/`rho_U` are also given.}
+#'   \item{a bare numeric vector (length N) or matrix (N rows, one column
+#'     per replicate measurement)}{sample-level scale data; sigma/rho are
+#'     estimated within each draw. Values are assumed raw (un-logged) and
+#'     PRISM takes the log itself, *unless* any value is non-positive (a
+#'     raw scale measurement cannot be), in which case the whole input is
+#'     treated as already log-scale. All-positive values that are already
+#'     log-scale are ambiguous by value alone and must be wrapped
+#'     explicitly with [prism_scale_log()].}
+#'   \item{[prism_scale_log()]}{sample-level scale data that is explicitly
+#'     already on the log scale, with its own `ci_level`/`estimate_rho`/
+#'     `lower_zero` settings.}
+#'   \item{[prism_scale_bounds()]}{fixed `sigma_L`/`sigma_U`/`rho_L`/`rho_U`
+#'     bounds, no per-sample data. `sigma_L`/`sigma_U`/`rho_L`/`rho_U` can
+#'     be passed directly to `prism()` as a shorthand for this -- they are
+#'     forwarded into a `prism_scale_bounds()` for you.}
+#' }
+#'
+#' `scale_ci_level`/`scale_estimate_rho`/`scale_lower_zero` configure the
+#' within-draw scale-SD/correlation estimate when `scale` is sample-level
+#' data (a bare vector/matrix); they cannot be combined with
+#' `scale = prism_scale_log(...)` (which carries its own settings) or with
+#' `scale = prism_scale_bounds(...)`/`sigma_L` etc. (fixed, nothing to
+#' estimate).
+#'
 #' @param counts Non-negative, integer-valued features-by-samples count matrix.
 #' @param composition A `prism_composition_estimator` (see
 #'   [prism_composition_dirichlet()], [prism_composition_fixed()],
@@ -25,32 +56,38 @@
 #'   acceptance/rejection bookkeeping.
 #' @param prevalence Minimum feature prevalence retained, in `[0, 1]`.
 #' @param verbose Emit progress messages.
-#' @param scale Optional positive sample-level scale: a length-N vector
-#'   (one raw measurement per sample) or an N-row replicate matrix (one
-#'   row per sample, one column per replicate measurement). Mutually
-#'   exclusive with `scale_log` and with `sigma_L`/`sigma_U`/`rho_L`/`rho_U`.
-#' @param scale_log Optional finite length-N vector of log total scale.
-#'   Mutually exclusive with `scale` and with `sigma_L`/`sigma_U`/`rho_L`/`rho_U`.
-#' @param scale_log_ci_level Coverage for the chi-square scale-SD and
-#'   Fisher-z correlation intervals estimated from `scale`/`scale_log`
-#'   within each draw. `0` uses point estimates.
-#' @param scale_log_rho Estimate taxon-scale correlation from
-#'   `scale`/`scale_log`. If `FALSE`, only scale-SD is estimated (the
-#'   bound regime becomes bounded-scale-only).
-#' @param scale_log_lower_zero If `TRUE`, force the lower scale-SD
-#'   endpoint to `0` instead of the chi-square lower quantile (sigma
-#'   cannot be negative, so the two-sided lower quantile asserts a
-#'   positive floor that is an artifact of the two-sided interval, not a
-#'   real constraint).
-#' @param ci_alpha Tail probability for the final confidence intervals.
+#' @param scale Scale information; see Details.
 #' @param sigma_L,sigma_U Optional fixed scale-SD bounds,
-#'   `0 <= sigma_L <= sigma_U`. Mutually exclusive with `scale`/`scale_log`.
+#'   `0 <= sigma_L <= sigma_U`. Shorthand for
+#'   `scale = prism_scale_bounds(sigma_L, sigma_U, rho_L, rho_U)`; cannot
+#'   be combined with a non-`NULL` `scale`.
 #' @param rho_L,rho_U Optional fixed scalar or feature-level correlation
-#'   bounds in `[-1, 1]`; require `sigma_L`/`sigma_U`. Mutually exclusive
-#'   with `scale`/`scale_log`.
+#'   bounds in `[-1, 1]`; require `sigma_L`/`sigma_U`.
+#' @param scale_ci_level Coverage for the chi-square scale-SD and
+#'   Fisher-z correlation intervals estimated within each draw, when
+#'   `scale` is a bare vector/matrix. `NULL` (default) uses `0` (point
+#'   estimates).
+#' @param scale_estimate_rho Estimate taxon-scale correlation, when
+#'   `scale` is a bare vector/matrix. `NULL` (default) uses `TRUE`. If
+#'   `FALSE`, only scale-SD is estimated (the bound regime becomes
+#'   bounded-scale-only).
+#' @param scale_lower_zero Force the lower scale-SD endpoint to `0`
+#'   instead of the chi-square lower quantile, when `scale` is a bare
+#'   vector/matrix (sigma cannot be negative, so the two-sided lower
+#'   quantile asserts a positive floor that is an artifact of the
+#'   two-sided interval, not a real constraint). `NULL` (default) uses
+#'   `TRUE`.
+#' @param ci_alpha Tail probability for the final confidence intervals.
 #' @param delta Half-width of the pairwise null region used for p-values.
 #' @param p_adjust_method Method passed to [stats::p.adjust()].
 #' @param seed Reproducibility seed, or `NULL`.
+#' @param stream Stream draws to temporary disk files instead of holding
+#'   them in memory. `FALSE` (the default) still streams automatically
+#'   when the estimated cost of holding all draws in memory exceeds
+#'   `stream_memory_limit`, so a large problem does not silently exhaust
+#'   memory.
+#' @param stream_memory_limit Byte threshold for the automatic streaming
+#'   trigger; see `stream`. Default 2e9 (2 GB).
 #'
 #' @return A `prism_result`: `ci_lower`/`ci_upper` (D x D matrices),
 #'   `pairwise` (off-diagonal tested pairs with CI/p-value/q-value),
@@ -60,23 +97,24 @@
 prism <- function(counts,
                    composition = prism_composition_dirichlet(),
                    bootstrap = TRUE,
-                   S = 1000L,
+                   S = 2000L,
                    max_attempts_per_draw = 100L,
                    prevalence = 0,
                    verbose = FALSE,
                    scale = NULL,
-                   scale_log = NULL,
-                   scale_log_ci_level = 0,
-                   scale_log_rho = TRUE,
-                   scale_log_lower_zero = FALSE,
-                   ci_alpha = 0.05,
                    sigma_L = NULL,
                    sigma_U = NULL,
                    rho_L = NULL,
                    rho_U = NULL,
-                   delta = 0.1,
+                   scale_ci_level = NULL,
+                   scale_estimate_rho = NULL,
+                   scale_lower_zero = NULL,
+                   ci_alpha = 0.05,
+                   delta = 0,
                    p_adjust_method = "BH",
-                   seed = 1L) {
+                   seed = 1L,
+                   stream = FALSE,
+                   stream_memory_limit = 2e9) {
   if (!inherits(composition, "prism_composition_estimator")) {
     stop(
       "composition must be a prism_composition_estimator; see ",
@@ -85,48 +123,28 @@ prism <- function(counts,
       call. = FALSE
     )
   }
-  n_scale_inputs <- sum(!is.null(scale), !is.null(scale_log))
-  if (n_scale_inputs > 1L) {
-    stop("Supply at most one of scale or scale_log.", call. = FALSE)
-  }
-  has_fixed_bounds <- !is.null(sigma_L) || !is.null(sigma_U) || !is.null(rho_L) || !is.null(rho_U)
-  if (n_scale_inputs == 1L && has_fixed_bounds) {
-    stop("sigma_L/sigma_U/rho_L/rho_U cannot be combined with scale or scale_log.", call. = FALSE)
-  }
-  scale_log_rho <- isTRUE(scale_log_rho)
-  scale_log_lower_zero <- isTRUE(scale_log_lower_zero)
 
-  filtered <- .prism_filter_data(counts, scale, scale_log, prevalence, verbose)
+  filtered <- .prism_filter_data(counts, scale, prevalence, verbose)
   counts <- filtered$counts
   scale <- filtered$scale
-  scale_log <- filtered$scale_log
   D <- nrow(counts)
   N <- ncol(counts)
   feature_names <- rownames(counts) %||% paste0("V", seq_len(D))
 
-  scale_mode <- if (!is.null(scale)) {
-    list(
-      mode = "scale", scale_mat = .validate_scale_input(scale, N),
-      ci_level = scale_log_ci_level, estimate_rho = scale_log_rho, lower_zero = scale_log_lower_zero
-    )
-  } else if (!is.null(scale_log)) {
-    if (any(!is.finite(scale_log))) {
-      stop("scale_log must be a finite length-N vector.", call. = FALSE)
-    }
-    list(
-      mode = "scale_log", scale_log = as.numeric(scale_log),
-      ci_level = scale_log_ci_level, estimate_rho = scale_log_rho, lower_zero = scale_log_lower_zero
-    )
-  } else {
-    list(mode = "none")
-  }
+  resolved <- .prism_resolve_scale(
+    scale, N, sigma_L, sigma_U, rho_L, rho_U,
+    scale_ci_level, scale_estimate_rho, scale_lower_zero
+  )
 
   draws <- .prism_bootstrap(
-    counts, composition, scale_mode,
-    sigma_L = sigma_L, sigma_U = sigma_U, rho_L = rho_L, rho_U = rho_U,
+    counts, composition, resolved$scale_mode,
+    sigma_L = resolved$sigma_L, sigma_U = resolved$sigma_U, rho_L = resolved$rho_L, rho_U = resolved$rho_U,
     bootstrap = bootstrap, S = S, max_attempts_per_draw = max_attempts_per_draw,
-    seed = seed, verbose = verbose
+    seed = seed, verbose = verbose, stream = stream, stream_memory_limit = stream_memory_limit
   )
+  if (identical(draws$storage, "stream")) {
+    on.exit(unlink(unlist(draws$files)), add = TRUE)
+  }
   agg <- .prism_aggregate(draws, feature_names, ci_alpha = ci_alpha, delta = delta, p_adjust_method = p_adjust_method)
 
   .new_prism_result(list(
@@ -147,19 +165,110 @@ prism <- function(counts,
       composition_estimator = composition$name,
       bootstrap = .resolve_bootstrap_mode(bootstrap),
       S = S,
-      S_effective = dim(draws$lower)[3],
+      S_effective = draws$S_eff,
       ci_alpha = ci_alpha,
       delta = delta,
       p_adjust_method = p_adjust_method,
       seed = seed,
-      scale_mode = scale_mode$mode
+      scale_mode = resolved$scale_mode$mode,
+      stream_active = draws$diagnostics$stream_active
     )
   ))
 }
 
+#' Resolve the `scale` argument (plus its shorthands) into a bootstrap-ready form
+#'
+#' @return `list(scale_mode, sigma_L, sigma_U, rho_L, rho_U)`, where
+#'   `scale_mode` is ready to pass to `.prism_bootstrap()` and the
+#'   `sigma_L`/etc. are the fixed-bounds values (or all `NULL` when
+#'   `scale_mode$mode == "data"`).
+#' @keywords internal
+.prism_resolve_scale <- function(scale, N, sigma_L, sigma_U, rho_L, rho_U,
+                                  scale_ci_level, scale_estimate_rho, scale_lower_zero) {
+  flat_bounds <- !is.null(sigma_L) || !is.null(sigma_U) || !is.null(rho_L) || !is.null(rho_U)
+  flat_settings <- !is.null(scale_ci_level) || !is.null(scale_estimate_rho) || !is.null(scale_lower_zero)
+  if (!is.null(scale_ci_level)) {
+    scale_ci_level <- .assert_scalar_finite(scale_ci_level, "scale_ci_level", lower = 0, upper = 1, upper_inclusive = FALSE)
+  }
+  if (!is.null(scale_estimate_rho) && (!is.logical(scale_estimate_rho) || length(scale_estimate_rho) != 1L || is.na(scale_estimate_rho))) {
+    stop("scale_estimate_rho must be TRUE or FALSE.", call. = FALSE)
+  }
+  if (!is.null(scale_lower_zero) && (!is.logical(scale_lower_zero) || length(scale_lower_zero) != 1L || is.na(scale_lower_zero))) {
+    stop("scale_lower_zero must be TRUE or FALSE.", call. = FALSE)
+  }
+
+  if (is.null(scale)) {
+    if (flat_settings) {
+      stop(
+        "scale_ci_level/scale_estimate_rho/scale_lower_zero require scale ",
+        "to be sample-level data (a vector, matrix, or prism_scale_log()).",
+        call. = FALSE
+      )
+    }
+    if (!flat_bounds) {
+      return(list(scale_mode = list(mode = "none"), sigma_L = NULL, sigma_U = NULL, rho_L = NULL, rho_U = NULL))
+    }
+    scale <- prism_scale_bounds(sigma_L, sigma_U, rho_L, rho_U)
+  } else if (flat_bounds) {
+    stop(
+      "sigma_L/sigma_U/rho_L/rho_U cannot be combined with a non-NULL ",
+      "scale argument; use scale = prism_scale_bounds(...) instead.",
+      call. = FALSE
+    )
+  }
+
+  if (inherits(scale, "prism_scale_bounds")) {
+    if (flat_settings) {
+      stop(
+        "scale_ci_level/scale_estimate_rho/scale_lower_zero do not apply ",
+        "to scale = prism_scale_bounds(...) (there is no data to estimate a CI from).",
+        call. = FALSE
+      )
+    }
+    return(list(
+      scale_mode = list(mode = "none"),
+      sigma_L = scale$sigma_L, sigma_U = scale$sigma_U, rho_L = scale$rho_L, rho_U = scale$rho_U
+    ))
+  }
+
+  if (inherits(scale, "prism_scale_log")) {
+    if (flat_settings) {
+      stop(
+        "scale_ci_level/scale_estimate_rho/scale_lower_zero are already ",
+        "set on scale = prism_scale_log(...); do not also pass them to prism().",
+        call. = FALSE
+      )
+    }
+    mat <- .validate_scale_input(scale$values, N, require_positive = FALSE)
+    return(list(
+      scale_mode = list(
+        mode = "data", scale_mat = mat, log_transform = FALSE,
+        ci_level = scale$ci_level, estimate_rho = scale$estimate_rho, lower_zero = scale$lower_zero
+      ),
+      sigma_L = NULL, sigma_U = NULL, rho_L = NULL, rho_U = NULL
+    ))
+  }
+
+  # A bare vector or matrix: raw sample-level scale, unless any value is
+  # non-positive (impossible for a raw measurement), in which case it must
+  # already be log-scale.
+  raw_values <- if (is.null(dim(scale))) scale else as.matrix(scale)
+  is_log <- is.numeric(raw_values) && any(raw_values <= 0, na.rm = TRUE)
+  mat <- .validate_scale_input(scale, N, require_positive = !is_log)
+  list(
+    scale_mode = list(
+      mode = "data", scale_mat = mat, log_transform = !is_log,
+      ci_level = scale_ci_level %||% 0,
+      estimate_rho = scale_estimate_rho %||% TRUE,
+      lower_zero = scale_lower_zero %||% TRUE
+    ),
+    sigma_L = NULL, sigma_U = NULL, rho_L = NULL, rho_U = NULL
+  )
+}
+
 #' Filter counts (and paired scale data) to a valid PRISM input
 #' @keywords internal
-.prism_filter_data <- function(counts, scale, scale_log, prevalence, verbose) {
+.prism_filter_data <- function(counts, scale, prevalence, verbose) {
   Y <- as.matrix(counts)
   if (!is.numeric(Y) || nrow(Y) < 2L || ncol(Y) < 2L) {
     stop("counts must be a numeric matrix with at least 2 features and 2 samples.", call. = FALSE)
@@ -174,11 +283,19 @@ prism <- function(counts,
 
   D_before <- nrow(Y)
   N_before <- ncol(Y)
-  if (!is.null(scale) && (if (is.null(dim(scale))) length(scale) else nrow(scale)) != N_before) {
-    stop("scale must have length N (one value per sample) or N rows.", call. = FALSE)
+
+  scale_values <- if (is.null(scale) || inherits(scale, "prism_scale_bounds")) {
+    NULL
+  } else if (inherits(scale, "prism_scale_log")) {
+    scale$values
+  } else {
+    scale
   }
-  if (!is.null(scale_log) && length(scale_log) != N_before) {
-    stop("scale_log must have length N (one value per sample).", call. = FALSE)
+  if (!is.null(scale_values)) {
+    n_scale <- if (is.null(dim(scale_values))) length(scale_values) else nrow(scale_values)
+    if (n_scale != N_before) {
+      stop("scale must have length N (one value per sample) or N rows.", call. = FALSE)
+    }
   }
 
   prevalence_frac <- rowMeans(Y > 0)
@@ -197,10 +314,9 @@ prism <- function(counts,
     stop("Fewer than 2 samples remain after dropping zero-depth samples.", call. = FALSE)
   }
   Y <- Y[, keep_samples, drop = FALSE]
-  if (!is.null(scale)) {
-    scale <- if (is.null(dim(scale))) scale[keep_samples] else scale[keep_samples, , drop = FALSE]
+  if (!is.null(scale_values)) {
+    scale_values <- if (is.null(dim(scale_values))) scale_values[keep_samples] else scale_values[keep_samples, , drop = FALSE]
   }
-  if (!is.null(scale_log)) scale_log <- scale_log[keep_samples]
 
   feature_totals <- rowSums(Y)
   keep_features2 <- feature_totals > 0
@@ -209,5 +325,14 @@ prism <- function(counts,
   }
   Y <- Y[keep_features2, , drop = FALSE]
 
-  list(counts = Y, scale = scale, scale_log = scale_log, D_before = D_before, N_before = N_before)
+  scale_filtered <- if (is.null(scale) || inherits(scale, "prism_scale_bounds")) {
+    scale
+  } else if (inherits(scale, "prism_scale_log")) {
+    scale$values <- scale_values
+    scale
+  } else {
+    scale_values
+  }
+
+  list(counts = Y, scale = scale_filtered, D_before = D_before, N_before = N_before)
 }

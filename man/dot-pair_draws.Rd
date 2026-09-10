@@ -7,6 +7,9 @@
 .pair_draws(arr, i, j)
 }
 \description{
-Extract one draw-array entry per pair as a pairs x draws matrix
+`vapply()` simplifies its result to a plain vector rather than a
+matrix when `S == 1` (each call returns one value), so `t()` alone
+would transpose the wrong way in that case; reshaping explicitly via
+`matrix(..., byrow = TRUE)` handles `S == 1` and `S > 1` uniformly.
 }
 \keyword{internal}

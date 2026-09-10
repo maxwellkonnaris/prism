@@ -1,3 +1,40 @@
+test_that("prism_scale_bounds validates and stores fixed bounds", {
+  b <- prism_scale_bounds(sigma_L = 0.1, sigma_U = 0.5, rho_L = -0.2, rho_U = 0.4)
+  expect_s3_class(b, "prism_scale_bounds")
+  expect_identical(b$sigma_L, 0.1)
+  expect_identical(b$rho_U, 0.4)
+
+  expect_error(prism_scale_bounds(rho_L = 0, rho_U = 0.5), "require scale-SD bounds")
+  expect_error(prism_scale_bounds(sigma_L = 0.5), "supplied together")
+  expect_error(prism_scale_bounds(sigma_L = 0.1, sigma_U = 0.5, rho_L = 0.5), "supplied together")
+  expect_error(prism_scale_bounds(sigma_L = 0.5, sigma_U = 0.1), "sigma_L must be")
+  expect_error(prism_scale_bounds(sigma_L = 0.1, sigma_U = 0.5, rho_L = 0.6, rho_U = 0.4), "rho_L")
+  expect_error(prism_scale_bounds(sigma_L = 0.1, sigma_U = 0.5, rho_L = 1.5, rho_U = 2), "rho_L")
+
+  none <- prism_scale_bounds()
+  expect_null(none$sigma_L)
+})
+
+test_that("prism_scale_log validates and stores settings", {
+  s <- prism_scale_log(c(1, 2, 3), ci_level = 0.8, estimate_rho = FALSE, lower_zero = FALSE)
+  expect_s3_class(s, "prism_scale_log")
+  expect_identical(s$values, c(1, 2, 3))
+  expect_identical(s$ci_level, 0.8)
+  expect_false(s$estimate_rho)
+  expect_false(s$lower_zero)
+
+  expect_error(prism_scale_log(c(1, NA, 3)), "finite")
+  expect_error(prism_scale_log(c(1, 2, 3), ci_level = 1), "ci_level")
+  expect_error(prism_scale_log(c(1, 2, 3), estimate_rho = "yes"), "estimate_rho")
+  expect_error(prism_scale_log(c(1, 2, 3), lower_zero = "yes"), "lower_zero")
+})
+
+test_that("prism_scale_log and .estimate_scale_log_bounds default lower_zero to TRUE", {
+  formal_default <- eval(formals(.estimate_scale_log_bounds)$lower_zero)
+  expect_true(formal_default)
+  expect_true(prism_scale_log(c(1, 2, 3))$lower_zero)
+})
+
 test_that("validate_scale_input normalizes a vector to an N x 1 matrix", {
   m <- .validate_scale_input(c(1, 2, 3), N = 3L)
   expect_equal(dim(m), c(3L, 1L))

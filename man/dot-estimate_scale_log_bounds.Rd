@@ -9,7 +9,7 @@
   scale_log,
   ci_level = 0,
   estimate_rho = TRUE,
-  lower_zero = FALSE
+  lower_zero = TRUE
 )
 }
 \arguments{

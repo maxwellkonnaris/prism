@@ -64,6 +64,21 @@ test_that("verbose messages on an exhausted draw", {
   )
 })
 
+test_that("a streamed run cleans up its temp files even when it ultimately errors", {
+  counts <- matrix(rep(c(10L, 20L, 30L, 40L), 12L), nrow = 4L)
+  before <- list.files(tempdir(), pattern = "\\.bin$")
+  expect_error(
+    .prism_bootstrap(
+      counts, prism_composition_fixed(0.5), no_scale(),
+      sigma_L = 0.1, sigma_U = 0.5, rho_L = c(0.3, 0, 0, 0), rho_U = c(0.3, 0, 0, 0),
+      bootstrap = "both", S = 2L, max_attempts_per_draw = 3L, seed = 1L, stream = TRUE
+    ),
+    "zero-variance"
+  )
+  after <- list.files(tempdir(), pattern = "\\.bin$")
+  expect_identical(before, after)
+})
+
 test_that("max_attempts_per_draw must be a positive integer", {
   counts <- random_counts(3L, 6L)
   expect_error(
@@ -107,20 +122,21 @@ test_that("same seed reproduces identical draws exactly", {
   expect_identical(fit1$upper, fit2$upper)
 })
 
-test_that("scale_log mode resamples paired with counts and yields finite bounds", {
+test_that("pre-logged scale data resamples paired with counts and yields finite bounds", {
   set.seed(21L)
   counts <- random_counts(3L, 15L, seed = 21L)
   u <- stats::rnorm(15L)
-  scale_mode <- list(mode = "scale_log", scale_log = u, ci_level = 0, estimate_rho = TRUE, lower_zero = FALSE)
+  scale_mat <- .validate_scale_input(u, N = 15L, require_positive = FALSE)
+  scale_mode <- list(mode = "data", scale_mat = scale_mat, log_transform = FALSE, ci_level = 0, estimate_rho = TRUE, lower_zero = TRUE)
   fit <- .prism_bootstrap(counts, prism_composition_fixed(0.5), scale_mode, bootstrap = "both", S = 8L, seed = 3L)
   expect_true(all(is.finite(fit$lower)))
 })
 
-test_that("raw scale replicate mode resamples a replicate column per draw", {
+test_that("raw scale replicate data resamples a replicate column per draw", {
   set.seed(22L)
   counts <- random_counts(3L, 10L, seed = 22L)
   scale_mat <- .validate_scale_input(matrix(stats::rlnorm(30L), nrow = 10L, ncol = 3L), N = 10L)
-  scale_mode <- list(mode = "scale", scale_mat = scale_mat, ci_level = 0, estimate_rho = TRUE, lower_zero = FALSE)
+  scale_mode <- list(mode = "data", scale_mat = scale_mat, log_transform = TRUE, ci_level = 0, estimate_rho = TRUE, lower_zero = TRUE)
   fit <- .prism_bootstrap(counts, prism_composition_fixed(0.5), scale_mode, bootstrap = "both", S = 6L, seed = 4L)
   expect_true(all(is.finite(fit$lower)))
   expect_identical(dim(fit$lower)[3], 6L)
