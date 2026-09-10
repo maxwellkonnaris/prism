@@ -21,3 +21,30 @@
   if (!ok) stop(name, " must be one positive integer.", call. = FALSE)
   as.integer(x)
 }
+
+#' Save/restore the global RNG state
+#'
+#' Lets a function call `set.seed()` internally for reproducibility
+#' without leaking that reseed into the caller's subsequent random draws.
+#' `.restore_rng_state()` removes `.Random.seed` entirely when it did not
+#' exist before saving, rather than leaving a stray seed behind.
+#' @keywords internal
+.save_rng_state <- function() {
+  if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)) {
+    get(".Random.seed", envir = .GlobalEnv)
+  } else {
+    NULL
+  }
+}
+
+#' Restore the global RNG state saved by `.save_rng_state()`
+#' @keywords internal
+.restore_rng_state <- function(old) {
+  if (is.null(old)) {
+    if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)) {
+      rm(".Random.seed", envir = .GlobalEnv)
+    }
+  } else {
+    assign(".Random.seed", old, envir = .GlobalEnv)
+  }
+}

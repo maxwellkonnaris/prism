@@ -88,11 +88,22 @@
 #'   memory.
 #' @param stream_memory_limit Byte threshold for the automatic streaming
 #'   trigger; see `stream`. Default 2e9 (2 GB).
+#' @param return_draws Return every accepted draw's lower/upper/relative
+#'   -covariance values, not just their aggregated summary. Adds `draws`
+#'   to the result: `list(lower, upper, rel)`, each an S_effective x
+#'   n_pairs matrix, plus `pair_index` mapping columns to `(i, j)` and
+#'   feature names (the same pairs as `pairwise_rel`, i.e. every `i <= j`
+#'   including the diagonal). For example, the endpoints in `ci_lower`/
+#'   `ci_upper` are exactly `apply(draws$lower, 2, quantile, probs =
+#'   ci_alpha / 2)` and the equivalent for `draws$upper`. This can be
+#'   large: two S_effective x n_pairs matrices plus one more, in double
+#'   precision.
 #'
 #' @return A `prism_result`: `ci_lower`/`ci_upper` (D x D matrices),
 #'   `pairwise` (off-diagonal tested pairs with CI/p-value/q-value),
 #'   `pairwise_rel` (relative log-covariance estimates and CIs, including
-#'   the diagonal), and `diagnostics`/`parameters`.
+#'   the diagonal), `diagnostics`/`parameters`, and (if `return_draws`)
+#'   `draws`.
 #' @export
 prism <- function(counts,
                    composition = prism_composition_dirichlet(),
@@ -114,7 +125,8 @@ prism <- function(counts,
                    p_adjust_method = "BH",
                    seed = 1L,
                    stream = FALSE,
-                   stream_memory_limit = 2e9) {
+                   stream_memory_limit = 2e9,
+                   return_draws = FALSE) {
   if (!inherits(composition, "prism_composition_estimator")) {
     stop(
       "composition must be a prism_composition_estimator; see ",
@@ -122,6 +134,11 @@ prism <- function(counts,
       "prism_composition_estimator().",
       call. = FALSE
     )
+  }
+
+  if (!is.null(seed)) {
+    old_rng <- .save_rng_state()
+    on.exit(.restore_rng_state(old_rng), add = TRUE)
   }
 
   filtered <- .prism_filter_data(counts, scale, prevalence, verbose)
@@ -146,12 +163,14 @@ prism <- function(counts,
     on.exit(unlink(unlist(draws$files)), add = TRUE)
   }
   agg <- .prism_aggregate(draws, feature_names, ci_alpha = ci_alpha, delta = delta, p_adjust_method = p_adjust_method)
+  draws_out <- if (return_draws) .extract_prism_draws(draws, feature_names) else NULL
 
   .new_prism_result(list(
     ci_lower = agg$ci_lower,
     ci_upper = agg$ci_upper,
     pairwise = agg$pairwise,
     pairwise_rel = agg$pairwise_rel,
+    draws = draws_out,
     diagnostics = list(
       data = list(
         D = D, N = N,
@@ -174,6 +193,40 @@ prism <- function(counts,
       stream_active = draws$diagnostics$stream_active
     )
   ))
+}
+
+#' Extract every accepted draw's lower/upper/rel values, pair-major
+#'
+#' Reads from the in-memory arrays or, for a streamed run, straight from
+#' the temporary files (still open at this point -- called before the
+#' stream cleanup `on.exit()` fires).
+#'
+#' @param draws Output of `.prism_bootstrap()`.
+#' @param feature_names Character vector of length D.
+#' @return `list(lower, upper, rel)`, each an S_eff x n_pairs matrix, and
+#'   `pair_index` (a data frame with `i`, `j`, `feature_i`, `feature_j`).
+#' @keywords internal
+.extract_prism_draws <- function(draws, feature_names) {
+  pair_index <- .upper_pairs(draws$D)
+  i <- pair_index[, 1]
+  j <- pair_index[, 2]
+  if (identical(draws$storage, "stream")) {
+    n_pairs <- nrow(pair_index)
+    lower <- t(.stream_read_block(draws$files$lower, n_pairs, draws$S_eff, 1L, n_pairs))
+    upper <- t(.stream_read_block(draws$files$upper, n_pairs, draws$S_eff, 1L, n_pairs))
+    rel <- t(.stream_read_block(draws$files$rel, n_pairs, draws$S_eff, 1L, n_pairs))
+  } else {
+    lower <- t(.pair_draws(draws$lower, i, j))
+    upper <- t(.pair_draws(draws$upper, i, j))
+    rel <- t(.pair_draws(draws$rel, i, j))
+  }
+  list(
+    lower = lower, upper = upper, rel = rel,
+    pair_index = data.frame(
+      i = i, j = j, feature_i = feature_names[i], feature_j = feature_names[j],
+      stringsAsFactors = FALSE
+    )
+  )
 }
 
 #' Resolve the `scale` argument (plus its shorthands) into a bootstrap-ready form

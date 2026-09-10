@@ -25,7 +25,8 @@ prism(
   p_adjust_method = "BH",
   seed = 1L,
   stream = FALSE,
-  stream_memory_limit = 2e+09
+  stream_memory_limit = 2e+09,
+  return_draws = FALSE
 )
 }
 \arguments{
@@ -93,12 +94,24 @@ memory.}
 
 \item{stream_memory_limit}{Byte threshold for the automatic streaming
 trigger; see `stream`. Default 2e9 (2 GB).}
+
+\item{return_draws}{Return every accepted draw's lower/upper/relative
+-covariance values, not just their aggregated summary. Adds `draws`
+to the result: `list(lower, upper, rel)`, each an S_effective x
+n_pairs matrix, plus `pair_index` mapping columns to `(i, j)` and
+feature names (the same pairs as `pairwise_rel`, i.e. every `i <= j`
+including the diagonal). For example, the endpoints in `ci_lower`/
+`ci_upper` are exactly `apply(draws$lower, 2, quantile, probs =
+ci_alpha / 2)` and the equivalent for `draws$upper`. This can be
+large: two S_effective x n_pairs matrices plus one more, in double
+precision.}
 }
 \value{
 A `prism_result`: `ci_lower`/`ci_upper` (D x D matrices),
   `pairwise` (off-diagonal tested pairs with CI/p-value/q-value),
   `pairwise_rel` (relative log-covariance estimates and CIs, including
-  the diagonal), and `diagnostics`/`parameters`.
+  the diagonal), `diagnostics`/`parameters`, and (if `return_draws`)
+  `draws`.
 }
 \description{
 For features `i, j`, `Cov(log W_i, log W_j) = Sigma_rel[i,j] + sigma^2 +

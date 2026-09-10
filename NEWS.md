@@ -1,3 +1,29 @@
+# prism 0.4.0
+
+- `prism()` no longer leaks its internal `set.seed(seed)` reproducibility
+  reseed into the caller's subsequent random draws: it now saves the
+  caller's `.Random.seed` on entry and restores it via `on.exit()`
+  (verified to still restore correctly on every exit path -- an early
+  validation error, a mid-bootstrap exhaustion error, a non-default RNG
+  kind, and even a "rogue" custom composition estimator that calls
+  `set.seed()` itself). `prism()`'s own output is unaffected -- it was
+  always fully determined by `seed`, independent of the caller's prior
+  RNG state; only the (undocumented, unintended) side effect on code
+  that runs *after* `prism()` returns is gone. `seed = NULL` is
+  unaffected (nothing to restore -- it was never reseeding).
+- Added `return_draws = FALSE`: when `TRUE`, the result gains a `draws`
+  component with every accepted draw's lower/upper/relative-covariance
+  values (S_effective x n_pairs matrices, aligned via `pair_index`) --
+  the data `ci_lower`/`ci_upper`/`pairwise_rel$rel_hat` are already
+  computed from, but previously discarded after aggregation. Works
+  identically whether or not `stream` was engaged.
+- A second, harder adversarial pass (extreme Dirichlet parameters beyond
+  the one already fixed, near-boundary PSD/feasibility cases cross-checked
+  against an independent CVXR-only formulation, object aliasing/mutation
+  safety for reused `scale` objects, feature-name edge cases, nested
+  `prism()`-inside-a-custom-estimator calls, and a large `return_draws`
+  request) found no further bugs.
+
 # prism 0.3.0
 
 Follow-up round on the 0.2.0 rewrite, based on review feedback:

@@ -231,6 +231,79 @@ test_that("streaming leaves no temp files behind, including on an error path", {
   expect_identical(before, after)
 })
 
+test_that("prism() does not leak its internal seeding into the caller's RNG stream", {
+  counts <- random_counts(4L, 10L, seed = 54L)
+  set.seed(123L)
+  runif(1L)  # advance to some arbitrary known state
+  expected_next <- runif(3L)
+
+  set.seed(123L)
+  runif(1L)
+  invisible(prism(counts, bootstrap = TRUE, S = 20L, sigma_L = 0.1, sigma_U = 0.5, seed = 999L))
+  actual_next <- runif(3L)
+
+  expect_identical(actual_next, expected_next)
+})
+
+test_that("prism(seed = NULL) still consumes ambient randomness (no restore)", {
+  counts <- random_counts(3L, 8L, seed = 55L)
+  set.seed(1L)
+  invisible(prism(counts, bootstrap = TRUE, S = 5L, sigma_L = 0.1, sigma_U = 0.5, seed = NULL))
+  after1 <- .Random.seed
+  invisible(prism(counts, bootstrap = TRUE, S = 5L, sigma_L = 0.1, sigma_U = 0.5, seed = NULL))
+  after2 <- .Random.seed
+  expect_false(identical(after1, after2))
+})
+
+test_that("prism() restores to a non-existent .Random.seed when none existed before", {
+  counts <- random_counts(3L, 8L, seed = 56L)  # random_counts() itself calls set.seed()
+  if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)) {
+    rm(".Random.seed", envir = .GlobalEnv)
+  }
+  expect_false(exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE))
+  invisible(prism(counts, composition = prism_composition_fixed(0.5), bootstrap = FALSE, seed = 1L))
+  expect_false(exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE))
+})
+
+test_that("prism() output is unaffected by save/restore (still deterministic in seed)", {
+  counts <- random_counts(4L, 10L, seed = 57L)
+  set.seed(11L); runif(5L)  # perturb ambient RNG state before each call, differently
+  fit1 <- prism(counts, bootstrap = TRUE, S = 15L, sigma_L = 0.1, sigma_U = 0.5, seed = 42L)
+  set.seed(22L); runif(9L)
+  fit2 <- prism(counts, bootstrap = TRUE, S = 15L, sigma_L = 0.1, sigma_U = 0.5, seed = 42L)
+  expect_identical(fit1$ci_lower, fit2$ci_lower)
+})
+
+test_that("return_draws = TRUE returns per-draw values matching the aggregated CIs exactly", {
+  counts <- random_counts(4L, 12L, seed = 58L)
+  fit <- prism(counts, bootstrap = TRUE, S = 30L, sigma_L = 0.1, sigma_U = 0.5, seed = 1L, return_draws = TRUE)
+  expect_null(prism(counts, bootstrap = TRUE, S = 5L, sigma_L = 0.1, sigma_U = 0.5, seed = 1L)$draws)
+  expect_identical(dim(fit$draws$lower), c(30L, nrow(fit$draws$pair_index)))
+  expect_identical(dim(fit$draws$upper), c(30L, nrow(fit$draws$pair_index)))
+  expect_identical(dim(fit$draws$rel), c(30L, nrow(fit$draws$pair_index)))
+
+  # .extract_prism_draws() and .assemble_prism_aggregate() both build their
+  # pair index from .upper_pairs(D), so an off-diagonal subset of one lines
+  # up with pairwise/pairwise_rel's rows with no re-sorting needed.
+  off <- fit$draws$pair_index$i != fit$draws$pair_index$j
+  computed_lower <- apply(fit$draws$lower[, off, drop = FALSE], 2, stats::quantile, probs = 0.025, names = FALSE)
+  computed_upper <- apply(fit$draws$upper[, off, drop = FALSE], 2, stats::quantile, probs = 0.975, names = FALSE)
+  expect_equal(computed_lower, fit$pairwise$ci_lower, tolerance = 1e-12)
+  expect_equal(computed_upper, fit$pairwise$ci_upper, tolerance = 1e-12)
+
+  computed_rel_hat <- colMeans(fit$draws$rel)
+  expect_equal(computed_rel_hat, fit$pairwise_rel$rel_hat, tolerance = 1e-12)
+})
+
+test_that("return_draws = TRUE gives identical draws whether streamed or not", {
+  counts <- random_counts(5L, 12L, seed = 59L)
+  fit_mem <- prism(counts, bootstrap = TRUE, S = 15L, sigma_L = 0.1, sigma_U = 0.5, seed = 3L, stream = FALSE, return_draws = TRUE)
+  fit_stream <- prism(counts, bootstrap = TRUE, S = 15L, sigma_L = 0.1, sigma_U = 0.5, seed = 3L, stream = TRUE, return_draws = TRUE)
+  expect_equal(fit_mem$draws$lower, fit_stream$draws$lower)
+  expect_equal(fit_mem$draws$upper, fit_stream$draws$upper)
+  expect_equal(fit_mem$draws$rel, fit_stream$draws$rel)
+})
+
 test_that("print.prism_result runs without error", {
   counts <- random_counts(3L, 6L, seed = 39L)
   fit <- prism(counts, composition = prism_composition_fixed(0.5), bootstrap = FALSE)

@@ -1,7 +1,7 @@
 Package: prism
 Type: Package
 Title: Covariance Identification Bounds for Scaled Compositional Systems
-Version: 0.3.0
+Version: 0.4.0
 Authors@R: person(
     "Maxwell", "Konnaris",
     role = c("aut", "cre"),
