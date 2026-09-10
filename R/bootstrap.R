@@ -35,7 +35,13 @@
     fixed = prism_closure(counts, estimator$options$pseudocount),
     dirichlet_multinomial = {
       shape <- estimator$options$concentration * (counts + estimator$options$pseudocount)
-      matrix(stats::rgamma(length(shape), shape = shape, rate = 1), nrow = nrow(shape))
+      draws <- matrix(stats::rgamma(length(shape), shape = shape, rate = 1), nrow = nrow(shape))
+      # The true Dirichlet support is strictly positive; a rate-1 Gamma
+      # draw can underflow to exactly 0 for a very small shape parameter
+      # (extreme concentration/pseudocount, or a genuinely near-absent
+      # feature), which is a floating-point artifact, not a real 0
+      # probability. Floor it instead of failing the draw.
+      pmax(draws, .Machine$double.xmin)
     },
     custom = estimator$options$draw(fit = fit_state, draw = draw_index)
   )

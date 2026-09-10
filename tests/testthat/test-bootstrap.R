@@ -9,6 +9,25 @@ test_that("resolve_bootstrap_mode normalizes logical and string forms", {
   expect_error(.resolve_bootstrap_mode("scale"), "bootstrap must be")
 })
 
+test_that("extreme Dirichlet concentration never crashes on an underflowed-to-zero draw", {
+  counts <- random_counts(4L, 10L, seed = 60L)
+  fit <- .prism_bootstrap(
+    counts, prism_composition_dirichlet(concentration = 1e-6), no_scale(),
+    sigma_L = 0.1, sigma_U = 0.5, bootstrap = "none", S = 30L, seed = 1L
+  )
+  expect_true(all(is.finite(fit$lower)))
+  expect_identical(fit$diagnostics$accepted_draws, 30L)
+})
+
+test_that("draw_one_composition floors an underflowed Dirichlet draw instead of erroring", {
+  est <- prism_composition_dirichlet(concentration = 1e-6, pseudocount = 1e-6)
+  counts <- matrix(0L, nrow = 3L, ncol = 4L)  # all-zero counts maximize underflow risk
+  set.seed(1L)
+  x <- .draw_one_composition(est, counts, fit_state = NULL, draw_index = 1L)
+  expect_true(all(x > 0))
+  expect_true(all(is.finite(x)))
+})
+
 test_that("well-behaved data accepts every draw on the first attempt", {
   counts <- random_counts(4L, 20L, seed = 10L)
   fit <- .prism_bootstrap(
