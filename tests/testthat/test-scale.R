@@ -84,6 +84,20 @@ test_that("estimate_rho = FALSE skips rho entirely", {
   expect_null(fit$rho_U)
 })
 
+test_that("estimate_scale_log_bounds rejects mismatched or non-finite input", {
+  X <- matrix(stats::rnorm(6), nrow = 2L)
+  expect_error(.estimate_scale_log_bounds(X, c(1, 2)), "sample-aligned")
+  expect_error(.estimate_scale_log_bounds(X, c(1, NA, 3)), "finite")
+})
+
+test_that("with n < 4 samples, the rho interval falls back to the point estimate", {
+  X <- matrix(stats::rnorm(2L * 3L), nrow = 2L)
+  u <- stats::rnorm(3L)
+  fit <- .estimate_scale_log_bounds(X, u, ci_level = 0.9)
+  expect_identical(fit$rho_L, fit$rho_witness)
+  expect_identical(fit$rho_U, fit$rho_witness)
+})
+
 test_that("feature_correlations is zero for a zero-variance shared vector", {
   X <- matrix(stats::rnorm(6), nrow = 2L)
   rho <- .feature_correlations(X, rep(1, 3L))

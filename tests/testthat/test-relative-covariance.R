@@ -37,6 +37,16 @@ test_that("zero counts with a positive pseudocount stay finite", {
   expect_true(all(is.finite(logP)))
 })
 
+test_that("counts must be a non-empty numeric matrix", {
+  expect_error(prism_closure("not a matrix"), "non-empty numeric matrix")
+  expect_error(prism_closure(matrix(numeric(0), nrow = 0)), "non-empty numeric matrix")
+})
+
+test_that("an overflowing column total after pseudocount errors clearly", {
+  counts <- matrix(c(1e308, 1e308, 1, 1), nrow = 2L)
+  expect_error(prism_closure(counts, pseudocount = 1e308), "positive, finite total")
+})
+
 test_that("counts must be finite, non-negative, and at least 2x2", {
   expect_error(prism_closure(matrix(c(-1, 2, 3, 4), nrow = 2L)), "non-negative")
   expect_error(prism_closure(matrix(c(Inf, 2, 3, 4), nrow = 2L)), "finite")

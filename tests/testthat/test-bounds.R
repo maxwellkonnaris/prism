@@ -166,6 +166,15 @@ test_that("rank-deficient Sigma_rel uses CVXR to certify a non-zero-bracketing r
   expect_true(all(bounds$lower <= bounds$upper))
 })
 
+test_that("rank-deficient Sigma_rel with an invalid CVXR solver name errors clearly", {
+  skip_if_not_installed("CVXR")
+  A <- matrix(c(1, 0, 1, 0, 1, 1, 1, 1, 2), nrow = 3L)
+  expect_error(
+    cov_bounds(A, sigma_L = 0.1, sigma_U = 0.5, rho_L = rep(0.01, 3), rho_U = rep(0.05, 3), solver = "not-a-solver"),
+    "is not installed"
+  )
+})
+
 test_that("rank-deficient Sigma_rel without CVXR or a witness errors clearly", {
   skip_if(requireNamespace("CVXR", quietly = TRUE), "CVXR is installed")
   A <- matrix(c(1, 0, 1, 0, 1, 1, 1, 1, 2), nrow = 3L)
