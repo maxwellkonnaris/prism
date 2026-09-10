@@ -1,7 +1,7 @@
 Package: prism
 Type: Package
 Title: Covariance Identification Bounds for Scaled Compositional Systems
-Version: 0.1.0
+Version: 0.2.0
 Authors@R: person(
     "Maxwell", "Konnaris",
     role = c("aut", "cre"),
@@ -14,22 +14,15 @@ Description: Estimates entrywise identification regions and bootstrap
     observations are accompanied by exact, bounded, or sample-level scale
     information. Composition uncertainty is represented through replaceable
     estimator objects. A Dirichlet-multinomial estimator is provided as the
-    default. Optional numerical refinement produces sharp pairwise bounds for
-    bounded correlation intervals.
+    default.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Depends:
     R (>= 4.1.0)
 Imports:
-    stats,
-    utils
+    stats
 Suggests:
     CVXR,
-    ECOSolveR,
-    fido,
-    future,
-    future.apply,
-    ggplot2,
     pkgload,
     testthat (>= 3.0.0)
 Config/testthat/edition: 3

@@ -203,10 +203,11 @@ print.prism_cov_bounds <- function(x, ...) {
 
 #' Is a rho box compatible with Sigma_rel?
 #'
-#' Certifies that the box `C = {rho : rho_L <= rho <= rho_U}` contains at
-#' least one point whose `u = sqrt(diag(Sigma_rel)) * rho` keeps the
-#' augmented covariance matrix positive semidefinite, i.e. that
-#' `u` lies in the ellipsoid `E = {u : u in Range(Sigma_rel), u' Sigma_rel^+ u <= 1}`.
+#' Certifies that the box `C` (all rho with `rho_L <= rho <= rho_U`)
+#' contains at least one point whose `u = sqrt(diag(Sigma_rel)) * rho`
+#' keeps the augmented covariance matrix positive semidefinite, i.e. that
+#' `u` lies in the ellipsoid `E` (`u` in `Range(Sigma_rel)` with
+#' `u' Sigma_rel^+ u <= 1`).
 #'
 #' @keywords internal
 .rho_box_feasible <- function(Sigma_rel, rho_L, rho_U, witness = NULL,
@@ -269,6 +270,5 @@ print.prism_cov_bounds <- function(x, ...) {
     list(CVXR::p_norm(y, 2) <= 1, u >= u_L, u <= u_U)
   )
   result <- CVXR::psolve(problem, solver = solver)
-  status <- if (is.list(result) && !is.null(result$status)) result$status else CVXR::status(problem)
-  isTRUE(status %in% c("optimal", "optimal_inaccurate"))
+  isTRUE(result$status %in% c("optimal", "optimal_inaccurate"))
 }
