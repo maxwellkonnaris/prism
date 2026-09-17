@@ -2,11 +2,12 @@
 % Please edit documentation in R/scale.R
 \name{.feature_correlations}
 \alias{.feature_correlations}
-\title{Per-feature Pearson correlation with a shared vector, zero-variance safe}
+\title{Per-feature Pearson correlation with a shared vector}
 \usage{
 .feature_correlations(X, u)
 }
 \description{
-Per-feature Pearson correlation with a shared vector, zero-variance safe
+A correlation is undefined when either variable has zero variance. This
+function therefore errors instead of substituting an arbitrary correlation.
 }
 \keyword{internal}

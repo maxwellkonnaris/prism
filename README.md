@@ -38,7 +38,7 @@ library(prism)
 
 fit <- prism(
   counts = count_matrix,
-  composition = prism_composition_dirichlet(pseudocount = 1, concentration = 1),
+  composition = prism_composition_dirichlet(pseudocount = 0.5, concentration = 1),
   bootstrap = TRUE,
   S = 2000,
   sigma_L = 0.2,
@@ -58,8 +58,7 @@ to the count composition and its matched scale measurement, and all empirical
 covariance parameters are re-estimated from that draw. Independently
 resampling only the composition or only the scale block is not supported,
 since those blocks need not jointly define a positive-semidefinite covariance
-unless resampled together. Attempted, accepted, and rejected counts;
-acceptance and rejection fractions; and rejection-reason counts are returned
+unless resampled together. Requested and completed draw counts are returned
 in `fit$diagnostics$sampling`.
 
 Draws are held in memory by default, but streamed to temporary disk files
@@ -74,7 +73,7 @@ memory. Pass `stream = TRUE` to force it on for any size, or raise
 The default is:
 
 ```r
-prism_composition_dirichlet(pseudocount = 1, concentration = 1)
+prism_composition_dirichlet(pseudocount = 0.5, concentration = 1)
 ```
 
 Independent sample-level Dirichlet distributions with parameters
@@ -114,20 +113,22 @@ it accepts, in increasing order of how much it specifies:
 | `scale` | Regime | Result |
 |---|---|---|
 | `NULL` (default), no `sigma_L`/etc. either | unbounded scale | finite lower bound, infinite upper bound |
-| a bare vector (length N) or matrix (N rows, replicate columns) | estimated sigma and rho | point or bounded values according to `scale_ci_level`, with replicate columns resampled per draw when present |
-| [`prism_scale_log()`] | estimated sigma and rho, values already logged | same as above, but the vector/matrix is not re-logged, and its own `ci_level`/`estimate_rho`/`lower_zero` apply |
+| numeric vector or matrix | estimated sigma and rho from log-transformed measurements | all values are assumed to already be on the log scale; technical replicates are bootstrapped within subject and averaged |
+| [`prism_scale_log()`] | the same log-scale data with non-default estimation settings | technical replicates are bootstrapped within subject and averaged |
 | [`prism_scale_bounds()`], or the `sigma_L`/`sigma_U`/`rho_L`/`rho_U` shorthand | fixed bounds, no data | closed-form bounds (sharp if `rho_L == rho_U`, conservative otherwise), after a compatibility check |
 
-A bare vector/matrix is assumed raw (un-logged), and PRISM takes the log
-itself -- *unless* any value is non-positive, which a raw scale measurement
-can never be, in which case the whole input is treated as already log-scale.
-All-positive values that are already log-scale are genuinely ambiguous by
-value alone and must be wrapped explicitly with `prism_scale_log()`; there is
-no reliable magnitude-based heuristic for this and PRISM does not attempt
-one. `scale_ci_level`/`scale_estimate_rho`/`scale_lower_zero` configure the
-within-draw estimate for a bare vector/matrix; they are an error when
-combined with `prism_scale_log()` (which carries its own settings) or with
-`prism_scale_bounds()`/`sigma_L` etc. (fixed, nothing to estimate).
+Scale measurements must be supplied on the log scale. Bare numeric vectors and
+matrices are accepted under that contract; PRISM never applies a logarithm or
+attempts to infer a transformation from the values. Bare input uses point
+estimates of sigma and rho within each bootstrap draw by default. Use
+`prism_scale_log()` only to change those settings. Setting `ci_level > 0` adds
+chi-square/Fisher-z intervals inside every draw and is restricted to the
+explicit `experimental_ci = TRUE` sensitivity-analysis mode.
+
+A constant log-scale vector implies `sigma = 0`; PRISM returns
+`sigma_L = sigma_U = 0` and does not estimate rho because rho is undefined and
+irrelevant when multiplied by zero. PRISM still errors when any retained
+log-composition feature has zero or numerically zero marginal variance.
 
 Supplying `rho_L`/`rho_U` without `sigma_L`/`sigma_U` is an error. Sigma
 bounds are checked against `[0, Inf)` and rho bounds against `[-1, 1]`. A
@@ -148,19 +149,21 @@ conservative closed-form outer bound, not the tightest possible one; check
 `prism()` returns a `prism_result` with:
 
 - `ci_lower`, `ci_upper`: symmetric absolute-covariance CI endpoint matrices;
-- `pairwise`: off-diagonal tested pairs with CI endpoints, p-value, and
-  BH-adjusted q-value (`p_value`/`q_value` are `NA` when there is only one
-  deterministic draw -- see below);
-- `pairwise_rel`: relative log-covariance estimates and CIs, including the
+- `pairwise`: off-diagonal pairs with CI endpoints, `covers_zero`, bootstrap
+  positive/negative/covers-zero counts and frequencies, and p/q-values when
+  paired subject bootstrapping is active;
+- `pairwise_rel`: relative log-covariance CIs, including the
   diagonal;
 - `diagnostics`: data (dimensions, dropped samples/features) and sampling
-  (bootstrap accept/reject bookkeeping);
+  (bootstrap draw and streaming bookkeeping);
 - `parameters`: effective estimator and computational settings.
 
-With no bootstrap resampling and a deterministic (non-random) composition
-estimator, PRISM evaluates the bound once rather than `S` times; `ci_lower`/
-`ci_upper` are then the identification interval itself and `p_value` is `NA`
-(there is no bootstrap distribution to test against the null region).
+Without paired subject bootstrapping, `p_value`/`q_value` and the bootstrap
+sign frequencies are `NA`; `covers_zero` still reports directly whether the
+aggregated identification interval contains zero. With bootstrapping, the
+sign summaries count intervals wholly above zero, wholly below zero, or
+covering zero. The two-sided p-value against `[-delta, delta]` is computed from
+the opposing bootstrap tails of the per-draw identification intervals.
 
 ## Principal failure modes
 
@@ -169,9 +172,8 @@ estimator, PRISM evaluates the bound once rather than `S` times; `ci_lower`/
 - fewer than two valid samples or features after filtering;
 - rho information without sigma information;
 - infeasible fixed correlations or an empty rho-box/ellipsoid intersection;
-- excessive rejection when paired bootstrap resampling produces degenerate
-  (e.g. zero-variance) relative covariance under a fixed rho constraint;
-- too few valid Monte Carlo draws;
+- zero or numerically zero marginal variance in a retained log-composition
+  feature;
 - custom composition draws with invalid dimensions or values;
 - unavailable CVXR solver for a rank-deficient rho-box feasibility check.
 

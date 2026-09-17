@@ -22,6 +22,13 @@
   as.integer(x)
 }
 
+.numerically_zero_variance <- function(x, variance) {
+  x <- as.numeric(x)
+  if (!is.finite(variance) || variance <= 0) return(TRUE)
+  resolution <- max(1, max(abs(x))) * .Machine$double.eps
+  variance <= resolution^2
+}
+
 #' Save/restore the global RNG state
 #'
 #' Lets a function call `set.seed()` internally for reproducibility

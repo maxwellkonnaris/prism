@@ -52,10 +52,6 @@ cov_bounds <- function(Sigma_rel, sigma_L = NULL, sigma_U = NULL,
   kappa <- sqrt(pmax(outer(diag(A), diag(A), "+") + 2 * A, 0))
 
   if (cfg$regime == "bounded_scale_and_correlation") {
-    zero_var <- s == 0
-    if (any(zero_var & (cfg$rho_L != 0 | cfg$rho_U != 0))) {
-      stop("rho bounds for a zero-variance feature must be exactly 0.", call. = FALSE)
-    }
     fixed <- all(cfg$rho_L == cfg$rho_U)
     if (fixed) {
       .check_fixed_rho_psd(A, cfg$rho_L)
@@ -140,6 +136,14 @@ print.prism_cov_bounds <- function(x, ...) {
   psd_tol <- 1e-8 * max(1, max(abs(eig)))
   if (min(eig) < -psd_tol) {
     stop("Sigma_rel must be positive semidefinite.", call. = FALSE)
+  }
+  variance_scale <- max(1, max(abs(diag(A))))
+  if (any(!is.finite(diag(A))) || any(diag(A) <= .Machine$double.eps * variance_scale)) {
+    stop(
+      "Sigma_rel must have strictly positive marginal variances; ",
+      "zero or numerically zero marginal variance is not supported.",
+      call. = FALSE
+    )
   }
   diag(A) <- pmax(diag(A), 0)
   A

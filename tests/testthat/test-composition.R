@@ -55,3 +55,6 @@ test_that("validate_composition_draw closes valid draws and rejects invalid ones
     "returned an invalid draw"
   )
 })
+test_that("Dirichlet composition default pseudocount is 0.5", {
+  expect_identical(prism_composition_dirichlet()$options$pseudocount, 0.5)
+})

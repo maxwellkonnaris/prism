@@ -2,10 +2,12 @@
 
 S3method(print,prism_cov_bounds)
 S3method(print,prism_result)
+S3method(print,prism_scale_diagnostics)
 export(cov_bounds)
 export(prism)
 export(prism_composition_dirichlet)
 export(prism_composition_estimator)
 export(prism_composition_fixed)
 export(prism_scale_bounds)
+export(prism_scale_diagnostics)
 export(prism_scale_log)

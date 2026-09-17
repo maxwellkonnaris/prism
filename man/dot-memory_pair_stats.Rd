@@ -9,9 +9,7 @@
 \description{
 Returns one row per pair in `full` (in the same order): the
 `ci_alpha/2`/`1 - ci_alpha/2` quantiles of the lower/upper bound draws,
-the mean and quantiles of the relative-covariance draws, and counts of
-draws whose lower bound exceeds `delta` / upper bound is below
-`-delta` (the ingredients for a p-value; meaningless for the diagonal
-but cheap to compute for every pair uniformly).
+quantiles of the relative-covariance draws, bootstrap sign counts, and
+counts used for a two-sided bootstrap p-value against `[-delta, delta]`.
 }
 \keyword{internal}

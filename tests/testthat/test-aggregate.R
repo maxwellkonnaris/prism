@@ -63,13 +63,10 @@ test_that("pairwise holds only off-diagonal pairs; pairwise_rel holds i <= j inc
   expect_identical(out$pairwise$feature_i, letters[out$pairwise$i])
 })
 
-test_that("rel_hat is the mean of the rel draws and rel_ci_width is upper - lower", {
+test_that("relative-covariance output contains intervals but no bootstrap-mean point estimate", {
   draws <- make_draws(D = 3L, S = 12L, seed = 3L)
   out <- .prism_aggregate(draws)
-  for (k in seq_len(nrow(out$pairwise_rel))) {
-    i <- out$pairwise_rel$i[k]; j <- out$pairwise_rel$j[k]
-    expect_equal(out$pairwise_rel$rel_hat[k], mean(draws$rel[i, j, ]), tolerance = 1e-12)
-  }
+  expect_false("rel_hat" %in% names(out$pairwise_rel))
   expect_equal(out$pairwise_rel$rel_ci_width, out$pairwise_rel$rel_ci_upper - out$pairwise_rel$rel_ci_lower)
 })
 
@@ -82,12 +79,22 @@ test_that("a single deterministic draw gives NA p-values and the draw itself as 
     upper = array(m + 0.1, c(D, D, 1)),
     rel = array(m, c(D, D, 1))
   )
-  out <- .prism_aggregate(draws)
+  out <- .prism_aggregate(draws, bootstrap_active = FALSE)
   expect_true(all(is.na(out$pairwise$p_value)))
   expect_true(all(is.na(out$pairwise$q_value)))
+  expect_true(all(is.na(out$pairwise$bootstrap_positive_frequency)))
   expect_equal(out$ci_lower, m - 0.1, ignore_attr = TRUE)
   expect_equal(out$ci_upper, m + 0.1, ignore_attr = TRUE)
-  expect_equal(out$pairwise_rel$rel_hat, m[cbind(out$pairwise_rel$i, out$pairwise_rel$j)])
+  expect_identical(out$pairwise$covers_zero, c(FALSE, TRUE, FALSE))
+})
+
+test_that("no subject bootstrap means no p-values even with multiple composition draws", {
+  draws <- make_draws(D = 3L, S = 20L, seed = 31L)
+  out <- .prism_aggregate(draws, bootstrap_active = FALSE)
+  expect_true(all(is.na(out$pairwise$p_value)))
+  expect_true(all(is.na(out$pairwise$q_value)))
+  expect_true(all(is.na(out$pairwise$bootstrap_covers_zero_frequency)))
+  expect_type(out$pairwise$covers_zero, "logical")
 })
 
 test_that("q_value is exactly BH-adjusted p_value", {
@@ -109,6 +116,24 @@ test_that("p-values are small when draws consistently exclude the null region", 
   draws <- list(storage = "memory", D = D, S_eff = S, lower = lower, upper = upper, rel = m)
   out <- .prism_aggregate(draws, delta = 0.1)
   expect_true(out$pairwise$p_value[1] < 0.05)
+  expect_identical(out$pairwise$bootstrap_positive_count[1], 50L)
+  expect_identical(out$pairwise$bootstrap_negative_count[1], 0L)
+  expect_identical(out$pairwise$bootstrap_covers_zero_count[1], 0L)
+  expect_identical(out$pairwise$bootstrap_positive_frequency[1], 1)
+})
+
+test_that("intervals that all cover zero have cover frequency one and p-value one", {
+  D <- 2L
+  S <- 40L
+  lower <- array(-0.5, c(D, D, S))
+  upper <- array(0.5, c(D, D, S))
+  rel <- array(0, c(D, D, S))
+  draws <- list(storage = "memory", D = D, S_eff = S, lower = lower, upper = upper, rel = rel)
+  out <- .prism_aggregate(draws)
+  expect_identical(out$pairwise$bootstrap_covers_zero_count[1], 40L)
+  expect_identical(out$pairwise$bootstrap_covers_zero_frequency[1], 1)
+  expect_identical(out$pairwise$p_value[1], 1)
+  expect_true(out$pairwise$covers_zero[1])
 })
 
 test_that("input validation rejects bad ci_alpha, delta, and p_adjust_method", {
@@ -116,6 +141,7 @@ test_that("input validation rejects bad ci_alpha, delta, and p_adjust_method", {
   expect_error(.prism_aggregate(draws, ci_alpha = 1), "ci_alpha")
   expect_error(.prism_aggregate(draws, ci_alpha = -0.1), "ci_alpha")
   expect_error(.prism_aggregate(draws, delta = -1), "delta")
+  expect_error(.prism_aggregate(draws, bootstrap_active = NA), "bootstrap_active")
   expect_error(.prism_aggregate(draws, p_adjust_method = "not_a_method"), "p_adjust_method")
 })
 

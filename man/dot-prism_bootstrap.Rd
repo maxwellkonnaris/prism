@@ -14,7 +14,6 @@
   rho_U = NULL,
   bootstrap = "both",
   S = 1000L,
-  max_attempts_per_draw = 100L,
   seed = 1L,
   verbose = FALSE,
   stream = FALSE,
@@ -28,16 +27,14 @@
 
 \item{scale_mode}{A list describing the active scale-information mode:
 `list(mode = "none")` (fixed `sigma_L`/etc., or no scale information)
-or `list(mode = "data", scale_mat = <N x R>, log_transform = ,
-ci_level = , estimate_rho = , lower_zero = )`.}
+or `list(mode = "data", scale_mat = <N x R>, ci_level = ,
+estimate_rho = , lower_zero = )`, with `scale_mat` on the log scale.}
 
 \item{sigma_L, sigma_U, rho_L, rho_U}{Fixed bounds, used when `scale_mode$mode == "none"`.}
 
 \item{bootstrap}{One of `"none"` or `"both"` (see `.resolve_bootstrap_mode()`).}
 
 \item{S}{Requested number of draws.}
-
-\item{max_attempts_per_draw}{Retry budget per requested draw.}
 
 \item{seed}{Reproducibility seed, or `NULL`.}
 
@@ -54,13 +51,12 @@ trigger; see `stream`.}
 A list: `storage` (`"memory"` or `"stream"`), `D`, `S_eff`, and
   either `lower`/`upper`/`rel` (D x D x S_eff arrays, `storage ==
   "memory"`) or `files`/`pair_index` (`storage == "stream"`, see
-  `.stream_read_block()`), plus `diagnostics` (sampling accept/reject
-  bookkeeping).
+  `.stream_read_block()`), plus computational `diagnostics`.
 }
 \description{
 Resamples samples (paired across counts and scale, per `bootstrap`) and
-draws compositions, retrying rejected draws up to
-`max_attempts_per_draw` times, and returns every accepted draw's bound
-matrices for `aggregate.R` to summarize.
+draws compositions. Every requested draw is generated exactly once; an
+invalid or infeasible draw stops with its original error rather than being
+replaced by a new resample.
 }
 \keyword{internal}

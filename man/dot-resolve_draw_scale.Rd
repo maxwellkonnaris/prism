@@ -17,9 +17,7 @@
 \description{
 `scale_mode` is either `list(mode = "none")` (fixed `sigma_L`/etc., or
 no scale information at all) or `list(mode = "data", scale_mat = <N x
-R matrix>, log_transform = <TRUE/FALSE>, ci_level = , estimate_rho = ,
-lower_zero = )` -- one matrix shape and one estimation pathway
-regardless of whether the original input was a plain vector, a
-replicate matrix, raw, or already log-scale.
+R matrix>, ci_level = , estimate_rho = , lower_zero = )`. `scale_mat`
+is always already on the log scale.
 }
 \keyword{internal}

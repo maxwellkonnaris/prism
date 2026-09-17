@@ -2,31 +2,41 @@
 % Please edit documentation in R/scale.R
 \name{prism_scale_log}
 \alias{prism_scale_log}
-\title{Pre-logged sample-level scale}
+\title{Configure sample-level log-scale measurements}
 \usage{
-prism_scale_log(values, ci_level = 0, estimate_rho = TRUE, lower_zero = TRUE)
+prism_scale_log(
+  values,
+  ci_level = 0,
+  estimate_rho = TRUE,
+  lower_zero = TRUE,
+  experimental_ci = FALSE
+)
 }
 \arguments{
 \item{values}{Finite numeric vector (length N) or matrix (N rows, one
-column per replicate), already on the log scale.}
+column per technical replicate), already on the log scale.}
 
 \item{ci_level}{Interval coverage in `[0, 1)` for the scale-SD/
-correlation confidence interval estimated within each draw. `0`
-uses point estimates.}
+correlation confidence interval estimated within each draw. The default
+`0` uses point estimates. Positive values are experimental and require
+`experimental_ci = TRUE`.}
 
 \item{estimate_rho}{Estimate taxon-scale correlation. If `FALSE`, only
 scale-SD is estimated.}
 
 \item{lower_zero}{Force the lower scale-SD endpoint to `0` instead of
 the chi-square lower quantile (see [prism()]).}
+
+\item{experimental_ci}{Explicitly enable analytic chi-square/Fisher-z
+intervals inside each bootstrap draw. This sensitivity-analysis mode is
+not the default bootstrap procedure.}
 }
 \value{
 A `prism_scale_log` object.
 }
 \description{
-Wraps sample-level scale data that is already on the log scale (e.g. a
-log-qPCR estimate), for `scale = prism_scale_log(...)` in [prism()].
-Raw (un-logged) data should be passed directly as `scale` instead --
-[prism()] takes the log itself and only needs this wrapper when the
-values are ambiguous (all positive) and already transformed.
+PRISM requires sample-level scale measurements to be supplied on the log
+scale. Bare numeric vectors and matrices passed to [prism()] are interpreted
+as already log transformed. This constructor is only needed to change the
+within-draw estimation settings.
 }

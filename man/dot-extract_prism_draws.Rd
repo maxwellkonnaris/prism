@@ -2,7 +2,7 @@
 % Please edit documentation in R/prism.R
 \name{.extract_prism_draws}
 \alias{.extract_prism_draws}
-\title{Extract every accepted draw's lower/upper/rel values, pair-major}
+\title{Extract every draw's lower/upper/rel values, pair-major}
 \usage{
 .extract_prism_draws(draws, feature_names)
 }

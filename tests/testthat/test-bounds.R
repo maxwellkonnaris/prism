@@ -132,14 +132,12 @@ test_that("Sigma_rel must be square, finite, symmetric, and PSD", {
   expect_error(cov_bounds(matrix(c(1, 2, 2, 1), nrow = 2L)), "positive semidefinite")
 })
 
-test_that("rho bounds on a zero-variance feature must be exactly zero", {
+test_that("Sigma_rel cannot contain a zero marginal variance", {
   A <- matrix(c(1, 0, 0, 0), nrow = 2L)
   expect_error(
-    cov_bounds(A, sigma_L = 0.1, sigma_U = 0.5, rho_L = c(0, 0.1), rho_U = c(0, 0.1)),
-    "zero-variance"
+    cov_bounds(A, sigma_L = 0.1, sigma_U = 0.5),
+    "zero or numerically zero marginal variance"
   )
-  bounds <- cov_bounds(A, sigma_L = 0.1, sigma_U = 0.5, rho_L = c(0, 0), rho_U = c(0, 0))
-  expect_true(all(is.finite(bounds$lower)))
 })
 
 test_that("rho_L must be <= rho_U and both within [-1, 1]", {

@@ -31,6 +31,8 @@ tails, not a real constraint.}
 }
 \value{
 A list with `sigma_L`, `sigma_U`, `rho_L`, `rho_U`, `rho_witness`.
+  The rho fields are `NULL` when `estimate_rho = FALSE` or scale variance
+  is zero.
 }
 \description{
 Fits `sigma = SD(log scale)` and, for each feature `d`,
@@ -40,5 +42,9 @@ for each. The point estimate is always returned as `rho_witness`; when
 an interval is requested, each feature's interval is a chi-square
 interval for sigma and a Fisher-z interval for rho, both widened, never
 narrowed, to contain the point estimate.
+If the scale measurements have zero or numerically zero variance, the
+function returns `sigma_L = sigma_U = 0` and leaves all rho fields `NULL`:
+correlation with a constant variable is undefined but irrelevant when
+multiplied by zero scale SD.
 }
 \keyword{internal}

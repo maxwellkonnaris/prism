@@ -9,7 +9,6 @@ prism(
   composition = prism_composition_dirichlet(),
   bootstrap = TRUE,
   S = 2000L,
-  max_attempts_per_draw = 100L,
   prevalence = 0,
   verbose = FALSE,
   scale = NULL,
@@ -17,9 +16,6 @@ prism(
   sigma_U = NULL,
   rho_L = NULL,
   rho_U = NULL,
-  scale_ci_level = NULL,
-  scale_estimate_rho = NULL,
-  scale_lower_zero = NULL,
   ci_alpha = 0.05,
   delta = 0,
   p_adjust_method = "BH",
@@ -43,10 +39,6 @@ across draws).}
 
 \item{S}{Number of draws.}
 
-\item{max_attempts_per_draw}{Maximum resample proposals per requested
-draw before PRISM gives up; see `diagnostics$sampling` for
-acceptance/rejection bookkeeping.}
-
 \item{prevalence}{Minimum feature prevalence retained, in `[0, 1]`.}
 
 \item{verbose}{Emit progress messages.}
@@ -60,23 +52,6 @@ be combined with a non-`NULL` `scale`.}
 
 \item{rho_L, rho_U}{Optional fixed scalar or feature-level correlation
 bounds in `[-1, 1]`; require `sigma_L`/`sigma_U`.}
-
-\item{scale_ci_level}{Coverage for the chi-square scale-SD and
-Fisher-z correlation intervals estimated within each draw, when
-`scale` is a bare vector/matrix. `NULL` (default) uses `0` (point
-estimates).}
-
-\item{scale_estimate_rho}{Estimate taxon-scale correlation, when
-`scale` is a bare vector/matrix. `NULL` (default) uses `TRUE`. If
-`FALSE`, only scale-SD is estimated (the bound regime becomes
-bounded-scale-only).}
-
-\item{scale_lower_zero}{Force the lower scale-SD endpoint to `0`
-instead of the chi-square lower quantile, when `scale` is a bare
-vector/matrix (sigma cannot be negative, so the two-sided lower
-quantile asserts a positive floor that is an artifact of the
-two-sided interval, not a real constraint). `NULL` (default) uses
-`TRUE`.}
 
 \item{ci_alpha}{Tail probability for the final confidence intervals.}
 
@@ -95,7 +70,7 @@ memory.}
 \item{stream_memory_limit}{Byte threshold for the automatic streaming
 trigger; see `stream`. Default 2e9 (2 GB).}
 
-\item{return_draws}{Return every accepted draw's lower/upper/relative
+\item{return_draws}{Return every draw's lower/upper/relative
 -covariance values, not just their aggregated summary. Adds `draws`
 to the result: `list(lower, upper, rel)`, each an S_effective x
 n_pairs matrix, plus `pair_index` mapping columns to `(i, j)` and
@@ -109,7 +84,7 @@ precision.}
 \value{
 A `prism_result`: `ci_lower`/`ci_upper` (D x D matrices),
   `pairwise` (off-diagonal tested pairs with CI/p-value/q-value),
-  `pairwise_rel` (relative log-covariance estimates and CIs, including
+  `pairwise_rel` (relative log-covariance CIs, including
   the diagonal), `diagnostics`/`parameters`, and (if `return_draws`)
   `draws`.
 }
@@ -131,27 +106,19 @@ and accepts, in increasing order of how much it specifies:
 \describe{
   \item{`NULL` (default)}{no scale information (unbounded-scale regime),
     unless `sigma_L`/`sigma_U`/`rho_L`/`rho_U` are also given.}
-  \item{a bare numeric vector (length N) or matrix (N rows, one column
-    per replicate measurement)}{sample-level scale data; sigma/rho are
-    estimated within each draw. Values are assumed raw (un-logged) and
-    PRISM takes the log itself, *unless* any value is non-positive (a
-    raw scale measurement cannot be), in which case the whole input is
-    treated as already log-scale. All-positive values that are already
-    log-scale are ambiguous by value alone and must be wrapped
-    explicitly with [prism_scale_log()].}
-  \item{[prism_scale_log()]}{sample-level scale data that is explicitly
-    already on the log scale, with its own `ci_level`/`estimate_rho`/
-    `lower_zero` settings.}
+  \item{numeric vector or matrix}{sample-level log-scale data. A matrix
+    contains technical replicates in columns.}
+  \item{[prism_scale_log()]}{sample-level log-scale data with non-default
+    within-draw estimation settings.}
   \item{[prism_scale_bounds()]}{fixed `sigma_L`/`sigma_U`/`rho_L`/`rho_U`
     bounds, no per-sample data. `sigma_L`/`sigma_U`/`rho_L`/`rho_U` can
     be passed directly to `prism()` as a shorthand for this -- they are
     forwarded into a `prism_scale_bounds()` for you.}
 }
 
-`scale_ci_level`/`scale_estimate_rho`/`scale_lower_zero` configure the
-within-draw scale-SD/correlation estimate when `scale` is sample-level
-data (a bare vector/matrix); they cannot be combined with
-`scale = prism_scale_log(...)` (which carries its own settings) or with
-`scale = prism_scale_bounds(...)`/`sigma_L` etc. (fixed, nothing to
-estimate).
+All sample-level scale data are assumed to be already log transformed;
+PRISM never applies a logarithm. Bare numeric input uses point estimates
+within each bootstrap draw. [prism_scale_log()] changes those settings;
+analytic chi-square/Fisher-z intervals inside draws are available only as
+an explicitly enabled experimental sensitivity analysis.
 }

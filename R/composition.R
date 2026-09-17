@@ -15,7 +15,7 @@
 #'
 #' @return A `prism_composition_estimator` specification.
 #' @export
-prism_composition_dirichlet <- function(pseudocount = 1, concentration = 1) {
+prism_composition_dirichlet <- function(pseudocount = 0.5, concentration = 1) {
   .new_composition_estimator(
     type = "dirichlet_multinomial",
     name = "dirichlet_multinomial",

@@ -9,14 +9,15 @@ test_that("resolve_bootstrap_mode normalizes logical and string forms", {
   expect_error(.resolve_bootstrap_mode("scale"), "bootstrap must be")
 })
 
-test_that("extreme Dirichlet concentration never crashes on an underflowed-to-zero draw", {
+test_that("extreme Dirichlet draws fail if flooring leaves zero marginal variance", {
   counts <- random_counts(4L, 10L, seed = 60L)
-  fit <- .prism_bootstrap(
-    counts, prism_composition_dirichlet(concentration = 1e-6), no_scale(),
-    sigma_L = 0.1, sigma_U = 0.5, bootstrap = "none", S = 30L, seed = 1L
+  expect_error(
+    .prism_bootstrap(
+      counts, prism_composition_dirichlet(concentration = 1e-6), no_scale(),
+      sigma_L = 0.1, sigma_U = 0.5, bootstrap = "none", S = 30L, seed = 1L
+    ),
+    "zero or numerically zero marginal variance"
   )
-  expect_true(all(is.finite(fit$lower)))
-  expect_identical(fit$diagnostics$accepted_draws, 30L)
 })
 
 test_that("draw_one_composition floors an underflowed Dirichlet draw instead of erroring", {
@@ -28,20 +29,19 @@ test_that("draw_one_composition floors an underflowed Dirichlet draw instead of 
   expect_true(all(is.finite(x)))
 })
 
-test_that("well-behaved data accepts every draw on the first attempt", {
+test_that("well-behaved data completes every requested draw", {
   counts <- random_counts(4L, 20L, seed = 10L)
   fit <- .prism_bootstrap(
     counts, prism_composition_dirichlet(), no_scale(),
     sigma_L = 0.1, sigma_U = 0.5, bootstrap = "both", S = 25L, seed = 1L
   )
   d <- fit$diagnostics
-  expect_identical(d$attempted_draws, d$accepted_draws + d$rejected_attempts)
-  expect_equal(d$acceptance_fraction + d$rejection_fraction, 1)
-  expect_identical(d$rejected_attempts, 0L)
+  expect_identical(d$requested_draws, 25L)
+  expect_identical(d$completed_draws, 25L)
   expect_identical(dim(fit$lower)[3], 25L)
 })
 
-test_that("a feature with exactly zero variance under fixed rho is rejected and eventually exhausts", {
+test_that("a feature with exactly zero variance under fixed rho fails immediately", {
   # Every sample has identical composition (columns are scalar multiples of
   # one vector), so every feature's relative log-variance is exactly zero
   # under every possible resample.
@@ -50,13 +50,13 @@ test_that("a feature with exactly zero variance under fixed rho is rejected and 
     .prism_bootstrap(
       counts, prism_composition_fixed(0.5), no_scale(),
       sigma_L = 0.1, sigma_U = 0.5, rho_L = c(0.3, 0, 0, 0), rho_U = c(0.3, 0, 0, 0),
-      bootstrap = "both", S = 2L, max_attempts_per_draw = 3L, seed = 1L
+      bootstrap = "both", S = 2L, seed = 1L
     ),
-    "zero-variance"
+    "zero or numerically zero marginal variance"
   )
 })
 
-test_that("without bootstrap, a deterministically degenerate draw still errors (no valid draws)", {
+test_that("without bootstrap, a deterministically degenerate draw preserves its original error", {
   counts <- matrix(rep(c(10L, 20L, 30L, 40L), 12L), nrow = 4L)
   expect_error(
     .prism_bootstrap(
@@ -64,46 +64,23 @@ test_that("without bootstrap, a deterministically degenerate draw still errors (
       sigma_L = 0.1, sigma_U = 0.5, rho_L = c(0.3, 0, 0, 0), rho_U = c(0.3, 0, 0, 0),
       bootstrap = "none", S = 2L, seed = 1L
     ),
-    "no valid draws"
+    "zero or numerically zero marginal variance"
   )
 })
 
-test_that("verbose messages on an exhausted draw", {
-  counts <- matrix(rep(c(10L, 20L, 30L, 40L), 12L), nrow = 4L)
-  expect_message(
-    tryCatch(
-      .prism_bootstrap(
-        counts, prism_composition_fixed(0.5), no_scale(),
-        sigma_L = 0.1, sigma_U = 0.5, rho_L = c(0.3, 0, 0, 0), rho_U = c(0.3, 0, 0, 0),
-        bootstrap = "both", S = 1L, max_attempts_per_draw = 2L, seed = 1L, verbose = TRUE
-      ),
-      error = function(e) NULL
-    ),
-    "exhausted"
-  )
-})
-
-test_that("a streamed run cleans up its temp files even when it ultimately errors", {
+test_that("a streamed run cleans up its temp files when a draw errors", {
   counts <- matrix(rep(c(10L, 20L, 30L, 40L), 12L), nrow = 4L)
   before <- list.files(tempdir(), pattern = "\\.bin$")
   expect_error(
     .prism_bootstrap(
       counts, prism_composition_fixed(0.5), no_scale(),
       sigma_L = 0.1, sigma_U = 0.5, rho_L = c(0.3, 0, 0, 0), rho_U = c(0.3, 0, 0, 0),
-      bootstrap = "both", S = 2L, max_attempts_per_draw = 3L, seed = 1L, stream = TRUE
+      bootstrap = "both", S = 2L, seed = 1L, stream = TRUE
     ),
-    "zero-variance"
+    "zero or numerically zero marginal variance"
   )
   after <- list.files(tempdir(), pattern = "\\.bin$")
   expect_identical(before, after)
-})
-
-test_that("max_attempts_per_draw must be a positive integer", {
-  counts <- random_counts(3L, 6L)
-  expect_error(
-    .prism_bootstrap(counts, prism_composition_dirichlet(), no_scale(), max_attempts_per_draw = 0),
-    "max_attempts_per_draw"
-  )
 })
 
 test_that("bootstrap = 'none' with a fixed estimator collapses to a single deterministic draw", {
@@ -145,20 +122,60 @@ test_that("pre-logged scale data resamples paired with counts and yields finite 
   set.seed(21L)
   counts <- random_counts(3L, 15L, seed = 21L)
   u <- stats::rnorm(15L)
-  scale_mat <- .validate_scale_input(u, N = 15L, require_positive = FALSE)
-  scale_mode <- list(mode = "data", scale_mat = scale_mat, log_transform = FALSE, ci_level = 0, estimate_rho = TRUE, lower_zero = TRUE)
+  scale_mat <- .validate_scale_input(u, N = 15L)
+  scale_mode <- list(mode = "data", scale_mat = scale_mat, ci_level = 0, estimate_rho = TRUE, lower_zero = TRUE)
   fit <- .prism_bootstrap(counts, prism_composition_fixed(0.5), scale_mode, bootstrap = "both", S = 8L, seed = 3L)
   expect_true(all(is.finite(fit$lower)))
 })
 
-test_that("raw scale replicate data resamples a replicate column per draw", {
+test_that("paired scale estimates carry their feasible rho witness into each draw", {
+  counts <- random_counts(4L, 12L, seed = 23L)
+  logP <- prism_log_composition(counts, pseudocount = 0.5)
+  scale_log <- as.numeric(logP[1, ] + stats::rnorm(12L, sd = 0.1))
+  scale_mode <- list(
+    mode = "data",
+    scale_mat = matrix(scale_log, ncol = 1L),
+    ci_level = 0.95,
+    estimate_rho = TRUE,
+    lower_zero = TRUE
+  )
+  resolved <- .resolve_draw_scale(
+    scale_mode, seq_len(12L), logP,
+    sigma_L = NULL, sigma_U = NULL, rho_L = NULL, rho_U = NULL
+  )
+  expect_true(all(resolved$rho_L <= resolved$rho_witness))
+  expect_true(all(resolved$rho_witness <= resolved$rho_U))
+  expect_true(.rho_box_feasible(
+    prism_relative_covariance(logP), resolved$rho_L, resolved$rho_U,
+    witness = resolved$rho_witness
+  ))
+})
+
+test_that("log-scale replicate data propagates within-subject replicate uncertainty", {
   set.seed(22L)
   counts <- random_counts(3L, 10L, seed = 22L)
-  scale_mat <- .validate_scale_input(matrix(stats::rlnorm(30L), nrow = 10L, ncol = 3L), N = 10L)
-  scale_mode <- list(mode = "data", scale_mat = scale_mat, log_transform = TRUE, ci_level = 0, estimate_rho = TRUE, lower_zero = TRUE)
+  scale_mat <- .validate_scale_input(matrix(stats::rnorm(30L), nrow = 10L, ncol = 3L), N = 10L)
+  scale_mode <- list(mode = "data", scale_mat = scale_mat, ci_level = 0, estimate_rho = TRUE, lower_zero = TRUE)
   fit <- .prism_bootstrap(counts, prism_composition_fixed(0.5), scale_mode, bootstrap = "both", S = 6L, seed = 4L)
   expect_true(all(is.finite(fit$lower)))
   expect_identical(dim(fit$lower)[3], 6L)
+})
+
+test_that("technical replicates create S draws even without subject bootstrap", {
+  counts <- random_counts(3L, 10L, seed = 24L)
+  scale_mat <- .validate_scale_input(
+    matrix(stats::rnorm(30L), nrow = 10L, ncol = 3L), N = 10L
+  )
+  scale_mode <- list(
+    mode = "data", scale_mat = scale_mat,
+    ci_level = 0, estimate_rho = TRUE, lower_zero = TRUE
+  )
+  fit <- .prism_bootstrap(
+    counts, prism_composition_fixed(0.5), scale_mode,
+    bootstrap = "none", S = 6L, seed = 5L
+  )
+  expect_identical(fit$S_eff, 6L)
+  expect_false(isTRUE(all.equal(fit$lower[, , 1], fit$lower[, , 2])))
 })
 
 test_that("a custom composition estimator's fit() runs once and draw() runs per index", {
@@ -182,7 +199,7 @@ test_that("a custom composition estimator's fit() runs once and draw() runs per 
   expect_identical(dim(result$lower)[3], 4L)
 })
 
-test_that("an invalid custom draw fails immediately, without retrying", {
+test_that("an invalid custom draw fails immediately", {
   est <- prism_composition_estimator(
     name = "broken",
     fit = function(counts, n_draws, seed, verbose) list(counts = counts),
@@ -190,7 +207,7 @@ test_that("an invalid custom draw fails immediately, without retrying", {
   )
   counts <- random_counts(3L, 8L, seed = 8L)
   expect_error(
-    .prism_bootstrap(counts, est, no_scale(), bootstrap = "none", S = 2L, max_attempts_per_draw = 5L, seed = 1L),
+    .prism_bootstrap(counts, est, no_scale(), bootstrap = "none", S = 2L, seed = 1L),
     "returned an invalid draw"
   )
 })

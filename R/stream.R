@@ -32,7 +32,7 @@
   list(files = files, cons = cons)
 }
 
-#' Append one accepted draw's flattened pair values to the stream
+#' Append one draw's flattened pair values to the stream
 #' @keywords internal
 .stream_write_draw <- function(handle, pair_index, lower, upper, rel) {
   ij <- cbind(pair_index[, 1], pair_index[, 2])
@@ -52,7 +52,7 @@
 #' Read a contiguous block of pairs across every draw from a stream file
 #'
 #' File layout is draw-major: draw `s`'s `n_pairs` values are contiguous,
-#' draws are written in accepted order. Reading one pair-block requires
+#' draws are written in generation order. Reading one pair-block requires
 #' one seek + read per draw, bounding peak memory to
 #' `(pair_end - pair_start + 1) x S` doubles regardless of `n_pairs`.
 #' @keywords internal

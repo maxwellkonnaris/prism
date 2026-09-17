@@ -7,10 +7,13 @@
 prism_relative_covariance(log_props)
 }
 \arguments{
-\item{log_props}{A finite features-by-samples matrix of log proportions.}
+\item{log_props}{A finite features-by-samples matrix of log proportions.
+Features with zero or numerically zero sample variance are rejected because
+their correlations with scale are undefined.}
 }
 \value{
-A features-by-features covariance matrix.
+A features-by-features covariance matrix with strictly positive
+  marginal variances.
 }
 \description{
 Sample covariance of the log-composition across samples, i.e.

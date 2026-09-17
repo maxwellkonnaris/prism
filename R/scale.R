@@ -38,26 +38,37 @@ prism_scale_bounds <- function(sigma_L = NULL, sigma_U = NULL, rho_L = NULL, rho
   )
 }
 
-#' Pre-logged sample-level scale
+#' Configure sample-level log-scale measurements
 #'
-#' Wraps sample-level scale data that is already on the log scale (e.g. a
-#' log-qPCR estimate), for `scale = prism_scale_log(...)` in [prism()].
-#' Raw (un-logged) data should be passed directly as `scale` instead --
-#' [prism()] takes the log itself and only needs this wrapper when the
-#' values are ambiguous (all positive) and already transformed.
+#' PRISM requires sample-level scale measurements to be supplied on the log
+#' scale. Bare numeric vectors and matrices passed to [prism()] are interpreted
+#' as already log transformed. This constructor is only needed to change the
+#' within-draw estimation settings.
 #'
 #' @param values Finite numeric vector (length N) or matrix (N rows, one
-#'   column per replicate), already on the log scale.
+#'   column per technical replicate), already on the log scale.
 #' @param ci_level Interval coverage in `[0, 1)` for the scale-SD/
-#'   correlation confidence interval estimated within each draw. `0`
-#'   uses point estimates.
+#'   correlation confidence interval estimated within each draw. The default
+#'   `0` uses point estimates. Positive values are experimental and require
+#'   `experimental_ci = TRUE`.
 #' @param estimate_rho Estimate taxon-scale correlation. If `FALSE`, only
 #'   scale-SD is estimated.
 #' @param lower_zero Force the lower scale-SD endpoint to `0` instead of
 #'   the chi-square lower quantile (see [prism()]).
+#' @param experimental_ci Explicitly enable analytic chi-square/Fisher-z
+#'   intervals inside each bootstrap draw. This sensitivity-analysis mode is
+#'   not the default bootstrap procedure.
 #' @return A `prism_scale_log` object.
 #' @export
-prism_scale_log <- function(values, ci_level = 0, estimate_rho = TRUE, lower_zero = TRUE) {
+prism_scale_log <- function(values, ci_level = 0, estimate_rho = TRUE,
+                            lower_zero = TRUE, experimental_ci = FALSE) {
+  .new_prism_scale_data(
+    values, ci_level, estimate_rho, lower_zero, experimental_ci
+  )
+}
+
+.new_prism_scale_data <- function(values, ci_level, estimate_rho, lower_zero,
+                                  experimental_ci) {
   if (!is.numeric(values) || any(!is.finite(values))) {
     stop("values must be a finite numeric vector or matrix.", call. = FALSE)
   }
@@ -68,29 +79,38 @@ prism_scale_log <- function(values, ci_level = 0, estimate_rho = TRUE, lower_zer
   if (!is.logical(lower_zero) || length(lower_zero) != 1L || is.na(lower_zero)) {
     stop("lower_zero must be TRUE or FALSE.", call. = FALSE)
   }
+  if (!is.logical(experimental_ci) || length(experimental_ci) != 1L || is.na(experimental_ci)) {
+    stop("experimental_ci must be TRUE or FALSE.", call. = FALSE)
+  }
+  if (ci_level > 0 && !experimental_ci) {
+    stop(
+      "ci_level > 0 enables experimental within-draw analytic intervals; ",
+      "set experimental_ci = TRUE to use this sensitivity analysis.",
+      call. = FALSE
+    )
+  }
   structure(
-    list(values = values, ci_level = ci_level, estimate_rho = estimate_rho, lower_zero = lower_zero),
+    list(
+      values = values, ci_level = ci_level, estimate_rho = estimate_rho,
+      lower_zero = lower_zero, experimental_ci = experimental_ci
+    ),
     class = "prism_scale_log"
   )
 }
 
-#' Validate raw sample-level scale input
+#' Validate sample-level log-scale input
 #'
-#' `scale` is either one raw measurement per sample (a length-N vector) or
+#' `scale` is either one log-scale measurement per sample (a length-N vector) or
 #' a matrix of replicate measurements per sample (N rows, one column per
-#' replicate). Both are normalized to an N x R positive matrix so the rest
+#' replicate). Both are normalized to an N x R finite matrix so the rest
 #' of the package only has to handle one shape.
 #'
-#' @param scale Numeric vector (length N) or matrix (N rows); positive if
-#'   `require_positive`, otherwise any finite real value (already
-#'   log-scale).
+#' @param scale Finite numeric vector (length N) or matrix (N rows), already
+#'   on the log scale.
 #' @param N Expected number of samples.
-#' @param require_positive If `TRUE` (raw, un-logged input), every value
-#'   must be strictly positive. If `FALSE` (already log-scale input), any
-#'   finite value is allowed.
 #' @return A finite N x R matrix.
 #' @keywords internal
-.validate_scale_input <- function(scale, N, require_positive = TRUE) {
+.validate_scale_input <- function(scale, N) {
   if (is.null(dim(scale))) {
     if (length(scale) != N) {
       stop("scale must have length N (one value per sample) or N rows.", call. = FALSE)
@@ -105,36 +125,31 @@ prism_scale_log <- function(values, ci_level = 0, estimate_rho = TRUE, lower_zer
   if (!is.numeric(scale) || any(!is.finite(scale))) {
     stop("scale must be finite.", call. = FALSE)
   }
-  if (require_positive && any(scale <= 0)) {
-    stop("scale must be strictly positive.", call. = FALSE)
-  }
   scale
 }
 
-#' Select one raw scale value per sample and log it
+#' Bootstrap the subject-level mean log scale
 #'
-#' For samples with a single measurement this is just `log(scale)`. For
-#' samples with replicate measurements, `replicate_index` (one draw per
-#' sample, produced by the caller so all RNG state lives in the bootstrap
-#' loop) selects which replicate is used, propagating measurement
-#' uncertainty across bootstrap draws by resampling replicates the same
-#' way samples are resampled.
+#' For samples with one measurement this returns that value on the log scale.
+#' For technical replicates, it resamples all replicates with replacement
+#' within each selected subject and averages them on the log scale. This
+#' propagates uncertainty in the subject-level mean without discarding all but
+#' one replicate.
 #'
 #' @param scale_mat N x R matrix from `.validate_scale_input()`.
 #' @param sample_index Integer sample indices for this draw (length N,
 #'   with replacement under the bootstrap).
-#' @param replicate_index Integer replicate indices, one per entry of
-#'   `sample_index`, in `1:ncol(scale_mat)`. Ignored when `scale_mat` has
-#'   one column.
-#' @param log_transform If `TRUE` (raw input), take the log of the
-#'   selected values. If `FALSE`, `scale_mat` is already log-scale.
 #' @return A numeric vector of log-scale values, length `length(sample_index)`.
 #' @keywords internal
-.select_scale_log <- function(scale_mat, sample_index, replicate_index = NULL, log_transform = TRUE) {
+.select_scale_log <- function(scale_mat, sample_index) {
   R <- ncol(scale_mat)
-  ri <- if (R == 1L) rep(1L, length(sample_index)) else replicate_index
-  vals <- scale_mat[cbind(sample_index, ri)]
-  if (log_transform) log(vals) else vals
+  values <- scale_mat[sample_index, , drop = FALSE]
+  if (R == 1L) return(as.numeric(values[, 1L]))
+  vapply(
+    seq_len(nrow(values)),
+    function(i) mean(values[i, sample.int(R, R, replace = TRUE)]),
+    numeric(1)
+  )
 }
 
 #' Estimate scale SD and taxon-scale correlation bounds from scale_log
@@ -146,6 +161,10 @@ prism_scale_log <- function(values, ci_level = 0, estimate_rho = TRUE, lower_zer
 #' an interval is requested, each feature's interval is a chi-square
 #' interval for sigma and a Fisher-z interval for rho, both widened, never
 #' narrowed, to contain the point estimate.
+#' If the scale measurements have zero or numerically zero variance, the
+#' function returns `sigma_L = sigma_U = 0` and leaves all rho fields `NULL`:
+#' correlation with a constant variable is undefined but irrelevant when
+#' multiplied by zero scale SD.
 #'
 #' @param log_proportions Features-by-samples log-composition matrix.
 #' @param scale_log Sample-aligned finite log-scale vector.
@@ -159,6 +178,8 @@ prism_scale_log <- function(values, ci_level = 0, estimate_rho = TRUE, lower_zer
 #'   that is an artifact of splitting the interval evenly across both
 #'   tails, not a real constraint.
 #' @return A list with `sigma_L`, `sigma_U`, `rho_L`, `rho_U`, `rho_witness`.
+#'   The rho fields are `NULL` when `estimate_rho = FALSE` or scale variance
+#'   is zero.
 #' @keywords internal
 .estimate_scale_log_bounds <- function(log_proportions, scale_log, ci_level = 0,
                                         estimate_rho = TRUE, lower_zero = TRUE) {
@@ -170,7 +191,13 @@ prism_scale_log <- function(values, ci_level = 0, estimate_rho = TRUE, lower_zer
   }
   ci_level <- .assert_scalar_finite(ci_level, "ci_level", lower = 0, upper = 1, upper_inclusive = FALSE)
 
-  sigma_hat <- max(stats::sd(u), 0)
+  sigma_hat <- stats::sd(u)
+  if (.numerically_zero_variance(u, sigma_hat^2)) {
+    return(list(
+      sigma_L = 0, sigma_U = 0,
+      rho_L = NULL, rho_U = NULL, rho_witness = NULL
+    ))
+  }
   rho_hat <- if (estimate_rho) .feature_correlations(X, u) else NULL
 
   if (ci_level == 0) {
@@ -201,7 +228,10 @@ prism_scale_log <- function(values, ci_level = 0, estimate_rho = TRUE, lower_zer
   list(sigma_L = sigma_L, sigma_U = sigma_U, rho_L = rho_L, rho_U = rho_U, rho_witness = rho_hat)
 }
 
-#' Per-feature Pearson correlation with a shared vector, zero-variance safe
+#' Per-feature Pearson correlation with a shared vector
+#'
+#' A correlation is undefined when either variable has zero variance. This
+#' function therefore errors instead of substituting an arbitrary correlation.
 #' @keywords internal
 .feature_correlations <- function(X, u) {
   n <- length(u)
@@ -209,11 +239,29 @@ prism_scale_log <- function(values, ci_level = 0, estimate_rho = TRUE, lower_zer
   sd_u <- sqrt(sum(u_c^2) / (n - 1L))
   X_c <- X - rowMeans(X)
   sd_x <- sqrt(rowSums(X_c^2) / (n - 1L))
-  if (!is.finite(sd_u) || sd_u <= 0) {
-    return(rep(0, nrow(X)))
+  if (.numerically_zero_variance(u, sd_u^2)) {
+    stop(
+      "The log-scale measurements have zero or numerically zero marginal variance; ",
+      "correlations are undefined.",
+      call. = FALSE
+    )
+  }
+  bad_x <- vapply(
+    seq_len(nrow(X)),
+    function(i) .numerically_zero_variance(X[i, ], sd_x[i]^2),
+    logical(1)
+  )
+  if (any(bad_x)) {
+    stop(
+      "Log-composition feature(s) ", paste(which(bad_x), collapse = ", "),
+      " have zero or numerically zero marginal variance; correlations are undefined.",
+      call. = FALSE
+    )
   }
   covariance <- rowSums(X_c * rep(u_c, each = nrow(X))) / (n - 1L)
   rho <- covariance / (sd_x * sd_u)
-  rho[!is.finite(rho)] <- 0
+  if (any(!is.finite(rho))) {
+    stop("Feature correlations could not be estimated as finite values.", call. = FALSE)
+  }
   pmax(-1, pmin(1, rho))
 }

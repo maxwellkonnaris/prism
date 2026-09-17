@@ -6,7 +6,7 @@
 \alias{prism_composition_estimator}
 \title{Specify a compositional uncertainty estimator}
 \usage{
-prism_composition_dirichlet(pseudocount = 1, concentration = 1)
+prism_composition_dirichlet(pseudocount = 0.5, concentration = 1)
 
 prism_composition_fixed(pseudocount = 0.5)
 

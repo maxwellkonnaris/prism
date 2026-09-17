@@ -52,7 +52,11 @@ prism_log_composition <- function(counts, pseudocount = 0.5) {
 #' \code{log P}.
 #'
 #' @param log_props A finite features-by-samples matrix of log proportions.
-#' @return A features-by-features covariance matrix.
+#' Features with zero or numerically zero sample variance are rejected because
+#' their correlations with scale are undefined.
+#'
+#' @return A features-by-features covariance matrix with strictly positive
+#'   marginal variances.
 #' @keywords internal
 prism_relative_covariance <- function(log_props) {
   X <- as.matrix(log_props)
@@ -62,5 +66,18 @@ prism_relative_covariance <- function(log_props) {
   if (ncol(X) < 2L) {
     stop("At least 2 samples are required to estimate a covariance.", call. = FALSE)
   }
-  stats::cov(t(X))
+  out <- stats::cov(t(X))
+  bad <- vapply(
+    seq_len(nrow(X)),
+    function(i) .numerically_zero_variance(X[i, ], out[i, i]),
+    logical(1)
+  )
+  if (any(bad)) {
+    stop(
+      "Log-composition feature(s) ", paste(which(bad), collapse = ", "),
+      " have zero or numerically zero marginal variance.",
+      call. = FALSE
+    )
+  }
+  out
 }

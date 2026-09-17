@@ -2,37 +2,24 @@
 % Please edit documentation in R/scale.R
 \name{.select_scale_log}
 \alias{.select_scale_log}
-\title{Select one raw scale value per sample and log it}
+\title{Bootstrap the subject-level mean log scale}
 \usage{
-.select_scale_log(
-  scale_mat,
-  sample_index,
-  replicate_index = NULL,
-  log_transform = TRUE
-)
+.select_scale_log(scale_mat, sample_index)
 }
 \arguments{
 \item{scale_mat}{N x R matrix from `.validate_scale_input()`.}
 
 \item{sample_index}{Integer sample indices for this draw (length N,
 with replacement under the bootstrap).}
-
-\item{replicate_index}{Integer replicate indices, one per entry of
-`sample_index`, in `1:ncol(scale_mat)`. Ignored when `scale_mat` has
-one column.}
-
-\item{log_transform}{If `TRUE` (raw input), take the log of the
-selected values. If `FALSE`, `scale_mat` is already log-scale.}
 }
 \value{
 A numeric vector of log-scale values, length `length(sample_index)`.
 }
 \description{
-For samples with a single measurement this is just `log(scale)`. For
-samples with replicate measurements, `replicate_index` (one draw per
-sample, produced by the caller so all RNG state lives in the bootstrap
-loop) selects which replicate is used, propagating measurement
-uncertainty across bootstrap draws by resampling replicates the same
-way samples are resampled.
+For samples with one measurement this returns that value on the log scale.
+For technical replicates, it resamples all replicates with replacement
+within each selected subject and averages them on the log scale. This
+propagates uncertainty in the subject-level mean without discarding all but
+one replicate.
 }
 \keyword{internal}

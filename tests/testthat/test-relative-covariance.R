@@ -70,3 +70,11 @@ test_that("relative covariance rejects non-finite input", {
   logP <- matrix(c(0, -Inf, -1, -2), nrow = 2L)
   expect_error(prism_relative_covariance(logP), "finite")
 })
+
+test_that("relative covariance rejects zero marginal feature variance", {
+  logP <- rbind(rep(-1, 4L), c(-2, -1, -3, -2))
+  expect_error(
+    prism_relative_covariance(logP),
+    "zero or numerically zero marginal variance"
+  )
+})

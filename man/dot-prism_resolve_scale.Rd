@@ -4,17 +4,7 @@
 \alias{.prism_resolve_scale}
 \title{Resolve the `scale` argument (plus its shorthands) into a bootstrap-ready form}
 \usage{
-.prism_resolve_scale(
-  scale,
-  N,
-  sigma_L,
-  sigma_U,
-  rho_L,
-  rho_U,
-  scale_ci_level,
-  scale_estimate_rho,
-  scale_lower_zero
-)
+.prism_resolve_scale(scale, N, sigma_L, sigma_U, rho_L, rho_U)
 }
 \value{
 `list(scale_mode, sigma_L, sigma_U, rho_L, rho_U)`, where

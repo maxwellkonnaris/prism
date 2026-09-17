@@ -1,3 +1,31 @@
+# prism 0.5.0
+
+- Removed bootstrap rejection sampling and replacement draws. Every requested
+  draw is now generated exactly once, and invalid or infeasible draws stop with
+  their original error. Paired scale estimates pass their known feasible
+  `rho_witness` directly to `cov_bounds()`.
+- P-values now use opposing tails of the bootstrapped per-draw identification
+  intervals and are `NA` when paired subject bootstrapping is disabled.
+  `pairwise` also reports `covers_zero` and explicit bootstrap counts and
+  frequencies for intervals above zero, below zero, or covering zero.
+- Removed the unsupported conversion of an identification bound into an
+  implied symmetric Wald p-value.
+- Sample-level scale data are now always assumed to be already log transformed;
+  bare numeric vectors and matrices are accepted and PRISM never applies a
+  logarithm. `prism_scale_log()` remains available for non-default estimation
+  settings. Within-draw analytic scale intervals require
+  `experimental_ci = TRUE`.
+- Constant scale measurements now imply `sigma_L = sigma_U = 0`; rho is omitted
+  because it is undefined and irrelevant when sigma is zero. Zero or
+  numerically zero marginal variance in a retained log-composition feature
+  still raises an error.
+- Technical scale replicates are bootstrapped within subject and averaged on
+  the log scale rather than selecting a single replicate. Invalid samples are
+  removed before prevalence is calculated, and all exclusions warn.
+- Removed the bootstrap mean `rel_hat` from `pairwise_rel`; relative-covariance
+  uncertainty is reported through its bootstrap interval only.
+- Changed the default Dirichlet pseudocount from 1 to 0.5.
+
 # prism 0.4.0
 
 - `prism()` no longer leaks its internal `set.seed(seed)` reproducibility
@@ -12,9 +40,9 @@
   that runs *after* `prism()` returns is gone. `seed = NULL` is
   unaffected (nothing to restore -- it was never reseeding).
 - Added `return_draws = FALSE`: when `TRUE`, the result gains a `draws`
-  component with every accepted draw's lower/upper/relative-covariance
+  component with every draw's lower/upper/relative-covariance
   values (S_effective x n_pairs matrices, aligned via `pair_index`) --
-  the data `ci_lower`/`ci_upper`/`pairwise_rel$rel_hat` are already
+  the data `ci_lower`/`ci_upper`/`pairwise_rel` intervals are already
   computed from, but previously discarded after aggregation. Works
   identically whether or not `stream` was engaged.
 - A second, harder adversarial pass (extreme Dirichlet parameters beyond

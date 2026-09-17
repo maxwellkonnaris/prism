@@ -10,6 +10,7 @@
   feature_names,
   D,
   S_eff,
+  bootstrap_active,
   p_adjust_method
 )
 }

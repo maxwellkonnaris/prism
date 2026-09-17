@@ -2,11 +2,11 @@
 % Please edit documentation in R/stream.R
 \name{.stream_write_draw}
 \alias{.stream_write_draw}
-\title{Append one accepted draw's flattened pair values to the stream}
+\title{Append one draw's flattened pair values to the stream}
 \usage{
 .stream_write_draw(handle, pair_index, lower, upper, rel)
 }
 \description{
-Append one accepted draw's flattened pair values to the stream
+Append one draw's flattened pair values to the stream
 }
 \keyword{internal}

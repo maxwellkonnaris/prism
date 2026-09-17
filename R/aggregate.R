@@ -21,10 +21,8 @@
 #'
 #' Returns one row per pair in `full` (in the same order): the
 #' `ci_alpha/2`/`1 - ci_alpha/2` quantiles of the lower/upper bound draws,
-#' the mean and quantiles of the relative-covariance draws, and counts of
-#' draws whose lower bound exceeds `delta` / upper bound is below
-#' `-delta` (the ingredients for a p-value; meaningless for the diagonal
-#' but cheap to compute for every pair uniformly).
+#' quantiles of the relative-covariance draws, bootstrap sign counts, and
+#' counts used for a two-sided bootstrap p-value against `[-delta, delta]`.
 #' @keywords internal
 .memory_pair_stats <- function(draws, full, ci_alpha, delta) {
   i <- full[, 1]
@@ -35,11 +33,13 @@
   list(
     ci_lower = apply(lower_draws, 1, stats::quantile, probs = ci_alpha / 2, names = FALSE),
     ci_upper = apply(upper_draws, 1, stats::quantile, probs = 1 - ci_alpha / 2, names = FALSE),
-    rel_hat = rowMeans(rel_draws),
     rel_ci_lower = apply(rel_draws, 1, stats::quantile, probs = ci_alpha / 2, names = FALSE),
     rel_ci_upper = apply(rel_draws, 1, stats::quantile, probs = 1 - ci_alpha / 2, names = FALSE),
-    pos_count = rowSums(lower_draws > delta),
-    neg_count = rowSums(upper_draws < -delta)
+    positive_count = rowSums(lower_draws > 0),
+    negative_count = rowSums(upper_draws < 0),
+    covers_zero_count = rowSums(lower_draws <= 0 & upper_draws >= 0),
+    positive_null_count = rowSums(lower_draws > delta),
+    negative_null_count = rowSums(upper_draws < -delta)
   )
 }
 
@@ -54,10 +54,18 @@
   n_pairs <- nrow(full)
   S <- draws$S_eff
   out <- lapply(
-    c("ci_lower", "ci_upper", "rel_hat", "rel_ci_lower", "rel_ci_upper", "pos_count", "neg_count"),
+    c(
+      "ci_lower", "ci_upper", "rel_ci_lower", "rel_ci_upper",
+      "positive_count", "negative_count", "covers_zero_count",
+      "positive_null_count", "negative_null_count"
+    ),
     function(nm) numeric(n_pairs)
   )
-  names(out) <- c("ci_lower", "ci_upper", "rel_hat", "rel_ci_lower", "rel_ci_upper", "pos_count", "neg_count")
+  names(out) <- c(
+    "ci_lower", "ci_upper", "rel_ci_lower", "rel_ci_upper",
+    "positive_count", "negative_count", "covers_zero_count",
+    "positive_null_count", "negative_null_count"
+  )
 
   starts <- seq.int(1L, n_pairs, by = block_size)
   for (start in starts) {
@@ -68,18 +76,21 @@
     rel_block <- .stream_read_block(draws$files$rel, n_pairs, S, start, end)
     out$ci_lower[idx] <- apply(lower_block, 1, stats::quantile, probs = ci_alpha / 2, names = FALSE)
     out$ci_upper[idx] <- apply(upper_block, 1, stats::quantile, probs = 1 - ci_alpha / 2, names = FALSE)
-    out$rel_hat[idx] <- rowMeans(rel_block)
     out$rel_ci_lower[idx] <- apply(rel_block, 1, stats::quantile, probs = ci_alpha / 2, names = FALSE)
     out$rel_ci_upper[idx] <- apply(rel_block, 1, stats::quantile, probs = 1 - ci_alpha / 2, names = FALSE)
-    out$pos_count[idx] <- rowSums(lower_block > delta)
-    out$neg_count[idx] <- rowSums(upper_block < -delta)
+    out$positive_count[idx] <- rowSums(lower_block > 0)
+    out$negative_count[idx] <- rowSums(upper_block < 0)
+    out$covers_zero_count[idx] <- rowSums(lower_block <= 0 & upper_block >= 0)
+    out$positive_null_count[idx] <- rowSums(lower_block > delta)
+    out$negative_null_count[idx] <- rowSums(upper_block < -delta)
   }
   out
 }
 
 #' Assemble CI matrices and pairwise tables from per-pair summary statistics
 #' @keywords internal
-.assemble_prism_aggregate <- function(full, stats_full, feature_names, D, S_eff, p_adjust_method) {
+.assemble_prism_aggregate <- function(full, stats_full, feature_names, D, S_eff,
+                                      bootstrap_active, p_adjust_method) {
   fi <- full[, 1]
   fj <- full[, 2]
 
@@ -94,14 +105,25 @@
   is_offdiag <- fi != fj
   i <- fi[is_offdiag]
   j <- fj[is_offdiag]
-  if (S_eff == 1L) {
+  positive_count <- stats_full$positive_count[is_offdiag]
+  negative_count <- stats_full$negative_count[is_offdiag]
+  covers_zero_count <- stats_full$covers_zero_count[is_offdiag]
+  if (!bootstrap_active) {
     p_value <- rep(NA_real_, length(i))
+    bootstrap_positive_count <- bootstrap_negative_count <- bootstrap_covers_zero_count <- rep(NA_integer_, length(i))
+    bootstrap_positive_frequency <- bootstrap_negative_frequency <- bootstrap_covers_zero_frequency <- rep(NA_real_, length(i))
   } else {
-    pos_count <- stats_full$pos_count[is_offdiag]
-    neg_count <- stats_full$neg_count[is_offdiag]
-    p_plus <- (1 + pos_count) / (1 + S_eff)
-    p_minus <- (1 + neg_count) / (1 + S_eff)
-    p_value <- pmin(1, 2 * pmin(p_plus, p_minus))
+    positive_null_count <- stats_full$positive_null_count[is_offdiag]
+    negative_null_count <- stats_full$negative_null_count[is_offdiag]
+    p_positive <- (1 + S_eff - positive_null_count) / (1 + S_eff)
+    p_negative <- (1 + S_eff - negative_null_count) / (1 + S_eff)
+    p_value <- pmin(1, 2 * pmin(p_positive, p_negative))
+    bootstrap_positive_count <- as.integer(positive_count)
+    bootstrap_negative_count <- as.integer(negative_count)
+    bootstrap_covers_zero_count <- as.integer(covers_zero_count)
+    bootstrap_positive_frequency <- positive_count / S_eff
+    bootstrap_negative_frequency <- negative_count / S_eff
+    bootstrap_covers_zero_frequency <- covers_zero_count / S_eff
   }
   q_value <- stats::p.adjust(p_value, method = p_adjust_method)
 
@@ -109,6 +131,13 @@
     i = i, j = j,
     feature_i = feature_names[i], feature_j = feature_names[j],
     ci_lower = stats_full$ci_lower[is_offdiag], ci_upper = stats_full$ci_upper[is_offdiag],
+    covers_zero = stats_full$ci_lower[is_offdiag] <= 0 & stats_full$ci_upper[is_offdiag] >= 0,
+    bootstrap_positive_count = bootstrap_positive_count,
+    bootstrap_negative_count = bootstrap_negative_count,
+    bootstrap_covers_zero_count = bootstrap_covers_zero_count,
+    bootstrap_positive_frequency = bootstrap_positive_frequency,
+    bootstrap_negative_frequency = bootstrap_negative_frequency,
+    bootstrap_covers_zero_frequency = bootstrap_covers_zero_frequency,
     p_value = p_value, q_value = q_value,
     stringsAsFactors = FALSE
   )
@@ -116,7 +145,6 @@
   pairwise_rel <- data.frame(
     i = fi, j = fj,
     feature_i = feature_names[fi], feature_j = feature_names[fj],
-    rel_hat = stats_full$rel_hat,
     rel_ci_lower = stats_full$rel_ci_lower,
     rel_ci_upper = stats_full$rel_ci_upper,
     stringsAsFactors = FALSE
@@ -126,30 +154,35 @@
   list(ci_lower = ci_lower_mat, ci_upper = ci_upper_mat, pairwise = pairwise, pairwise_rel = pairwise_rel)
 }
 
-#' Aggregate accepted bootstrap draws into CI matrices and pairwise tables
+#' Aggregate bootstrap draws into CI matrices and pairwise tables
 #'
 #' `ci_lower`/`ci_upper` are the empirical `ci_alpha/2` and
-#' `1 - ci_alpha/2` quantiles of the accepted per-draw lower/upper bound
+#' `1 - ci_alpha/2` quantiles of the per-draw lower/upper bound
 #' arrays -- for a single deterministic draw (`S_eff == 1`), the quantile
 #' of one value is that value, so this reduces automatically to the
 #' identification interval with no special case needed. `p_value` is the
-#' one genuine special case: with only one draw there is no bootstrap
-#' distribution to test against the null region, so it is reported as
-#' `NA` rather than a degenerate one-sample value.
+#' reported only when paired subject bootstrapping is active. Without subject
+#' bootstrapping, `p_value` and `q_value` are `NA`, while `covers_zero` reports
+#' whether the aggregated identification interval includes zero.
 #'
 #' @param draws Output of `.prism_bootstrap()`.
 #' @param feature_names Character vector of length D, or `NULL`.
 #' @param ci_alpha Tail probability for CI endpoints.
 #' @param delta Half-width of the pairwise null region used for p-values.
+#' @param bootstrap_active Whether paired subject bootstrapping was performed.
 #' @param p_adjust_method Passed to `stats::p.adjust()`.
 #' @return `list(ci_lower, ci_upper, pairwise, pairwise_rel)`.
 #' @keywords internal
 .prism_aggregate <- function(draws, feature_names = NULL, ci_alpha = 0.05,
-                              delta = 0, p_adjust_method = "BH") {
+                              delta = 0, bootstrap_active = TRUE,
+                              p_adjust_method = "BH") {
   D <- draws$D
   S_eff <- draws$S_eff
   ci_alpha <- .assert_scalar_finite(ci_alpha, "ci_alpha", lower = 0, upper = 1, upper_inclusive = FALSE)
   delta <- .assert_scalar_finite(delta, "delta", lower = 0)
+  if (!is.logical(bootstrap_active) || length(bootstrap_active) != 1L || is.na(bootstrap_active)) {
+    stop("bootstrap_active must be TRUE or FALSE.", call. = FALSE)
+  }
   if (!p_adjust_method %in% stats::p.adjust.methods) {
     stop("p_adjust_method must be one of: ", paste(stats::p.adjust.methods, collapse = ", "), call. = FALSE)
   }
@@ -161,5 +194,8 @@
   } else {
     .memory_pair_stats(draws, full, ci_alpha, delta)
   }
-  .assemble_prism_aggregate(full, stats_full, feature_names, D, S_eff, p_adjust_method)
+  .assemble_prism_aggregate(
+    full, stats_full, feature_names, D, S_eff,
+    bootstrap_active, p_adjust_method
+  )
 }

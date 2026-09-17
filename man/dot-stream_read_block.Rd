@@ -8,7 +8,7 @@
 }
 \description{
 File layout is draw-major: draw `s`'s `n_pairs` values are contiguous,
-draws are written in accepted order. Reading one pair-block requires
+draws are written in generation order. Reading one pair-block requires
 one seek + read per draw, bounding peak memory to
 `(pair_end - pair_start + 1) x S` doubles regardless of `n_pairs`.
 }

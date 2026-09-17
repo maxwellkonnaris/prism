@@ -2,28 +2,23 @@
 % Please edit documentation in R/scale.R
 \name{.validate_scale_input}
 \alias{.validate_scale_input}
-\title{Validate raw sample-level scale input}
+\title{Validate sample-level log-scale input}
 \usage{
-.validate_scale_input(scale, N, require_positive = TRUE)
+.validate_scale_input(scale, N)
 }
 \arguments{
-\item{scale}{Numeric vector (length N) or matrix (N rows); positive if
-`require_positive`, otherwise any finite real value (already
-log-scale).}
+\item{scale}{Finite numeric vector (length N) or matrix (N rows), already
+on the log scale.}
 
 \item{N}{Expected number of samples.}
-
-\item{require_positive}{If `TRUE` (raw, un-logged input), every value
-must be strictly positive. If `FALSE` (already log-scale input), any
-finite value is allowed.}
 }
 \value{
 A finite N x R matrix.
 }
 \description{
-`scale` is either one raw measurement per sample (a length-N vector) or
+`scale` is either one log-scale measurement per sample (a length-N vector) or
 a matrix of replicate measurements per sample (N rows, one column per
-replicate). Both are normalized to an N x R positive matrix so the rest
+replicate). Both are normalized to an N x R finite matrix so the rest
 of the package only has to handle one shape.
 }
 \keyword{internal}
