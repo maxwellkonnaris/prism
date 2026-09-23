@@ -22,8 +22,10 @@
 #'
 #' Supplying `rho_L`/`rho_U` without `sigma_L`/`sigma_U` is an error, since
 #' correlation information alone does not bound `sigma`. A genuine rho
-#' interval requires the optional CVXR package. If `sigma_U = 0`, scale terms
-#' vanish and the result is exactly `Sigma_rel`, irrespective of rho.
+#' interval requires the optional ECOSolveR package by default. Passing a
+#' non-ECOS `solver` uses the retained CVXR reference backend instead. If
+#' `sigma_U = 0`, scale terms vanish and the result is exactly `Sigma_rel`,
+#' irrespective of rho.
 #'
 #' @param Sigma_rel Features-by-features relative log-covariance matrix.
 #' @param sigma_L,sigma_U Optional scale-SD bounds, `0 <= sigma_L <= sigma_U`.
@@ -32,22 +34,29 @@
 #' @param rho_witness Optional feature-length correlation vector known to
 #'   be feasible; supplying it can certify a genuine rho interval as non-empty
 #'   without a separate feasibility solve. Exact support optimization still
-#'   requires CVXR.
-#' @param solver Optional CVXR solver name. `NULL` lets CVXR select its default.
-#'   Used for exact support optimization under a genuine rho interval and for
-#'   rank-deficient feasibility checks when no witness resolves feasibility.
+#'   requires a conic solver.
+#' @param solver Optional conic solver name. `NULL` or `"ECOS"` uses the direct
+#'   ECOS backend for exact support optimization. A different solver name uses
+#'   the retained CVXR reference backend. Rank-deficient feasibility checks
+#'   without a resolving witness still use CVXR.
 #' @param eig_tol Relative eigenvalue tolerance used to detect rank
 #'   deficiency in `Sigma_rel`.
+#' @param rho_backend Optional support-optimization backend, `"ecos"` or
+#'   `"cvxr"`. `NULL` uses direct ECOS unless a non-ECOS `solver` is supplied.
 #'
 #' @return A `prism_cov_bounds` object: a list with features-by-features
 #'   `lower`/`upper` matrices, `regime`, `sharp`, and the resolved `inputs`.
 #' @export
 cov_bounds <- function(Sigma_rel, sigma_L = NULL, sigma_U = NULL,
                         rho_L = NULL, rho_U = NULL, rho_witness = NULL,
-                        solver = NULL, eig_tol = 1e-10) {
+                        solver = NULL, eig_tol = 1e-10,
+                        rho_backend = NULL) {
   A <- .validate_relative_covariance(Sigma_rel)
   D <- nrow(A)
   cfg <- .resolve_bound_regime(D, sigma_L, sigma_U, rho_L, rho_U)
+  if (!is.null(rho_backend)) {
+    rho_backend <- match.arg(rho_backend, c("ecos", "cvxr"))
+  }
   s <- sqrt(diag(A))
 
   sharp_off_diagonal <- TRUE
@@ -79,7 +88,10 @@ cov_bounds <- function(Sigma_rel, sigma_L = NULL, sigma_U = NULL,
           call. = FALSE
         )
       }
-      support <- .rho_box_support(A, cfg$rho_L, cfg$rho_U, eig_tol = eig_tol, solver = solver)
+      support <- .rho_box_support(
+        A, cfg$rho_L, cfg$rho_U,
+        eig_tol = eig_tol, solver = solver, backend = rho_backend
+      )
       t_min <- support$m
       t_max <- support$M
     }
@@ -272,15 +284,59 @@ print.prism_cov_bounds <- function(x, ...) {
 #'     (`rho_L == -rho_U`), the feasible set is centrally symmetric, so
 #'     `m_ij = -M_ij` and only one solve is needed per pair.
 #' }
-#' CVXR is only required if at least one pair fails the certificate.
+#' ECOS is only required if at least one pair fails the certificate.
 #'
 #' @param shortcuts If `FALSE`, skip both shortcuts and solve every direction
-#'   with CVXR (reference implementation, used for testing).
-#' @return `list(m, M, n_solves)`, where `n_solves` counts CVXR calls.
+#'   numerically.
+#' @param backend Optional backend override, `"ecos"` or `"cvxr"`. `NULL`
+#'   infers the backend from `solver` for backward compatibility.
+#' @return `list(m, M, n_solves)`, where `n_solves` counts conic-solver calls.
 #' @keywords internal
 .rho_box_support <- function(Sigma_rel, rho_L, rho_U,
                              eig_tol = 1e-10, solver = NULL,
-                             shortcuts = TRUE) {
+                             shortcuts = TRUE, backend = NULL) {
+  if (is.null(backend)) {
+    backend <- if (!is.null(solver) && !identical(toupper(solver), "ECOS")) "cvxr" else "ecos"
+  } else {
+    backend <- match.arg(backend, c("ecos", "cvxr"))
+  }
+  if (backend == "cvxr") {
+    return(.rho_box_support_cvxr(
+      Sigma_rel, rho_L, rho_U,
+      eig_tol = eig_tol, solver = solver, shortcuts = shortcuts
+    ))
+  }
+  if (!is.null(solver) && !identical(toupper(solver), "ECOS")) {
+    stop("The direct ECOS backend requires solver = NULL or solver = \"ECOS\".", call. = FALSE)
+  }
+  .rho_box_support_impl(
+    Sigma_rel, rho_L, rho_U,
+    eig_tol = eig_tol, solver = "ECOS", shortcuts = shortcuts,
+    backend = "ecos"
+  )
+}
+
+#' CVXR reference implementation of exact rho-box support
+#'
+#' Retains the original CVXR formulation as an independent numerical
+#' reference for regression tests and backend benchmarks.
+#'
+#' @inheritParams .rho_box_support
+#' @keywords internal
+.rho_box_support_cvxr <- function(Sigma_rel, rho_L, rho_U,
+                                  eig_tol = 1e-10, solver = NULL,
+                                  shortcuts = TRUE) {
+  .rho_box_support_impl(
+    Sigma_rel, rho_L, rho_U,
+    eig_tol = eig_tol, solver = solver, shortcuts = shortcuts,
+    backend = "cvxr"
+  )
+}
+
+.rho_box_support_impl <- function(Sigma_rel, rho_L, rho_U,
+                                  eig_tol, solver, shortcuts,
+                                  backend = c("ecos", "cvxr")) {
+  backend <- match.arg(backend)
   D <- nrow(Sigma_rel)
   s <- sqrt(diag(Sigma_rel))
   u_L <- s * rho_L
@@ -302,29 +358,20 @@ print.prism_cov_bounds <- function(x, ...) {
   box_tol <- 1e-12 * max(1, max(s))
   symmetric_box <- max(abs(u_L + u_U)) <= box_tol
 
-  cvxr_ready <- FALSE
+  solver_ready <- FALSE
   n_solves <- 0L
-  y <- NULL
-  u <- NULL
-  constraints <- NULL
+  solve_backend <- NULL
   solve_direction <- function(direction) {
-    if (!cvxr_ready) {
-      .require_cvxr_solver(solver, "Exact bounds for a non-fixed rho interval")
-      y <<- CVXR::Variable(length(lambda_r))
-      u <<- factor %*% y
-      constraints <<- list(CVXR::p_norm(y, 2) <= 1, u >= u_L, u <= u_U)
-      cvxr_ready <<- TRUE
+    if (!solver_ready) {
+      solve_backend <<- if (backend == "ecos") {
+        .make_ecos_support_solver(factor, u_L, u_U)
+      } else {
+        .make_cvxr_support_solver(factor, u_L, u_U, solver)
+      }
+      solver_ready <<- TRUE
     }
     n_solves <<- n_solves + 1L
-    objective <- CVXR::sum_entries(as.numeric(direction) * u)
-    problem <- CVXR::Problem(CVXR::Maximize(objective), constraints)
-    solved <- .cvxr_psolve(problem, solver)
-    status <- tolower(as.character(solved$status)[1L])
-    value <- as.numeric(solved$value)[1L]
-    if (!(status %in% c("optimal", "optimal_inaccurate")) || !is.finite(value)) {
-      stop("Exact rho-support optimization failed with CVXR status '", status, "'.", call. = FALSE)
-    }
-    value
+    solve_backend(direction)
   }
 
   m <- M <- matrix(NA_real_, D, D, dimnames = dimnames(Sigma_rel))
@@ -366,7 +413,7 @@ print.prism_cov_bounds <- function(x, ...) {
   }
   scale <- max(1, max(abs(c(m, M))))
   if (any(m > M + 1e-6 * scale)) {
-    stop("CVXR returned inconsistent lower and upper rho-support values.", call. = FALSE)
+    stop("The conic solver returned inconsistent lower and upper rho-support values.", call. = FALSE)
   }
   crossed <- m > M
   if (any(crossed)) {
@@ -375,6 +422,68 @@ print.prism_cov_bounds <- function(x, ...) {
     M[crossed] <- midpoint
   }
   list(m = m, M = M, n_solves = n_solves)
+}
+
+.make_cvxr_support_solver <- function(factor, u_L, u_U, solver) {
+  .require_cvxr_solver(solver, "CVXR reference bounds for a non-fixed rho interval")
+  y <- CVXR::Variable(ncol(factor))
+  u <- factor %*% y
+  constraints <- list(CVXR::p_norm(y, 2) <= 1, u >= u_L, u <= u_U)
+  function(direction) {
+    objective <- CVXR::sum_entries(as.numeric(direction) * u)
+    problem <- CVXR::Problem(CVXR::Maximize(objective), constraints)
+    solved <- .cvxr_psolve(problem, solver)
+    status <- tolower(as.character(solved$status)[1L])
+    value <- as.numeric(solved$value)[1L]
+    if (!(status %in% c("optimal", "optimal_inaccurate")) || !is.finite(value)) {
+      stop("Exact rho-support optimization failed with CVXR status '", status, "'.", call. = FALSE)
+    }
+    value
+  }
+}
+
+.make_ecos_support_solver <- function(factor, u_L, u_U) {
+  if (!requireNamespace("ECOSolveR", quietly = TRUE)) {
+    stop(
+      "Exact bounds for a non-fixed rho interval require the optional ",
+      "ECOSolveR package.",
+      call. = FALSE
+    )
+  }
+  D <- nrow(factor)
+  rank_A <- ncol(factor)
+  G <- rbind(
+    factor,
+    -factor,
+    matrix(0, nrow = 1L, ncol = rank_A),
+    -diag(rank_A)
+  )
+  h <- c(u_U, -u_L, 1, rep(0, rank_A))
+  dims <- list(l = 2L * D, q = rank_A + 1L, e = 0L)
+  box_feasibility_tol <- 1e-6 * max(1, max(abs(c(u_L, u_U))))
+
+  function(direction) {
+    objective <- -as.numeric(crossprod(factor, direction))
+    solved <- ECOSolveR::ECOS_csolve(
+      c = objective, G = G, h = h, dims = dims
+    )
+    exit_flag <- unname(solved$retcodes[["exitFlag"]])
+    y_value <- as.numeric(solved$x)
+    valid_y <- length(y_value) == rank_A && all(is.finite(y_value))
+    u_value <- if (valid_y) as.numeric(factor %*% y_value) else rep(NA_real_, D)
+    feasible <- valid_y &&
+      sum(y_value^2) <= 1 + 1e-6 &&
+      all(u_value >= u_L - box_feasibility_tol) &&
+      all(u_value <= u_U + box_feasibility_tol)
+    if (!(exit_flag %in% c(0L, 10L)) || !feasible) {
+      stop(
+        "Exact rho-support optimization failed with ECOS status '",
+        solved$infostring, "'.",
+        call. = FALSE
+      )
+    }
+    sum(as.numeric(direction) * u_value)
+  }
 }
 
 #' Is a rho box compatible with Sigma_rel?

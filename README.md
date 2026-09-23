@@ -68,6 +68,77 @@ when the estimated memory cost of holding all of them exceeds
 memory. Pass `stream = TRUE` to force it on for any size, or raise
 `stream_memory_limit` to opt out of the safety margin.
 
+Set `workers` above 1 to evaluate independent bootstrap draws concurrently.
+PRISM assigns every draw its own deterministic seed and restores results to
+draw order, so results are invariant to worker count. Parallel results are
+collected in adaptive batches, normally up to eight draws per worker and
+capped by a draw-result memory budget; only the parent process writes the
+stream files. Peak draw-result memory is therefore bounded independently of
+`S`.
+On Unix-like systems PRISM uses forked multicore batches; Windows uses a PSOCK
+cluster. For example:
+
+```r
+fit <- prism(
+  counts = count_matrix,
+  bootstrap = TRUE,
+  S = 2000,
+  sigma_L = 0.2,
+  sigma_U = 0.8,
+  rho_L = -0.9,
+  rho_U = 0.9,
+  workers = 4,
+  stream = TRUE,
+  seed = 1
+)
+```
+
+Use `rho_backend = "cvxr", solver = "ECOS", workers = 1` for the retained
+reference implementation, `rho_backend = "ecos", workers = 1` for direct
+ECOS sequentially, and `rho_backend = "ecos", workers > 1` for direct ECOS
+with parallel bootstrap draws.
+
+## How PRISM works
+
+```mermaid
+flowchart TD
+    A["Provide feature-by-sample counts"] --> B["Choose a composition estimator"]
+    B --> C["Estimate relative log-covariance"]
+    A --> D{"Provide total-scale information?"}
+    D -->|"No"| E["Use the unbounded-scale identification region"]
+    D -->|"Measurements"| F["Estimate scale variance and correlations"]
+    D -->|"Scientific bounds"| G["Validate sigma and rho bounds"]
+
+    C --> H{"Bootstrap requested?"}
+    E --> H
+    F --> H
+    G --> H
+
+    H -->|"No"| I["Evaluate one identification region"]
+    H -->|"Yes, workers = 1"| J["Evaluate deterministic draws sequentially"]
+    H -->|"Yes, workers > 1"| K["Evaluate deterministic draws in parallel batches"]
+    K --> L["Collect bounded batches and stream to disk when needed"]
+
+    I --> M{"Rho bounds require convex optimization?"}
+    J --> M
+    L --> M
+
+    M -->|"No"| N["Use an analytic shortcut"]
+    M -->|"Direct ECOS, default"| O["Solve the conic problem without CVXR translation"]
+    M -->|"CVXR reference"| P["Solve the same problem through CVXR for comparison"]
+
+    N --> Q["Aggregate identification bounds and bootstrap uncertainty"]
+    O --> Q
+    P --> Q
+    Q --> R["Return covariance intervals, pairwise summaries, and diagnostics"]
+```
+
+The three optimization modes use the same statistical target. The CVXR route
+is retained as a numerical reference; direct ECOS removes the modeling-layer
+translation; parallel direct ECOS distributes independent bootstrap draws.
+Per-draw seeds preserve results across worker counts, while adaptive batching
+and optional disk streaming limit the draw results held in memory.
+
 ## Composition estimators
 
 The default is:
@@ -115,7 +186,7 @@ it accepts, in increasing order of how much it specifies:
 | `NULL` (default), no `sigma_L`/etc. either | unbounded scale | finite lower bound, infinite upper bound |
 | numeric vector or matrix | estimated sigma and rho from log-transformed measurements | all values are assumed to already be on the log scale; technical replicates are bootstrapped within subject and averaged |
 | [`prism_scale_log()`] | the same log-scale data with non-default estimation settings | technical replicates are bootstrapped within subject and averaged |
-| [`prism_scale_bounds()`], or the `sigma_L`/`sigma_U`/`rho_L`/`rho_U` shorthand | fixed bounds, no data | sharp bounds after a compatibility check; genuine rho intervals use exact CVXR optimization over the feasible ellipsoid-box intersection |
+| [`prism_scale_bounds()`], or the `sigma_L`/`sigma_U`/`rho_L`/`rho_U` shorthand | fixed bounds, no data | sharp bounds after a compatibility check; genuine rho intervals use exact conic optimization over the feasible ellipsoid-box intersection |
 
 Scale measurements must be supplied on the log scale. Bare numeric vectors and
 matrices are accepted under that contract; PRISM never applies a logarithm or
@@ -139,7 +210,7 @@ point in the box; this is certified once via a closed-form shortcut, a
 supplied `rho_witness`, an L-BFGS-B search (`Sigma_rel` full rank), or CVXR
 (`Sigma_rel` rank-deficient and no witness works).
 
-For a genuine rho interval, PRISM then uses CVXR to compute the exact support
+For a genuine rho interval, PRISM computes the exact support
 values
 
 ```text
@@ -149,11 +220,12 @@ M_ij = max (s_i * rho_i + s_j * rho_j)
 
 over the same globally feasible ellipsoid-box intersection. These values are
 propagated through the bounded-sigma quadratic to obtain sharp entrywise
-covariance endpoints. CVXR is therefore required for genuine rho intervals,
-but not for fixed rho, bounded sigma without rho restrictions, or unbounded
-scale. Exact interval-rho calculation solves two conic support problems for
-each upper-triangle matrix entry and can be substantially slower for large
-feature sets or many bootstrap draws.
+covariance endpoints. PRISM sends this second-order-cone problem directly to
+ECOS, bypassing CVXR's modeling translation. Closed-form certificates avoid
+the solver when the ellipsoid optimum already lies inside the rho box, and a
+box symmetric about zero requires only one solved direction per matrix entry.
+The retained CVXR formulation remains available internally as a numerical
+reference and when a non-ECOS solver is requested.
 
 If `sigma_U = 0`, all scale terms vanish and PRISM returns `Sigma_rel`
 directly; rho feasibility is irrelevant in this degenerate-scale case.

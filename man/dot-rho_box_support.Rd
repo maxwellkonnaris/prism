@@ -4,12 +4,29 @@
 \alias{.rho_box_support}
 \title{Exact support of the SPSD-feasible rho set intersected with a box}
 \usage{
-.rho_box_support(Sigma_rel, rho_L, rho_U, eig_tol = 1e-10, solver = NULL)
+.rho_box_support(
+  Sigma_rel,
+  rho_L,
+  rho_U,
+  eig_tol = 1e-10,
+  solver = NULL,
+  shortcuts = TRUE,
+  backend = NULL
+)
+}
+\value{
+`list(m, M, n_solves)`, where `n_solves` counts conic-solver calls.
 }
 \description{
 Computes, for every pair `(i, j)`, the exact extrema of
 `s_i * rho_i + s_j * rho_j` over all `rho_L <= rho <= rho_U` satisfying
 the singular-safe SPSD conditions `u in Range(Sigma_rel)` and
 `u' Sigma_rel^+ u <= 1`, where `u = s * rho`.
+}
+\details{
+Two exact shortcuts avoid most conic solves. An ellipsoid-only optimum that
+also lies in the rho box remains optimal after intersection with the box. For
+a box symmetric about zero, the minimum support is the negative maximum.
+ECOS is only required when at least one direction fails these certificates.
 }
 \keyword{internal}

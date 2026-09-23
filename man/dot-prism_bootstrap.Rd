@@ -17,7 +17,10 @@
   seed = 1L,
   verbose = FALSE,
   stream = FALSE,
-  stream_memory_limit = 2e+09
+  stream_memory_limit = 2e+09,
+  workers = 1L,
+  rho_backend = "ecos",
+  solver = NULL
 )
 }
 \arguments{
@@ -46,6 +49,14 @@ when the estimated in-memory cost exceeds `stream_memory_limit`.}
 
 \item{stream_memory_limit}{Byte threshold for the automatic streaming
 trigger; see `stream`.}
+
+\item{workers}{Number of bootstrap draws to evaluate concurrently. Results
+are collected in adaptive bounded batches, so streaming memory is bounded
+independently of `S`.}
+
+\item{rho_backend}{Rho-support backend, `"ecos"` or `"cvxr"`.}
+
+\item{solver}{Optional solver name forwarded to \code{cov_bounds()}.}
 }
 \value{
 A list: `storage` (`"memory"` or `"stream"`), `D`, `S_eff`, and

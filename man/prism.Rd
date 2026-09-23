@@ -22,7 +22,10 @@ prism(
   seed = 1L,
   stream = FALSE,
   stream_memory_limit = 2e+09,
-  return_draws = FALSE
+  return_draws = FALSE,
+  workers = 1L,
+  rho_backend = c("ecos", "cvxr"),
+  solver = NULL
 )
 }
 \arguments{
@@ -80,6 +83,17 @@ including the diagonal). For example, the endpoints in `ci_lower`/
 ci_alpha / 2)` and the equivalent for `draws$upper`. This can be
 large: two S_effective x n_pairs matrices plus one more, in double
 precision.}
+
+\item{workers}{Positive integer number of bootstrap draws evaluated
+concurrently. `1` is sequential. Parallel draws are collected in adaptive
+memory-bounded batches; only the parent process writes streamed output.}
+
+\item{rho_backend}{Rho-support optimization backend: direct `"ecos"`
+(default) or the retained `"cvxr"` reference implementation.}
+
+\item{solver}{Optional conic solver name. Direct `rho_backend = "ecos"`
+accepts `NULL` or `"ECOS"`; the CVXR reference backend accepts any
+installed CVXR conic solver.}
 }
 \value{
 A `prism_result`: `ci_lower`/`ci_upper` (D x D matrices),

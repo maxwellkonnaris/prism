@@ -73,6 +73,15 @@
 #'   ci_alpha / 2)` and the equivalent for `draws$upper`. This can be
 #'   large: two S_effective x n_pairs matrices plus one more, in double
 #'   precision.
+#' @param workers Positive integer number of bootstrap draws evaluated
+#'   concurrently. `1` is sequential. Parallel draws are collected in
+#'   adaptive memory-bounded batches; only the parent process writes streamed
+#'   output.
+#' @param rho_backend Rho-support optimization backend: direct `"ecos"`
+#'   (default) or the retained `"cvxr"` reference implementation.
+#' @param solver Optional conic solver name. Direct `rho_backend = "ecos"`
+#'   accepts `NULL` or `"ECOS"`; the CVXR reference backend accepts any
+#'   installed CVXR conic solver.
 #'
 #' @return A `prism_result`: `ci_lower`/`ci_upper` (D x D matrices),
 #'   `pairwise` (off-diagonal tested pairs with CI/p-value/q-value),
@@ -97,7 +106,10 @@ prism <- function(counts,
                    seed = 1L,
                    stream = FALSE,
                    stream_memory_limit = 2e9,
-                   return_draws = FALSE) {
+                   return_draws = FALSE,
+                   workers = 1L,
+                   rho_backend = c("ecos", "cvxr"),
+                   solver = NULL) {
   if (!inherits(composition, "prism_composition_estimator")) {
     stop(
       "composition must be a prism_composition_estimator; see ",
@@ -122,12 +134,15 @@ prism <- function(counts,
   resolved <- .prism_resolve_scale(
     scale, N, sigma_L, sigma_U, rho_L, rho_U
   )
+  rho_backend <- match.arg(rho_backend)
 
   draws <- .prism_bootstrap(
     counts, composition, resolved$scale_mode,
     sigma_L = resolved$sigma_L, sigma_U = resolved$sigma_U, rho_L = resolved$rho_L, rho_U = resolved$rho_U,
     bootstrap = bootstrap, S = S,
-    seed = seed, verbose = verbose, stream = stream, stream_memory_limit = stream_memory_limit
+    seed = seed, verbose = verbose, stream = stream,
+    stream_memory_limit = stream_memory_limit,
+    workers = workers, rho_backend = rho_backend, solver = solver
   )
   if (identical(draws$storage, "stream")) {
     on.exit(unlink(unlist(draws$files)), add = TRUE)
@@ -165,7 +180,12 @@ prism <- function(counts,
       p_adjust_method = p_adjust_method,
       seed = seed,
       scale_mode = resolved$scale_mode$mode,
-      stream_active = draws$diagnostics$stream_active
+      stream_active = draws$diagnostics$stream_active,
+      workers_requested = draws$diagnostics$workers_requested,
+      workers_used = draws$diagnostics$workers_used,
+      parallel_active = draws$diagnostics$parallel_active,
+      rho_backend = rho_backend,
+      solver = solver
     )
   ))
 }

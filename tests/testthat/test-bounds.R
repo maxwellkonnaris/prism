@@ -19,6 +19,10 @@ test_that("sigma_L/sigma_U and rho_L/rho_U must each be supplied together", {
   expect_error(cov_bounds(A, sigma_L = 0.1, sigma_U = 0.5, rho_L = c(0, 0)), "supplied together")
 })
 
+test_that("rho_backend is validated independently of the active bound regime", {
+  expect_error(cov_bounds(rel_cov_example(), rho_backend = "unknown"), "arg")
+})
+
 test_that("unbounded scale: finite lower, infinite upper, zero diagonal lower", {
   A <- rel_cov_example()
   bounds <- cov_bounds(A)
@@ -62,14 +66,12 @@ test_that("fixed sigma and fixed rho give the exact algebraic covariance identit
 })
 
 test_that("genuine rho intervals use exact ellipsoid-box support values", {
-  skip_if_not_installed("CVXR")
-  solver <- cvxr_test_solver()
-  skip_if(is.na(solver), "no supported conic solver is installed")
+  skip_if_not_installed("ECOSolveR")
 
   A <- diag(c(1, 4))
   rho_L <- c(-1, -1)
   rho_U <- c(0.2, 1)
-  support <- .rho_box_support(A, rho_L, rho_U, solver = solver)
+  support <- .rho_box_support(A, rho_L, rho_U)
   expected_M12 <- 0.2 + 2 * sqrt(1 - 0.2^2)
   expect_equal(support$M[1, 2], expected_M12, tolerance = 1e-5)
   expect_equal(support$m[1, 2], -sqrt(5), tolerance = 1e-5)
@@ -77,11 +79,120 @@ test_that("genuine rho intervals use exact ellipsoid-box support values", {
   sigma <- 0.4
   bounds <- cov_bounds(
     A, sigma_L = sigma, sigma_U = sigma,
-    rho_L = rho_L, rho_U = rho_U, solver = solver
+    rho_L = rho_L, rho_U = rho_U
   )
   expect_true(bounds$sharp$off_diagonal)
   expect_equal(bounds$lower[1, 2], sigma^2 + sigma * support$m[1, 2], tolerance = 1e-5)
   expect_equal(bounds$upper[1, 2], sigma^2 + sigma * support$M[1, 2], tolerance = 1e-5)
+})
+
+test_that("direct ECOS support matches the original CVXR reference", {
+  skip_if_not_installed("CVXR")
+  skip_if_not_installed("ECOSolveR")
+  solver <- cvxr_test_solver()
+  skip_if(is.na(solver), "no supported CVXR conic solver is installed")
+
+  cases <- list(
+    full_rank = matrix(c(
+      1.4, 0.3, -0.1, 0.2,
+      0.3, 1.2, 0.25, -0.05,
+      -0.1, 0.25, 1.1, 0.15,
+      0.2, -0.05, 0.15, 0.9
+    ), nrow = 4L, byrow = TRUE),
+    rank_deficient = tcrossprod(matrix(c(
+      1.0, 0.2, -0.4,
+      0.3, 1.1, 0.1,
+      -0.5, 0.4, 0.8,
+      0.7, -0.2, 0.5
+    ), nrow = 4L, byrow = TRUE))
+  )
+
+  for (A in cases) {
+    direct <- .rho_box_support(A, rep(-0.9, 4L), rep(0.9, 4L))
+    reference <- .rho_box_support_cvxr(
+      A, rep(-0.9, 4L), rep(0.9, 4L), solver = solver
+    )
+    expect_equal(direct$m, reference$m, tolerance = 1e-7)
+    expect_equal(direct$M, reference$M, tolerance = 1e-7)
+    expect_identical(direct$n_solves, reference$n_solves)
+  }
+})
+
+test_that("direct ECOS matches CVXR for an asymmetric rho box", {
+  skip_if_not_installed("CVXR")
+  skip_if_not_installed("ECOSolveR")
+  solver <- cvxr_test_solver()
+  skip_if(is.na(solver), "no supported CVXR conic solver is installed")
+
+  A <- diag(c(1, 2, 3))
+  rho_L <- c(-0.8, -0.4, -0.7)
+  rho_U <- c(0.3, 0.9, 0.5)
+  direct <- .rho_box_support(A, rho_L, rho_U)
+  reference <- .rho_box_support_cvxr(A, rho_L, rho_U, solver = solver)
+  expect_equal(direct$m, reference$m, tolerance = 1e-7)
+  expect_equal(direct$M, reference$M, tolerance = 1e-7)
+  expect_identical(direct$n_solves, reference$n_solves)
+})
+
+test_that("direct ECOS matches CVXR at correlation and eig_tol boundaries", {
+  skip_if_not_installed("CVXR")
+  skip_if_not_installed("ECOSolveR")
+  solver <- cvxr_test_solver()
+  skip_if(is.na(solver), "no supported CVXR conic solver is installed")
+
+  near_correlation_boundary <- matrix(c(1, 0.999999, 0.999999, 1), 2L)
+  Q <- qr.Q(qr(matrix(c(
+    1, 2, 3, 4,
+    2, -1, 4, 1,
+    3, 1, -2, 2,
+    4, -3, 1, -1
+  ), 4L)))
+  near_eig_tol <- Q %*% diag(c(1, 0.1, 1e-6, 1e-12)) %*% t(Q)
+
+  cases <- list(
+    list(A = near_correlation_boundary, shortcuts = FALSE),
+    list(A = near_eig_tol, shortcuts = TRUE)
+  )
+  for (case in cases) {
+    D <- nrow(case$A)
+    direct <- .rho_box_support(
+      case$A, rep(-0.9, D), rep(0.9, D), shortcuts = case$shortcuts
+    )
+    reference <- .rho_box_support_cvxr(
+      case$A, rep(-0.9, D), rep(0.9, D),
+      solver = solver, shortcuts = case$shortcuts
+    )
+    expect_equal(direct$m, reference$m, tolerance = 1e-7)
+    expect_equal(direct$M, reference$M, tolerance = 1e-7)
+    expect_true(all(direct$m <= direct$M))
+  }
+})
+
+test_that("optional rho-support benchmark compares direct ECOS with CVXR", {
+  skip_if(Sys.getenv("PRISM_RUN_BENCHMARKS") != "true", "set PRISM_RUN_BENCHMARKS=true")
+  skip_if_not_installed("CVXR")
+  skip_if_not_installed("ECOSolveR")
+  solver <- cvxr_test_solver()
+  skip_if(is.na(solver), "no supported CVXR conic solver is installed")
+
+  set.seed(20260923)
+  X <- matrix(rnorm(10L * 250L), nrow = 10L)
+  A <- stats::cov(t(X))
+  rho_L <- rep(-0.9, 10L)
+  rho_U <- rep(0.9, 10L)
+
+  direct_time <- system.time(
+    direct <- .rho_box_support(A, rho_L, rho_U)
+  )[["elapsed"]]
+  cvxr_time <- system.time(
+    reference <- .rho_box_support_cvxr(A, rho_L, rho_U, solver = solver)
+  )[["elapsed"]]
+  expect_equal(direct$m, reference$m, tolerance = 1e-7)
+  expect_equal(direct$M, reference$M, tolerance = 1e-7)
+  message(sprintf(
+    "rho-support benchmark: direct ECOS %.4fs; CVXR %.4fs; speedup %.1fx",
+    direct_time, cvxr_time, cvxr_time / max(direct_time, .Machine$double.eps)
+  ))
 })
 
 test_that("zero upper scale bound returns Sigma_rel without imposing rho feasibility", {

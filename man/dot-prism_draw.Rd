@@ -14,7 +14,9 @@
   rho_L,
   rho_U,
   resample_samples,
-  draw_index
+  draw_index,
+  rho_backend = "ecos",
+  solver = NULL
 )
 }
 \description{

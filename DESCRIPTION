@@ -20,9 +20,11 @@ Encoding: UTF-8
 Depends:
     R (>= 4.1.0)
 Imports:
+    parallel,
     stats
 Suggests:
     CVXR,
+    ECOSolveR,
     pkgload,
     testthat (>= 3.0.0)
 Config/testthat/edition: 3

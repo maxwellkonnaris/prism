@@ -1,5 +1,17 @@
 test_that("estimate_draw_bytes matches the direct formula", {
-  expect_equal(.estimate_draw_bytes(D = 10L, S = 100L), 3 * (10 * 11 / 2) * 100 * 8)
+  expect_equal(.estimate_draw_bytes(D = 10L, S = 100L), 3 * 10^2 * 100 * 8)
+})
+
+test_that("parallel batch sizing is bounded independently of S", {
+  expect_equal(.estimate_parallel_result_bytes(10L), 3 * 10^2 * 8)
+  small <- .resolve_parallel_batch_size(10L, S = 10000L, workers = 4L, memory_limit_bytes = 2e9)
+  expect_identical(small, 32L)
+  large_workers <- .resolve_parallel_workers(1000L, S = 10000L, workers = 16L, memory_limit_bytes = 2e9)
+  expect_lte(large_workers * .estimate_parallel_result_bytes(1000L), 256 * 1024^2)
+  expect_lt(large_workers, 16L)
+  large <- .resolve_parallel_batch_size(1000L, S = 10000L, workers = large_workers, memory_limit_bytes = 2e9)
+  expect_lte(large * .estimate_parallel_result_bytes(1000L), 256 * 1024^2)
+  expect_gte(large, large_workers)
 })
 
 test_that("resolve_stream: TRUE always activates, FALSE stays off below the limit", {

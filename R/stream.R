@@ -3,8 +3,29 @@
 #' Three D x D x S arrays (lower, upper, rel bounds), 8 bytes per double.
 #' @keywords internal
 .estimate_draw_bytes <- function(D, S) {
-  n_pairs <- D * (D + 1L) / 2L
-  3 * n_pairs * S * 8
+  3 * D * D * S * 8
+}
+
+.estimate_parallel_result_bytes <- function(D) {
+  3 * D * D * 8
+}
+
+.parallel_result_memory_budget <- function(memory_limit_bytes) {
+  min(memory_limit_bytes, 256 * 1024^2)
+}
+
+.resolve_parallel_workers <- function(D, S, workers, memory_limit_bytes) {
+  bytes_per_result <- .estimate_parallel_result_bytes(D)
+  max_by_memory <- max(1, floor(.parallel_result_memory_budget(memory_limit_bytes) / bytes_per_result))
+  as.integer(min(S, workers, max_by_memory))
+}
+
+.resolve_parallel_batch_size <- function(D, S, workers, memory_limit_bytes) {
+  if (workers <= 1L || S <= 1L) return(1L)
+  bytes_per_result <- .estimate_parallel_result_bytes(D)
+  memory_budget <- .parallel_result_memory_budget(memory_limit_bytes)
+  max_by_memory <- max(1, floor(memory_budget / bytes_per_result))
+  as.integer(min(S, workers * 8L, max_by_memory))
 }
 
 #' Decide whether draws should be streamed to disk instead of held in memory

@@ -12,7 +12,8 @@ cov_bounds(
   rho_U = NULL,
   rho_witness = NULL,
   solver = NULL,
-  eig_tol = 1e-10
+  eig_tol = 1e-10,
+  rho_backend = NULL
 )
 }
 \arguments{
@@ -26,14 +27,18 @@ in `[-1, 1]`.}
 \item{rho_witness}{Optional feature-length correlation vector known to
 be feasible; supplying it can certify a genuine rho interval as non-empty
 without a separate feasibility solve. Exact support optimization still
-requires CVXR.}
+requires a conic solver.}
 
-\item{solver}{Optional CVXR solver name. `NULL` lets CVXR select its default.
-Used for exact support optimization under a genuine rho interval and for
-rank-deficient feasibility checks when no witness resolves feasibility.}
+\item{solver}{Optional conic solver name. `NULL` or `"ECOS"` uses the direct
+ECOS backend for exact support optimization. A different solver name uses
+the retained CVXR reference backend. Rank-deficient feasibility checks
+without a resolving witness still use CVXR.}
 
 \item{eig_tol}{Relative eigenvalue tolerance used to detect rank
 deficiency in `Sigma_rel`.}
+
+\item{rho_backend}{Optional support-optimization backend, `"ecos"` or
+`"cvxr"`. `NULL` uses direct ECOS unless a non-ECOS `solver` is supplied.}
 }
 \value{
 A `prism_cov_bounds` object: a list with features-by-features
@@ -63,6 +68,8 @@ supplied:
 
 Supplying `rho_L`/`rho_U` without `sigma_L`/`sigma_U` is an error, since
 correlation information alone does not bound `sigma`. A genuine rho
-interval requires the optional CVXR package. If `sigma_U = 0`, scale terms
-vanish and the result is exactly `Sigma_rel`, irrespective of rho.
+interval requires the optional ECOSolveR package by default. Passing a
+non-ECOS `solver` uses the retained CVXR reference backend instead. If
+`sigma_U = 0`, scale terms vanish and the result is exactly `Sigma_rel`,
+irrespective of rho.
 }

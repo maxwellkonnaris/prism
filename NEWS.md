@@ -1,10 +1,17 @@
 # prism 0.5.0
 
+- Exact rho-support problems now go directly to ECOS instead of rebuilding
+  the same formulation through CVXR for every covariance entry. The original
+  CVXR formulation is retained as a regression and benchmark reference.
+- Bootstrap draws can now run concurrently with `workers > 1`. Per-draw seeds
+  make results invariant to worker count, and results are collected in batches
+  no larger than `workers` so only the parent process writes bounded-memory
+  streams in draw order.
 - Genuine non-fixed `rho_L`/`rho_U` intervals now produce sharp bounds by
   solving the exact ellipsoid-box support problems for every covariance entry
-  with CVXR, including the singular `Sigma_rel` range constraint. The previous
-  conservative intersection of separate ellipsoid and box support bounds was
-  removed.
+  with conic optimization, including the singular `Sigma_rel` range
+  constraint. The previous conservative intersection of separate ellipsoid
+  and box support bounds was removed.
 - `sigma_U = 0` now returns `Sigma_rel` directly, because all scale terms
   vanish and rho is irrelevant. CVXR result handling supports both the legacy
   list-returning API and the current numeric-returning `psolve()` API.

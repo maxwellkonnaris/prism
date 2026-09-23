@@ -74,7 +74,8 @@
 #' @keywords internal
 .prism_draw <- function(counts, estimator, fit_state, scale_mode,
                         sigma_L, sigma_U, rho_L, rho_U,
-                        resample_samples, draw_index) {
+                        resample_samples, draw_index,
+                        rho_backend = "ecos", solver = NULL) {
   N <- ncol(counts)
   sample_index <- if (resample_samples) sample.int(N, N, replace = TRUE) else seq_len(N)
   counts_s <- counts[, sample_index, drop = FALSE]
@@ -88,12 +89,36 @@
     Sigma_rel_s,
     sigma_L = resolved$sigma_L, sigma_U = resolved$sigma_U,
     rho_L = resolved$rho_L, rho_U = resolved$rho_U,
-    rho_witness = resolved$rho_witness
+    rho_witness = resolved$rho_witness,
+    rho_backend = rho_backend, solver = solver
   )
   list(
     Sigma_rel = Sigma_rel_s, lower = bounds$lower, upper = bounds$upper,
     sigma_L = resolved$sigma_L, sigma_U = resolved$sigma_U,
     rho_L = resolved$rho_L, rho_U = resolved$rho_U
+  )
+}
+
+.prism_seeded_draw <- function(draw_index, rng_seeds, counts, estimator,
+                               fit_state, scale_mode,
+                               sigma_L, sigma_U, rho_L, rho_U,
+                               resample_samples, rho_backend, solver) {
+  set.seed(rng_seeds[draw_index])
+  .prism_draw(
+    counts, estimator, fit_state, scale_mode,
+    sigma_L, sigma_U, rho_L, rho_U,
+    resample_samples, draw_index = draw_index,
+    rho_backend = rho_backend, solver = solver
+  )
+}
+
+.prism_seeded_draw_safe <- function(...) {
+  tryCatch(
+    list(
+      ok = TRUE,
+      result = get(".prism_seeded_draw", envir = asNamespace("prism"), inherits = FALSE)(...)
+    ),
+    error = function(e) list(ok = FALSE, message = conditionMessage(e))
   )
 }
 
@@ -120,6 +145,11 @@
 #'   when the estimated in-memory cost exceeds `stream_memory_limit`.
 #' @param stream_memory_limit Byte threshold for the automatic streaming
 #'   trigger; see `stream`.
+#' @param workers Number of bootstrap draws to evaluate concurrently. Results
+#'   are collected in adaptive bounded batches, so streaming memory is bounded
+#'   independently of `S`.
+#' @param rho_backend Rho-support backend, `"ecos"` or `"cvxr"`.
+#' @param solver Optional solver name forwarded to [cov_bounds()].
 #' @return A list: `storage` (`"memory"` or `"stream"`), `D`, `S_eff`, and
 #'   either `lower`/`upper`/`rel` (D x D x S_eff arrays, `storage ==
 #'   "memory"`) or `files`/`pair_index` (`storage == "stream"`, see
@@ -129,10 +159,14 @@
                               sigma_L = NULL, sigma_U = NULL, rho_L = NULL, rho_U = NULL,
                               bootstrap = "both", S = 1000L,
                               seed = 1L, verbose = FALSE,
-                              stream = FALSE, stream_memory_limit = 2e9) {
+                              stream = FALSE, stream_memory_limit = 2e9,
+                              workers = 1L, rho_backend = "ecos",
+                              solver = NULL) {
   bootstrap <- .resolve_bootstrap_mode(bootstrap)
   bootstrap_active <- bootstrap == "both"
   S <- .assert_positive_int(S, "S")
+  workers <- .assert_positive_int(workers, "workers")
+  rho_backend <- match.arg(rho_backend, c("ecos", "cvxr"))
 
   D <- nrow(counts)
   N <- ncol(counts)
@@ -151,6 +185,30 @@
   rng_seeds <- sample.int(.Machine$integer.max, S_eff)
 
   stream_cfg <- .resolve_stream(stream, D, S_eff, stream_memory_limit)
+  workers_used <- .resolve_parallel_workers(
+    D, S_eff, workers, stream_memory_limit
+  )
+  parallel_active <- workers_used > 1L
+  parallel_batch_size <- .resolve_parallel_batch_size(
+    D, S_eff, workers_used, stream_memory_limit
+  )
+  cluster_type <- if (parallel_active) {
+    if (.Platform$OS.type == "windows") "PSOCK" else "multicore"
+  } else {
+    "sequential"
+  }
+  cluster <- NULL
+  if (parallel_active && cluster_type == "PSOCK") {
+    cluster <- parallel::makeCluster(workers_used, type = "PSOCK")
+    on.exit(parallel::stopCluster(cluster), add = TRUE)
+    worker_libpaths <- .libPaths()
+    parallel::clusterCall(cluster, function(paths) {
+      .libPaths(paths)
+      loadNamespace("prism")
+      invisible(NULL)
+    }, worker_libpaths)
+  }
+
   pair_index <- .upper_pairs(D)
   success <- FALSE
   if (stream_cfg$active) {
@@ -164,18 +222,59 @@
     upper_arr <- array(NA_real_, c(D, D, S_eff))
     rel_arr <- array(NA_real_, c(D, D, S_eff))
   }
-  for (s in seq_len(S_eff)) {
-    set.seed(rng_seeds[s])
-    result <- .prism_draw(
-      counts, estimator, fit_state, scale_mode, sigma_L, sigma_U, rho_L, rho_U,
-      resample_samples, draw_index = s
-    )
-    if (stream_cfg$active) {
-      .stream_write_draw(handle, pair_index, result$lower, result$upper, result$Sigma_rel)
+  batch_starts <- seq.int(1L, S_eff, by = parallel_batch_size)
+  for (batch_start in batch_starts) {
+    draw_indices <- seq.int(batch_start, min(S_eff, batch_start + parallel_batch_size - 1L))
+    results <- if (parallel_active && cluster_type == "PSOCK") {
+      parallel::parLapply(
+        cluster, draw_indices, .prism_seeded_draw_safe,
+        rng_seeds = rng_seeds, counts = counts, estimator = estimator,
+        fit_state = fit_state, scale_mode = scale_mode,
+        sigma_L = sigma_L, sigma_U = sigma_U,
+        rho_L = rho_L, rho_U = rho_U,
+        resample_samples = resample_samples,
+        rho_backend = rho_backend, solver = solver
+      )
+    } else if (parallel_active) {
+      parallel::mclapply(
+        draw_indices, .prism_seeded_draw_safe,
+        rng_seeds = rng_seeds, counts = counts, estimator = estimator,
+        fit_state = fit_state, scale_mode = scale_mode,
+        sigma_L = sigma_L, sigma_U = sigma_U,
+        rho_L = rho_L, rho_U = rho_U,
+        resample_samples = resample_samples,
+        rho_backend = rho_backend, solver = solver,
+        mc.preschedule = TRUE, mc.set.seed = FALSE,
+        mc.cores = min(workers_used, length(draw_indices))
+      )
     } else {
-      lower_arr[, , s] <- result$lower
-      upper_arr[, , s] <- result$upper
-      rel_arr[, , s] <- result$Sigma_rel
+      lapply(
+        draw_indices, .prism_seeded_draw,
+        rng_seeds = rng_seeds, counts = counts, estimator = estimator,
+        fit_state = fit_state, scale_mode = scale_mode,
+        sigma_L = sigma_L, sigma_U = sigma_U,
+        rho_L = rho_L, rho_U = rho_U,
+        resample_samples = resample_samples,
+        rho_backend = rho_backend, solver = solver
+      )
+    }
+    if (parallel_active) {
+      failed <- which(!vapply(results, function(x) isTRUE(x$ok), logical(1)))
+      if (length(failed)) {
+        stop(results[[failed[1L]]]$message, call. = FALSE)
+      }
+      results <- lapply(results, `[[`, "result")
+    }
+    for (k in seq_along(draw_indices)) {
+      s <- draw_indices[k]
+      result <- results[[k]]
+      if (stream_cfg$active) {
+        .stream_write_draw(handle, pair_index, result$lower, result$upper, result$Sigma_rel)
+      } else {
+        lower_arr[, , s] <- result$lower
+        upper_arr[, , s] <- result$upper
+        rel_arr[, , s] <- result$Sigma_rel
+      }
     }
   }
 
@@ -183,7 +282,12 @@
     requested_draws = S_eff,
     completed_draws = S_eff,
     stream_active = stream_cfg$active,
-    stream_estimated_bytes = stream_cfg$estimated_bytes
+    stream_estimated_bytes = stream_cfg$estimated_bytes,
+    workers_requested = workers,
+    workers_used = workers_used,
+    parallel_active = parallel_active,
+    parallel_batch_size = parallel_batch_size,
+    parallel_cluster_type = cluster_type
   )
 
   success <- TRUE

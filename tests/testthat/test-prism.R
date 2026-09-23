@@ -222,6 +222,75 @@ test_that("stream = TRUE produces the same result as stream = FALSE", {
   expect_true(fit_stream$parameters$stream_active)
 })
 
+test_that("CVXR reference, sequential ECOS, and parallel streamed ECOS agree", {
+  skip_if_not_installed("CVXR")
+  skip_if_not_installed("ECOSolveR")
+  counts <- random_counts(3L, 10L, seed = 64L)
+  args <- list(
+    counts = counts,
+    composition = prism_composition_dirichlet(),
+    bootstrap = TRUE, S = 4L,
+    sigma_L = 0.2, sigma_U = 0.8,
+    rho_L = -0.9, rho_U = 0.9,
+    seed = 55L, return_draws = TRUE
+  )
+  reference <- do.call(prism, c(args, list(
+    rho_backend = "cvxr", solver = "ECOS", workers = 1L
+  )))
+  sequential <- do.call(prism, c(args, list(
+    rho_backend = "ecos", workers = 1L
+  )))
+  parallel_stream <- do.call(prism, c(args, list(
+    rho_backend = "ecos", workers = 2L, stream = TRUE
+  )))
+
+  expect_equal(sequential$draws$lower, reference$draws$lower, tolerance = 1e-7)
+  expect_equal(sequential$draws$upper, reference$draws$upper, tolerance = 1e-7)
+  expect_identical(parallel_stream$draws$lower, sequential$draws$lower)
+  expect_identical(parallel_stream$draws$upper, sequential$draws$upper)
+  expect_identical(parallel_stream$draws$rel, sequential$draws$rel)
+  expect_true(parallel_stream$parameters$parallel_active)
+  expect_true(parallel_stream$parameters$stream_active)
+  expect_identical(parallel_stream$parameters$rho_backend, "ecos")
+})
+
+test_that("optional end-to-end benchmark compares all three execution modes", {
+  skip_if(Sys.getenv("PRISM_RUN_BENCHMARKS") != "true", "set PRISM_RUN_BENCHMARKS=true")
+  skip_if_not_installed("CVXR")
+  skip_if_not_installed("ECOSolveR")
+  counts <- random_counts(5L, 80L, seed = 67L)
+  args <- list(
+    counts = counts,
+    composition = prism_composition_dirichlet(),
+    bootstrap = TRUE, S = 8L,
+    sigma_L = 0.2, sigma_U = 0.8,
+    rho_L = -0.9, rho_U = 0.9,
+    seed = 67L, return_draws = TRUE
+  )
+
+  cvxr_time <- system.time(reference <- do.call(prism, c(args, list(
+    rho_backend = "cvxr", solver = "ECOS", workers = 1L
+  ))))[["elapsed"]]
+  ecos_time <- system.time(sequential <- do.call(prism, c(args, list(
+    rho_backend = "ecos", workers = 1L
+  ))))[["elapsed"]]
+  parallel_time <- system.time(parallel <- do.call(prism, c(args, list(
+    rho_backend = "ecos", workers = 2L
+  ))))[["elapsed"]]
+
+  expect_equal(sequential$draws$lower, reference$draws$lower, tolerance = 1e-7)
+  expect_identical(parallel$draws$lower, sequential$draws$lower)
+  message(sprintf(
+    paste0(
+      "end-to-end benchmark: CVXR sequential %.3fs; ECOS sequential %.3fs; ",
+      "ECOS parallel %.3fs; direct speedup %.1fx; parallel/direct %.1fx"
+    ),
+    cvxr_time, ecos_time, parallel_time,
+    cvxr_time / max(ecos_time, .Machine$double.eps),
+    ecos_time / max(parallel_time, .Machine$double.eps)
+  ))
+})
+
 test_that("stream auto-triggers when the estimated size exceeds stream_memory_limit", {
   counts <- random_counts(5L, 12L, seed = 51L)
   fit <- prism(
@@ -239,6 +308,33 @@ test_that("streaming leaves no temp files behind, including on an error path", {
   expect_identical(before, after)
 })
 
+test_that("parallel streaming is bounded by workers and cleans up after an error", {
+  counts <- random_counts(5L, 12L, seed = 65L)
+  fit <- prism(
+    counts, bootstrap = TRUE, S = 7L,
+    sigma_L = 0.1, sigma_U = 0.5, seed = 1L,
+    stream = TRUE, workers = 3L
+  )
+  expect_lte(fit$diagnostics$sampling$parallel_batch_size, 7L)
+  expect_gte(fit$diagnostics$sampling$parallel_batch_size, 3L)
+  expect_identical(fit$diagnostics$sampling$completed_draws, 7L)
+
+  degenerate <- matrix(rep(c(10L, 20L, 30L, 40L), 12L), nrow = 4L)
+  before <- list.files(tempdir(), pattern = "\\.bin$")
+  expect_error(
+    prism(
+      degenerate, composition = prism_composition_fixed(),
+      bootstrap = TRUE, S = 4L,
+      sigma_L = 0.1, sigma_U = 0.5,
+      rho_L = c(0.3, 0, 0, 0), rho_U = c(0.3, 0, 0, 0),
+      seed = 1L, stream = TRUE, workers = 2L
+    ),
+    "zero or numerically zero marginal variance"
+  )
+  after <- list.files(tempdir(), pattern = "\\.bin$")
+  expect_identical(after, before)
+})
+
 test_that("prism() does not leak its internal seeding into the caller's RNG stream", {
   counts <- random_counts(4L, 10L, seed = 54L)
   set.seed(123L)
@@ -251,6 +347,42 @@ test_that("prism() does not leak its internal seeding into the caller's RNG stre
   actual_next <- runif(3L)
 
   expect_identical(actual_next, expected_next)
+})
+
+test_that("parallel prism() does not leak or change the caller RNG stream", {
+  counts <- random_counts(4L, 10L, seed = 66L)
+  set.seed(321L)
+  runif(1L)
+  expected_next <- runif(3L)
+
+  set.seed(321L)
+  runif(1L)
+  invisible(prism(
+    counts, bootstrap = TRUE, S = 8L,
+    sigma_L = 0.1, sigma_U = 0.5,
+    seed = 999L, workers = 2L
+  ))
+  actual_next <- runif(3L)
+  expect_identical(actual_next, expected_next)
+})
+
+test_that("seed = NULL gives identical sequential and parallel draws from the same ambient state", {
+  counts <- random_counts(3L, 10L, seed = 68L)
+  set.seed(808L)
+  sequential <- prism(
+    counts, bootstrap = TRUE, S = 6L,
+    sigma_L = 0.1, sigma_U = 0.5,
+    seed = NULL, workers = 1L, return_draws = TRUE
+  )
+  set.seed(808L)
+  parallel <- prism(
+    counts, bootstrap = TRUE, S = 6L,
+    sigma_L = 0.1, sigma_U = 0.5,
+    seed = NULL, workers = 2L, return_draws = TRUE
+  )
+  expect_identical(parallel$draws$lower, sequential$draws$lower)
+  expect_identical(parallel$draws$upper, sequential$draws$upper)
+  expect_identical(parallel$draws$rel, sequential$draws$rel)
 })
 
 test_that("prism(seed = NULL) still consumes ambient randomness (no restore)", {
