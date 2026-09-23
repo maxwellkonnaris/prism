@@ -258,10 +258,29 @@ print.prism_cov_bounds <- function(x, ...) {
 #' `s_i * rho_i + s_j * rho_j` over all `rho_L <= rho <= rho_U` satisfying
 #' the singular-safe SPSD conditions `u in Range(Sigma_rel)` and
 #' `u' Sigma_rel^+ u <= 1`, where `u = s * rho`.
+#'
+#' Two exact shortcuts avoid most conic solves:
+#' \enumerate{
+#'   \item Closed-form certificate. Over the ellipsoid alone, the maximum of
+#'     `c'u` (with `c = e_i + e_j`) is `kappa = sqrt(c' Sigma_rel c)`,
+#'     attained at `u* = Sigma_rel c / kappa`. Because the box-constrained
+#'     feasible set is a subset of the ellipsoid, if `u*` also satisfies the
+#'     box then it is optimal there too and `M_ij = kappa` exactly. The
+#'     minimum is handled the same way at `-u*`. Every coordinate of `u*` is
+#'     checked, not only `i` and `j`.
+#'   \item Central symmetry. When the box is symmetric about zero
+#'     (`rho_L == -rho_U`), the feasible set is centrally symmetric, so
+#'     `m_ij = -M_ij` and only one solve is needed per pair.
+#' }
+#' CVXR is only required if at least one pair fails the certificate.
+#'
+#' @param shortcuts If `FALSE`, skip both shortcuts and solve every direction
+#'   with CVXR (reference implementation, used for testing).
+#' @return `list(m, M, n_solves)`, where `n_solves` counts CVXR calls.
 #' @keywords internal
 .rho_box_support <- function(Sigma_rel, rho_L, rho_U,
-                             eig_tol = 1e-10, solver = NULL) {
-  .require_cvxr_solver(solver, "Exact bounds for a non-fixed rho interval")
+                             eig_tol = 1e-10, solver = NULL,
+                             shortcuts = TRUE) {
   D <- nrow(Sigma_rel)
   s <- sqrt(diag(Sigma_rel))
   u_L <- s * rho_L
@@ -276,12 +295,27 @@ print.prism_cov_bounds <- function(x, ...) {
   V_r <- eig$vectors[, keep, drop = FALSE]
   lambda_r <- eig$values[keep]
   factor <- V_r * rep(sqrt(lambda_r), each = D)
+  # Range-truncated covariance: the ellipsoid's shape matrix, consistent with
+  # the CVXR parameterisation u = factor %*% y, ||y|| <= 1.
+  A_r <- tcrossprod(factor)
 
-  y <- CVXR::Variable(length(lambda_r))
-  u <- factor %*% y
-  constraints <- list(CVXR::p_norm(y, 2) <= 1, u >= u_L, u <= u_U)
+  box_tol <- 1e-12 * max(1, max(s))
+  symmetric_box <- max(abs(u_L + u_U)) <= box_tol
 
+  cvxr_ready <- FALSE
+  n_solves <- 0L
+  y <- NULL
+  u <- NULL
+  constraints <- NULL
   solve_direction <- function(direction) {
+    if (!cvxr_ready) {
+      .require_cvxr_solver(solver, "Exact bounds for a non-fixed rho interval")
+      y <<- CVXR::Variable(length(lambda_r))
+      u <<- factor %*% y
+      constraints <<- list(CVXR::p_norm(y, 2) <= 1, u >= u_L, u <= u_U)
+      cvxr_ready <<- TRUE
+    }
+    n_solves <<- n_solves + 1L
     objective <- CVXR::sum_entries(as.numeric(direction) * u)
     problem <- CVXR::Problem(CVXR::Maximize(objective), constraints)
     solved <- .cvxr_psolve(problem, solver)
@@ -294,13 +328,38 @@ print.prism_cov_bounds <- function(x, ...) {
   }
 
   m <- M <- matrix(NA_real_, D, D, dimnames = dimnames(Sigma_rel))
+  a_diag <- diag(A_r)
   for (i in seq_len(D)) {
-    for (j in i:D) {
+    js <- i:D
+    # Column k of `num` is Sigma_r (e_i + e_j) for j = js[k].
+    num <- A_r[, js, drop = FALSE] + A_r[, i]
+    kappa <- sqrt(pmax(a_diag[i] + a_diag[js] + 2 * A_r[i, js], 0))
+    if (shortcuts) {
+      degenerate <- kappa <= sqrt(.Machine$double.eps) * sqrt(eig_scale)
+      u_star <- num / rep(ifelse(degenerate, 1, kappa), each = D)
+      max_ok <- colSums(u_star < u_L - box_tol | u_star > u_U + box_tol) == 0
+      min_ok <- colSums(-u_star < u_L - box_tol | -u_star > u_U + box_tol) == 0
+    } else {
+      degenerate <- max_ok <- min_ok <- rep(FALSE, length(js))
+    }
+    for (k in seq_along(js)) {
+      j <- js[k]
       direction <- numeric(D)
       direction[i] <- direction[i] + 1
       direction[j] <- direction[j] + 1
-      M_ij <- solve_direction(direction)
-      m_ij <- -solve_direction(-direction)
+      if (degenerate[k]) {
+        # c is orthogonal to Range(Sigma_rel): c'u = 0 on the whole feasible set.
+        M_ij <- m_ij <- 0
+      } else {
+        M_ij <- if (max_ok[k]) kappa[k] else solve_direction(direction)
+        m_ij <- if (min_ok[k]) {
+          -kappa[k]
+        } else if (shortcuts && symmetric_box) {
+          -M_ij
+        } else {
+          -solve_direction(-direction)
+        }
+      }
       m[i, j] <- m[j, i] <- m_ij
       M[i, j] <- M[j, i] <- M_ij
     }
@@ -315,7 +374,7 @@ print.prism_cov_bounds <- function(x, ...) {
     m[crossed] <- midpoint
     M[crossed] <- midpoint
   }
-  list(m = m, M = M)
+  list(m = m, M = M, n_solves = n_solves)
 }
 
 #' Is a rho box compatible with Sigma_rel?
