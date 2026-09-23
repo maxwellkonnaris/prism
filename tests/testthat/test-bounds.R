@@ -2,6 +2,12 @@ rel_cov_example <- function() {
   matrix(c(2, 0.3, 0.3, 1), nrow = 2L, dimnames = list(c("a", "b"), c("a", "b")))
 }
 
+cvxr_test_solver <- function() {
+  available <- CVXR::installed_solvers()
+  preferred <- intersect(c("ECOS", "CLARABEL", "SCS"), available)
+  if (length(preferred)) preferred[1L] else NA_character_
+}
+
 test_that("rho bounds without sigma bounds is an error", {
   A <- rel_cov_example()
   expect_error(cov_bounds(A, rho_L = c(0, 0), rho_U = c(0.5, 0.5)), "Correlation bounds require scale-SD bounds")
@@ -55,29 +61,38 @@ test_that("fixed sigma and fixed rho give the exact algebraic covariance identit
   expect_true(bounds$sharp$off_diagonal)
 })
 
-test_that("genuine rho interval matches the conservative box-support formula, and is not sharp", {
-  A <- diag(2)
-  sigma_L <- 0.2
-  sigma_U <- 0.8
-  rho_L <- c(-0.3, -0.1)
-  rho_U <- c(0.4, 0.5)
-  bounds <- cov_bounds(A, sigma_L = sigma_L, sigma_U = sigma_U, rho_L = rho_L, rho_U = rho_U)
-  expect_false(bounds$sharp$off_diagonal)
+test_that("genuine rho intervals use exact ellipsoid-box support values", {
+  skip_if_not_installed("CVXR")
+  solver <- cvxr_test_solver()
+  skip_if(is.na(solver), "no supported conic solver is installed")
 
-  s <- sqrt(diag(A))
-  D <- nrow(A)
-  expected_lower <- matrix(NA_real_, D, D)
-  expected_upper <- matrix(NA_real_, D, D)
-  for (i in 1:D) for (j in 1:D) {
-    kappa <- sqrt(max(A[i, i] + 2 * A[i, j] + A[j, j], 0))
-    t_max <- min(kappa, s[i] * rho_U[i] + s[j] * rho_U[j])
-    t_min <- -min(kappa, -(s[i] * rho_L[i] + s[j] * rho_L[j]))
-    sigma_star <- min(max(-0.5 * t_min, sigma_L), sigma_U)
-    expected_lower[i, j] <- A[i, j] + sigma_star^2 + t_min * sigma_star
-    expected_upper[i, j] <- max(A[i, j] + sigma_L^2 + t_max * sigma_L, A[i, j] + sigma_U^2 + t_max * sigma_U)
-  }
-  expect_equal(unname(bounds$lower), expected_lower, tolerance = 1e-10)
-  expect_equal(unname(bounds$upper), expected_upper, tolerance = 1e-10)
+  A <- diag(c(1, 4))
+  rho_L <- c(-1, -1)
+  rho_U <- c(0.2, 1)
+  support <- .rho_box_support(A, rho_L, rho_U, solver = solver)
+  expected_M12 <- 0.2 + 2 * sqrt(1 - 0.2^2)
+  expect_equal(support$M[1, 2], expected_M12, tolerance = 1e-5)
+  expect_equal(support$m[1, 2], -sqrt(5), tolerance = 1e-5)
+
+  sigma <- 0.4
+  bounds <- cov_bounds(
+    A, sigma_L = sigma, sigma_U = sigma,
+    rho_L = rho_L, rho_U = rho_U, solver = solver
+  )
+  expect_true(bounds$sharp$off_diagonal)
+  expect_equal(bounds$lower[1, 2], sigma^2 + sigma * support$m[1, 2], tolerance = 1e-5)
+  expect_equal(bounds$upper[1, 2], sigma^2 + sigma * support$M[1, 2], tolerance = 1e-5)
+})
+
+test_that("zero upper scale bound returns Sigma_rel without imposing rho feasibility", {
+  A <- diag(2)
+  bounds <- cov_bounds(
+    A, sigma_L = 0, sigma_U = 0,
+    rho_L = c(1, 1), rho_U = c(1, 1)
+  )
+  expect_equal(bounds$lower, A)
+  expect_equal(bounds$upper, A)
+  expect_true(bounds$sharp$off_diagonal)
 })
 
 test_that("a fixed correlation incompatible with Sigma_rel errors on PSD compatibility", {
@@ -96,14 +111,12 @@ test_that("an empty rho box (box does not intersect the ellipsoid) errors", {
   )
 })
 
-test_that("a feasible rho_witness certifies a box not bracketing zero, without CVXR", {
+test_that("a feasible rho_witness certifies feasibility without CVXR", {
   A <- diag(2)
-  bounds <- cov_bounds(
-    A, sigma_L = 0.1, sigma_U = 0.5,
-    rho_L = c(0.1, 0.1), rho_U = c(0.5, 0.5),
-    rho_witness = c(0.2, 0.2), solver = "intentionally-unavailable"
-  )
-  expect_true(all(bounds$lower <= bounds$upper))
+  expect_true(.rho_box_feasible(
+    A, rho_L = c(0.1, 0.1), rho_U = c(0.5, 0.5),
+    witness = c(0.2, 0.2), solver = "intentionally-unavailable"
+  ))
 
   expect_error(
     cov_bounds(A, sigma_L = 0.1, sigma_U = 0.5, rho_L = c(-0.5, -0.5), rho_U = c(0.5, 0.5), rho_witness = c(1, 1, 1)),
@@ -111,18 +124,26 @@ test_that("a feasible rho_witness certifies a box not bracketing zero, without C
   )
 })
 
-test_that("a non-bracketing box without a witness falls back to the full-rank optimizer", {
+test_that("full-rank feasibility does not require CVXR", {
   A <- diag(2)
-  bounds <- cov_bounds(A, sigma_L = 0.1, sigma_U = 0.5, rho_L = c(0.1, 0.1), rho_U = c(0.5, 0.5))
-  expect_true(all(bounds$lower <= bounds$upper))
+  expect_true(.rho_box_feasible(A, rho_L = c(0.1, 0.1), rho_U = c(0.5, 0.5)))
 })
 
 test_that("rho_L/rho_U accept a scalar, broadcast to every feature", {
+  skip_if_not_installed("CVXR")
+  solver <- cvxr_test_solver()
+  skip_if(is.na(solver), "no supported conic solver is installed")
   A <- rel_cov_example()
-  bounds_scalar <- cov_bounds(A, sigma_L = 0.1, sigma_U = 0.5, rho_L = 0.1, rho_U = 0.5)
-  bounds_vector <- cov_bounds(A, sigma_L = 0.1, sigma_U = 0.5, rho_L = c(0.1, 0.1), rho_U = c(0.5, 0.5))
-  expect_equal(bounds_scalar$lower, bounds_vector$lower)
-  expect_equal(bounds_scalar$upper, bounds_vector$upper)
+  scalar <- cov_bounds(
+    A, sigma_L = 0.1, sigma_U = 0.5,
+    rho_L = -0.9, rho_U = 0.9, solver = solver
+  )
+  vector <- cov_bounds(
+    A, sigma_L = 0.1, sigma_U = 0.5,
+    rho_L = rep(-0.9, 2), rho_U = rep(0.9, 2), solver = solver
+  )
+  expect_equal(scalar$lower, vector$lower)
+  expect_equal(scalar$upper, vector$upper)
 })
 
 test_that("Sigma_rel must be square, finite, symmetric, and PSD", {
@@ -154,14 +175,27 @@ test_that("sigma_L must be <= sigma_U and both non-negative", {
 
 test_that("rank-deficient Sigma_rel uses CVXR to certify a non-zero-bracketing rho box", {
   skip_if_not_installed("CVXR")
-  solver <- CVXR::installed_solvers()
-  skip_if(length(solver) == 0L, "no CVXR solver installed")
+  solver <- cvxr_test_solver()
+  skip_if(is.na(solver), "no supported conic solver is installed")
   A <- matrix(c(1, 0, 1, 0, 1, 1, 1, 1, 2), nrow = 3L)
   expect_equal(min(eigen(A, only.values = TRUE)$values), 0, tolerance = 1e-8)
 
-  bounds <- cov_bounds(A, sigma_L = 0.1, sigma_U = 0.5, rho_L = rep(0.01, 3), rho_U = rep(0.05, 3))
-  expect_false(bounds$sharp$off_diagonal)
+  bounds <- cov_bounds(
+    A, sigma_L = 0.1, sigma_U = 0.5,
+    rho_L = rep(0.01, 3), rho_U = rep(0.05, 3), solver = solver
+  )
+  expect_true(bounds$sharp$off_diagonal)
   expect_true(all(bounds$lower <= bounds$upper))
+})
+
+test_that("singular feasibility rejects a box that violates the range condition", {
+  skip_if_not_installed("CVXR")
+  solver <- cvxr_test_solver()
+  skip_if(is.na(solver), "no supported conic solver is installed")
+  A <- matrix(1, 2, 2)
+  expect_false(.rho_box_feasible(
+    A, rho_L = c(0.2, -0.3), rho_U = c(0.3, -0.2), solver = solver
+  ))
 })
 
 test_that("rank-deficient Sigma_rel with an invalid CVXR solver name errors clearly", {
@@ -178,7 +212,7 @@ test_that("rank-deficient Sigma_rel without CVXR or a witness errors clearly", {
   A <- matrix(c(1, 0, 1, 0, 1, 1, 1, 1, 2), nrow = 3L)
   expect_error(
     cov_bounds(A, sigma_L = 0.1, sigma_U = 0.5, rho_L = rep(0.01, 3), rho_U = rep(0.05, 3)),
-    "requires the CVXR package"
+    "requires the optional CVXR package"
   )
 })
 

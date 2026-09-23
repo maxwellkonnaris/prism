@@ -1,5 +1,13 @@
 # prism 0.5.0
 
+- Genuine non-fixed `rho_L`/`rho_U` intervals now produce sharp bounds by
+  solving the exact ellipsoid-box support problems for every covariance entry
+  with CVXR, including the singular `Sigma_rel` range constraint. The previous
+  conservative intersection of separate ellipsoid and box support bounds was
+  removed.
+- `sigma_U = 0` now returns `Sigma_rel` directly, because all scale terms
+  vanish and rho is irrelevant. CVXR result handling supports both the legacy
+  list-returning API and the current numeric-returning `psolve()` API.
 - Removed bootstrap rejection sampling and replacement draws. Every requested
   draw is now generated exactly once, and invalid or infeasible draws stop with
   their original error. Paired scale estimates pass their known feasible

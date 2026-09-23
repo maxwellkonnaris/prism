@@ -115,7 +115,7 @@ it accepts, in increasing order of how much it specifies:
 | `NULL` (default), no `sigma_L`/etc. either | unbounded scale | finite lower bound, infinite upper bound |
 | numeric vector or matrix | estimated sigma and rho from log-transformed measurements | all values are assumed to already be on the log scale; technical replicates are bootstrapped within subject and averaged |
 | [`prism_scale_log()`] | the same log-scale data with non-default estimation settings | technical replicates are bootstrapped within subject and averaged |
-| [`prism_scale_bounds()`], or the `sigma_L`/`sigma_U`/`rho_L`/`rho_U` shorthand | fixed bounds, no data | closed-form bounds (sharp if `rho_L == rho_U`, conservative otherwise), after a compatibility check |
+| [`prism_scale_bounds()`], or the `sigma_L`/`sigma_U`/`rho_L`/`rho_U` shorthand | fixed bounds, no data | sharp bounds after a compatibility check; genuine rho intervals use exact CVXR optimization over the feasible ellipsoid-box intersection |
 
 Scale measurements must be supplied on the log scale. Bare numeric vectors and
 matrices are accepted under that contract; PRISM never applies a logarithm or
@@ -137,12 +137,26 @@ fixed rho vector must keep the augmented covariance matrix
 semidefinite. A genuine rho interval must contain at least one such feasible
 point in the box; this is certified once via a closed-form shortcut, a
 supplied `rho_witness`, an L-BFGS-B search (`Sigma_rel` full rank), or CVXR
-(`Sigma_rel` rank-deficient and no witness works -- an optional dependency,
-only needed in that case).
+(`Sigma_rel` rank-deficient and no witness works).
 
-The off-diagonal bound for a genuine (non-fixed) rho interval is a valid but
-conservative closed-form outer bound, not the tightest possible one; check
-`bounds$sharp$off_diagonal` (from [cov_bounds()]) to see when this applies.
+For a genuine rho interval, PRISM then uses CVXR to compute the exact support
+values
+
+```text
+m_ij = min (s_i * rho_i + s_j * rho_j)
+M_ij = max (s_i * rho_i + s_j * rho_j)
+```
+
+over the same globally feasible ellipsoid-box intersection. These values are
+propagated through the bounded-sigma quadratic to obtain sharp entrywise
+covariance endpoints. CVXR is therefore required for genuine rho intervals,
+but not for fixed rho, bounded sigma without rho restrictions, or unbounded
+scale. Exact interval-rho calculation solves two conic support problems for
+each upper-triangle matrix entry and can be substantially slower for large
+feature sets or many bootstrap draws.
+
+If `sigma_U = 0`, all scale terms vanish and PRISM returns `Sigma_rel`
+directly; rho feasibility is irrelevant in this degenerate-scale case.
 
 ## Result object
 
@@ -175,7 +189,7 @@ the opposing bootstrap tails of the per-draw identification intervals.
 - zero or numerically zero marginal variance in a retained log-composition
   feature;
 - custom composition draws with invalid dimensions or values;
-- unavailable CVXR solver for a rank-deficient rho-box feasibility check.
+- unavailable CVXR or conic solver for exact genuine-rho-interval bounds.
 
 The conclusion should be reconsidered if composition draws are miscalibrated,
 scale bounds are not scientifically defensible, or bootstrap samples are not

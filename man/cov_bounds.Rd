@@ -11,7 +11,7 @@ cov_bounds(
   rho_L = NULL,
   rho_U = NULL,
   rho_witness = NULL,
-  solver = "ECOS",
+  solver = NULL,
   eig_tol = 1e-10
 )
 }
@@ -24,20 +24,20 @@ cov_bounds(
 in `[-1, 1]`.}
 
 \item{rho_witness}{Optional feature-length correlation vector known to
-be feasible; supplying it lets a genuine rho interval be certified
-non-empty without an optimizer.}
+be feasible; supplying it can certify a genuine rho interval as non-empty
+without a separate feasibility solve. Exact support optimization still
+requires CVXR.}
 
-\item{solver}{CVXR solver used only when `Sigma_rel` is rank-deficient
-and no witness is supplied or works; see Details.}
+\item{solver}{Optional CVXR solver name. `NULL` lets CVXR select its default.
+Used for exact support optimization under a genuine rho interval and for
+rank-deficient feasibility checks when no witness resolves feasibility.}
 
 \item{eig_tol}{Relative eigenvalue tolerance used to detect rank
 deficiency in `Sigma_rel`.}
 }
 \value{
 A `prism_cov_bounds` object: a list with features-by-features
-  `lower`/`upper` matrices, `regime`, `sharp` (whether the diagonal and
-  off-diagonal bounds are known to be the tightest possible, versus
-  conservative), and the resolved `inputs`.
+  `lower`/`upper` matrices, `regime`, `sharp`, and the resolved `inputs`.
 }
 \description{
 For each pair of features `(i, j)`,
@@ -45,8 +45,8 @@ For each pair of features `(i, j)`,
 where `sigma = SD(log total scale)`, `s_d = sqrt(Sigma_rel[d,d])`, and
 `rho_d = Cor(log P_d, log total scale)`. `sigma` and `rho` are generally
 not point-identified from compositional data alone, so this returns the
-tightest closed-form bound on the covariance implied by whatever scale
-information is supplied:
+tightest bound on the covariance implied by whatever scale information is
+supplied:
 }
 \details{
 \describe{
@@ -57,10 +57,12 @@ information is supplied:
     closed-form bounds, after checking the fixed correlation is
     compatible with `Sigma_rel`}
   \item{`sigma_L`, `sigma_U`, and a genuine `rho_L < rho_U` interval}{
-    conservative (not sharp) closed-form bounds, after checking the
-    correlation box is compatible with `Sigma_rel`}
+    sharp numerical bounds obtained by optimizing over the intersection of
+    the correlation box and the positive-semidefinite feasibility ellipsoid}
 }
 
 Supplying `rho_L`/`rho_U` without `sigma_L`/`sigma_U` is an error, since
-correlation information alone does not bound `sigma`.
+correlation information alone does not bound `sigma`. A genuine rho
+interval requires the optional CVXR package. If `sigma_U = 0`, scale terms
+vanish and the result is exactly `Sigma_rel`, irrespective of rho.
 }

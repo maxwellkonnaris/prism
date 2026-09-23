@@ -10,7 +10,7 @@
   rho_U,
   witness = NULL,
   eig_tol = 1e-10,
-  solver = "ECOS"
+  solver = NULL
 )
 }
 \description{
